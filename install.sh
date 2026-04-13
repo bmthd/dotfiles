@@ -24,24 +24,8 @@ curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/.mise.toml -o "
 eval "$(mise activate bash)"
 
 # Install tools via mise
-echo "📦 Installing node, pnpm, bun, gh, and similarity via mise..."
-mise install node@latest
-mise install pnpm@latest
-mise install bun@latest
-mise install github-cli@latest
-mise install github:mizchi/similarity@latest
-
-# Set installed versions as global defaults
-mise use -g node@latest
-mise use -g pnpm@latest
-mise use -g bun@latest
-mise use -g github-cli@latest
-mise use -g github:mizchi/similarity@latest
-
-# Install ni and playwright globally
-echo "📦 Installing ni and playwright-cli..."
-npm install -g @antfu/ni
-npm install -g playwright-cli
+echo "📦 Installing all tools via mise..."
+mise install
 
 # Setup shell integration
 SHELL_CONFIG=""

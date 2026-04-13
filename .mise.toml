@@ -4,6 +4,8 @@ pnpm = "latest"
 bun = "latest"
 github-cli = "latest"
 "github:mizchi/similarity" = "latest"
+"npm:@antfu/ni" = "latest"
+"npm:playwright-cli" = "latest"
 
 [settings]
 # Auto-install tools when entering directories with .tool-versions or .mise.toml
