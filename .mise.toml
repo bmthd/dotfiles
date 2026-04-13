@@ -3,6 +3,7 @@ node = "latest"
 pnpm = "latest"
 bun = "latest"
 github-cli = "latest"
+"github:mizchi/similarity" = "latest"
 
 [settings]
 # Auto-install tools when entering directories with .tool-versions or .mise.toml

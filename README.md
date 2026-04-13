@@ -9,6 +9,7 @@
 - **[pnpm](https://pnpm.io/)** (latest) - 高速なパッケージマネージャー
 - **[Bun](https://bun.sh/)** (latest) - 高速な JavaScript ランタイム & ツールキット
 - **[GitHub CLI](https://cli.github.com/)** (latest) - GitHub の公式 CLI
+- **[similarity](https://github.com/mizchi/similarity)** (latest) - コード類似度検出ツール（Rust製）
 - **[ni](https://github.com/antfu/ni)** (latest) - パッケージマネージャーの統一インターフェース
 - **[Playwright CLI](https://playwright.dev/)** (latest) - ブラウザ自動化ツール
 
@@ -33,7 +34,7 @@ source ~/.bashrc  # または source ~/.zshrc
 `install.sh` は以下を自動的に行います：
 
 1. mise のインストール
-2. mise 経由で node, pnpm, bun, gh の最新版をインストール
+2. mise 経由で node, pnpm, bun, gh, similarity の最新版をインストール
 3. npm 経由で ni と playwright-cli をグローバルインストール
 4. シェル設定ファイルに mise の自動起動設定を追加
 
@@ -75,6 +76,24 @@ playwright install
 
 # テストの実行
 playwright test
+```
+
+### Similarity の使用
+
+コードベース内の重複コードや類似パターンを検出します：
+
+```bash
+# TypeScript ファイルをスキャン
+similarity-ts .
+
+# 特定のファイルを比較
+similarity-ts src/utils.ts src/helpers.ts
+
+# Python ファイルをスキャン
+similarity-py .
+
+# 汎用的なスキャン
+similarity-generic .
 ```
 
 ## カスタマイズ
