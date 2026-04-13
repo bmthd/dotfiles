@@ -1,0 +1,12 @@
+[tools]
+node = "latest"
+pnpm = "latest"
+bun = "latest"
+github-cli = "latest"
+
+[settings]
+# Auto-install tools when entering directories with .tool-versions or .mise.toml
+auto_install = true
+
+# Use latest stable versions
+experimental = false
