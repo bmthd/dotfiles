@@ -8,6 +8,8 @@ uv = "latest"
 "github:mizchi/similarity" = "latest"
 "npm:@antfu/ni" = "latest"
 "npm:playwright-cli" = "latest"
+"npm:@anthropic-ai/claude-code" = "latest"
+"npm:@openai/codex" = "latest"
 
 [settings]
 # Auto-install tools when entering directories with .tool-versions or .mise.toml
