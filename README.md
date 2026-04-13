@@ -5,9 +5,7 @@
 ## Install
 
 ```bash
-git clone https://github.com/bmthd/dotfiles.git
-cd dotfiles
-./install.sh
+curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/install.sh | bash
 ```
 
 ## License

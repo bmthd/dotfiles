@@ -15,6 +15,11 @@ else
     echo "✓ mise is already installed"
 fi
 
+# Download mise config
+echo "📦 Setting up mise configuration..."
+mkdir -p "$HOME/.config/mise"
+curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/.mise.toml -o "$HOME/.config/mise/config.toml"
+
 # Activate mise for this session
 eval "$(mise activate bash)"
 
