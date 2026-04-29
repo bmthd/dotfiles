@@ -19,6 +19,7 @@ fi
 echo "📦 Setting up mise configuration..."
 mkdir -p "$HOME/.config/mise"
 curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/.mise.toml -o "$HOME/.config/mise/config.toml"
+# Note: .mise.toml uses @playwright/cli (playwright-cli is deprecated)
 
 # Activate mise for this session
 eval "$(mise activate bash)"
@@ -44,6 +45,20 @@ if [ -n "$SHELL_CONFIG" ]; then
     else
         echo "✓ mise activation already in $SHELL_CONFIG"
     fi
+fi
+
+# Setup Claude Code settings
+echo "📦 Setting up Claude Code configuration..."
+mkdir -p "$HOME/.claude/skills"
+curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/.claude/settings.json -o "$HOME/.claude/settings.json"
+
+# Link playwright-cli skill from installed @playwright/cli package
+PLAYWRIGHT_CLI_SKILLS=$(mise exec -- node -e "console.log(require.resolve('@playwright/cli/package.json'))" 2>/dev/null | xargs dirname)/skills/playwright-cli
+if [ -d "$PLAYWRIGHT_CLI_SKILLS" ]; then
+    ln -sfn "$PLAYWRIGHT_CLI_SKILLS" "$HOME/.claude/skills/playwright-cli"
+    echo "✓ playwright-cli skill linked"
+else
+    echo "⚠ playwright-cli skill not found, skipping"
 fi
 
 echo ""

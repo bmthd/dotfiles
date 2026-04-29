@@ -7,7 +7,7 @@ jq = "latest"
 uv = "latest"
 "github:mizchi/similarity" = "latest"
 "npm:@antfu/ni" = "latest"
-"npm:playwright-cli" = "latest"
+"npm:@playwright/cli" = "latest"
 "npm:@anthropic-ai/claude-code" = "latest"
 "npm:@openai/codex" = "latest"
 
