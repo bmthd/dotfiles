@@ -47,10 +47,15 @@ if [ -n "$SHELL_CONFIG" ]; then
     fi
 fi
 
-# Setup Claude Code settings
+# Setup Claude Code settings and skills
 echo "📦 Setting up Claude Code configuration..."
 mkdir -p "$HOME/.claude/skills"
 curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/.claude/settings.json -o "$HOME/.claude/settings.json"
+
+# Install worktree skill for Claude Code
+mkdir -p "$HOME/.claude/skills/worktree"
+curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/.agents/skills/worktree/SKILL.md -o "$HOME/.claude/skills/worktree/SKILL.md"
+echo "✓ worktree skill installed for Claude"
 
 # Link playwright-cli skill from installed @playwright/cli package
 PLAYWRIGHT_CLI_SKILLS=$(mise exec -- node -e "console.log(require.resolve('@playwright/cli/package.json'))" 2>/dev/null | xargs dirname)/skills/playwright-cli
@@ -60,6 +65,12 @@ if [ -d "$PLAYWRIGHT_CLI_SKILLS" ]; then
 else
     echo "⚠ playwright-cli skill not found, skipping"
 fi
+
+# Setup OpenCode skills
+echo "📦 Setting up OpenCode configuration..."
+mkdir -p "$HOME/.config/opencode/skills/worktree"
+curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/.agents/skills/worktree/SKILL.md -o "$HOME/.config/opencode/skills/worktree/SKILL.md"
+echo "✓ worktree skill installed for OpenCode"
 
 echo ""
 echo "✨ Installation complete!"
