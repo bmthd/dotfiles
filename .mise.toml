@@ -1,6 +1,6 @@
 [tools]
 node = "latest"
-pnpm = "latest"
+"npm:pnpm" = "latest"
 bun = "latest"
 github-cli = "latest"
 jq = "latest"
