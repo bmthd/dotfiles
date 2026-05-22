@@ -5,7 +5,7 @@ bun = "latest"
 github-cli = "latest"
 jq = "latest"
 uv = "latest"
-"github:mizchi/similarity" = "latest"
+"cargo:similarity-ts" = "latest"
 "npm:@antfu/ni" = "latest"
 [tools."npm:@playwright/cli"]
 version = "latest"
