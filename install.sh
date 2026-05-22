@@ -57,6 +57,10 @@ mkdir -p "$HOME/.claude/skills/worktree"
 curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/.agents/skills/worktree/SKILL.md -o "$HOME/.claude/skills/worktree/SKILL.md"
 echo "✓ worktree skill installed for Claude"
 
+# Install difit skills for Claude Code
+npx skills add yoshiko-pg/difit
+echo "✓ difit skills installed for Claude"
+
 # Link playwright-cli skill from installed @playwright/cli package
 PLAYWRIGHT_CLI_SKILLS=$(mise exec -- node -e "console.log(require.resolve('@playwright/cli/package.json'))" 2>/dev/null | xargs dirname)/skills/playwright-cli
 if [ -d "$PLAYWRIGHT_CLI_SKILLS" ]; then
@@ -71,6 +75,10 @@ echo "📦 Setting up OpenCode configuration..."
 mkdir -p "$HOME/.config/opencode/skills/worktree"
 curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/.agents/skills/worktree/SKILL.md -o "$HOME/.config/opencode/skills/worktree/SKILL.md"
 echo "✓ worktree skill installed for OpenCode"
+
+# Install difit skills for OpenCode
+npx skills add yoshiko-pg/difit
+echo "✓ difit skills installed for OpenCode"
 
 echo ""
 echo "✨ Installation complete!"

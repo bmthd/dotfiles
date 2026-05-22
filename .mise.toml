@@ -11,6 +11,9 @@ uv = "latest"
 "npm:@anthropic-ai/claude-code" = "latest"
 "npm:@openai/codex" = "latest"
 opencode = "latest"
+[tools."npm:difit"]
+version = "latest"
+postinstall = "npx skills add yoshiko-pg/difit"
 
 [settings]
 # Auto-install tools when entering directories with .tool-versions or .mise.toml
