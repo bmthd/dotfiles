@@ -66,6 +66,10 @@ for skill in $(curl -fsSL https://api.github.com/repos/bmthd/dotfiles/contents/.
   echo "✓ $skill skill installed"
 done
 
+# Install third-party skills
+npx skills add obra/superpowers -y --all -g
+echo "✓ superpowers skills installed"
+
 echo ""
 echo "✨ Installation complete!"
 echo ""
