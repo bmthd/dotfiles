@@ -9,13 +9,13 @@ uv = "latest"
 "npm:@antfu/ni" = "latest"
 [tools."npm:@playwright/cli"]
 version = "latest"
-postinstall = "npx skills add microsoft/playwright-cli -y --all -g"
+postinstall = "npx skills add microsoft/playwright-cli -y -g -a claude-code -a opencode"
 "npm:@anthropic-ai/claude-code" = "latest"
 "npm:@openai/codex" = "latest"
 opencode = "latest"
 [tools."npm:difit"]
 version = "latest"
-postinstall = "npx skills add yoshiko-pg/difit -y --all -g"
+postinstall = "npx skills add yoshiko-pg/difit -y -g -a claude-code -a opencode"
 
 [settings]
 # Auto-install tools when entering directories with .tool-versions or .mise.toml

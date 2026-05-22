@@ -67,7 +67,7 @@ for skill in $(curl -fsSL https://api.github.com/repos/bmthd/dotfiles/contents/.
 done
 
 # Install third-party skills
-npx skills add obra/superpowers -y --all -g
+npx skills add obra/superpowers -y -g -a claude-code -a opencode
 echo "✓ superpowers skills installed"
 
 echo ""
