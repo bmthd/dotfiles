@@ -47,38 +47,24 @@ if [ -n "$SHELL_CONFIG" ]; then
     fi
 fi
 
-# Setup Claude Code settings and skills
+# Setup Claude Code settings
 echo "📦 Setting up Claude Code configuration..."
 mkdir -p "$HOME/.claude/skills"
 curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/.claude/settings.json -o "$HOME/.claude/settings.json"
 
-# Install worktree skill for Claude Code
-mkdir -p "$HOME/.claude/skills/worktree"
-curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/.agents/skills/worktree/SKILL.md -o "$HOME/.claude/skills/worktree/SKILL.md"
-echo "✓ worktree skill installed for Claude"
-
-# Install difit skills for Claude Code
-npx skills add yoshiko-pg/difit
-echo "✓ difit skills installed for Claude"
-
-# Link playwright-cli skill from installed @playwright/cli package
-PLAYWRIGHT_CLI_SKILLS=$(mise exec -- node -e "console.log(require.resolve('@playwright/cli/package.json'))" 2>/dev/null | xargs dirname)/skills/playwright-cli
-if [ -d "$PLAYWRIGHT_CLI_SKILLS" ]; then
-    ln -sfn "$PLAYWRIGHT_CLI_SKILLS" "$HOME/.claude/skills/playwright-cli"
-    echo "✓ playwright-cli skill linked"
-else
-    echo "⚠ playwright-cli skill not found, skipping"
-fi
-
-# Setup OpenCode skills
+# Setup OpenCode
 echo "📦 Setting up OpenCode configuration..."
-mkdir -p "$HOME/.config/opencode/skills/worktree"
-curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/.agents/skills/worktree/SKILL.md -o "$HOME/.config/opencode/skills/worktree/SKILL.md"
-echo "✓ worktree skill installed for OpenCode"
+mkdir -p "$HOME/.config/opencode/skills"
 
-# Install difit skills for OpenCode
-npx skills add yoshiko-pg/difit
-echo "✓ difit skills installed for OpenCode"
+# Install all skills from .agents/skills/
+echo "📦 Installing skills..."
+for skill in $(curl -fsSL https://api.github.com/repos/bmthd/dotfiles/contents/.agents/skills | jq -r '.[].name'); do
+  mkdir -p "$HOME/.claude/skills/$skill" "$HOME/.config/opencode/skills/$skill"
+  curl -fsSL "https://raw.githubusercontent.com/bmthd/dotfiles/main/.agents/skills/$skill/SKILL.md" \
+    -o "$HOME/.claude/skills/$skill/SKILL.md"
+  cp "$HOME/.claude/skills/$skill/SKILL.md" "$HOME/.config/opencode/skills/$skill/SKILL.md"
+  echo "✓ $skill skill installed"
+done
 
 echo ""
 echo "✨ Installation complete!"

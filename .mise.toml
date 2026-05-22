@@ -7,13 +7,15 @@ jq = "latest"
 uv = "latest"
 "github:mizchi/similarity" = "latest"
 "npm:@antfu/ni" = "latest"
-"npm:@playwright/cli" = "latest"
+[tools."npm:@playwright/cli"]
+version = "latest"
+postinstall = "npx skills add microsoft/playwright-cli -y --all -g"
 "npm:@anthropic-ai/claude-code" = "latest"
 "npm:@openai/codex" = "latest"
 opencode = "latest"
 [tools."npm:difit"]
 version = "latest"
-postinstall = "npx skills add yoshiko-pg/difit"
+postinstall = "npx skills add yoshiko-pg/difit -y --all -g"
 
 [settings]
 # Auto-install tools when entering directories with .tool-versions or .mise.toml
