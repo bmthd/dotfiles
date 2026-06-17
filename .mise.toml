@@ -7,6 +7,9 @@ jq = "latest"
 uv = "latest"
 "cargo:similarity-ts" = "latest"
 "npm:@antfu/ni" = "latest"
+[tools."npm:ctx7"]
+version = "latest"
+postinstall = "npx ctx7@latest setup --cli --claude --opencode --yes"
 [tools."npm:@playwright/cli"]
 version = "latest"
 postinstall = "npx skills add microsoft/playwright-cli -y -g -a claude-code -a opencode"
