@@ -1,11 +1,13 @@
 [tools]
 node = "latest"
+rust = "latest"
 "npm:pnpm" = "latest"
 bun = "latest"
 github-cli = "latest"
 jq = "latest"
 uv = "latest"
 "cargo:similarity-ts" = "latest"
+"cargo:https://github.com/rtk-ai/rtk" = { version = "branch:develop" }
 "npm:@antfu/ni" = "latest"
 [tools."npm:ctx7"]
 version = "latest"

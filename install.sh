@@ -56,6 +56,15 @@ curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/.claude/setting
 echo "📦 Setting up OpenCode configuration..."
 mkdir -p "$HOME/.config/opencode/skills"
 
+echo "📦 Setting up RTK hooks..."
+if command -v rtk &> /dev/null; then
+  rtk init -g --auto-patch || echo "⚠ RTK Claude Code hook setup failed"
+  rtk init -g --opencode --auto-patch || echo "⚠ RTK OpenCode hook setup failed"
+  echo "✓ RTK hooks installed"
+else
+  echo "⚠ rtk not found on PATH; skipping hook setup"
+fi
+
 # Install all skills from .agents/skills/
 echo "📦 Installing skills..."
 for skill in $(curl -fsSL https://api.github.com/repos/bmthd/dotfiles/contents/.agents/skills | jq -r '.[].name'); do
