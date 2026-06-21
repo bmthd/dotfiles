@@ -17,6 +17,9 @@ postinstall = "npx skills add microsoft/playwright-cli -y -g -a claude-code -a o
 "npm:@anthropic-ai/claude-code" = "latest"
 "npm:@openai/codex" = "latest"
 opencode = "latest"
+oci = "latest"
+cloudflared = "latest"
+wrangler = "latest"
 [tools."npm:difit"]
 version = "latest"
 postinstall = "npx skills add yoshiko-pg/difit -y -g -a claude-code -a opencode"
