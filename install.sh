@@ -113,6 +113,17 @@ npx skills add obra/superpowers -y -g -a claude-code -a opencode 2>/dev/null \
   && echo "✓ superpowers skills installed" \
   || echo "⚠ superpowers skills installation failed (continuing)"
 
+# Install official Codex plugin for Claude Code
+echo "📦 Setting up Codex plugin..."
+if command -v claude &> /dev/null; then
+    claude plugin marketplace add openai/codex-plugin-cc 2>/dev/null \
+      && claude plugin install codex@openai-codex -s user 2>/dev/null \
+      && echo "✓ Codex plugin installed" \
+      || echo "⚠ Codex plugin installation failed (continuing)"
+else
+    echo "⚠ claude not found on PATH; skipping Codex plugin installation"
+fi
+
 echo ""
 echo "✨ Installation complete!"
 echo ""
