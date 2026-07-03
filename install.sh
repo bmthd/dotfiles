@@ -2,6 +2,20 @@
 
 echo "🚀 Installing development tools..."
 
+# Detect which shell this script is running under (bash or zsh).
+# Run with `| bash` or `| zsh` to choose which shell to configure.
+if [ -n "$ZSH_VERSION" ]; then
+    CURRENT_SHELL="zsh"
+    SHELL_CONFIG="$HOME/.zshrc"
+elif [ -n "$BASH_VERSION" ]; then
+    CURRENT_SHELL="bash"
+    SHELL_CONFIG="$HOME/.bashrc"
+else
+    CURRENT_SHELL="bash"
+    SHELL_CONFIG="$HOME/.bashrc"
+fi
+echo "🐚 Configuring for $CURRENT_SHELL ($SHELL_CONFIG)"
+
 # Install mise
 if ! command -v mise &> /dev/null; then
     echo "📦 Installing mise..."
@@ -24,7 +38,7 @@ curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/.mise.toml -o "
 
 # Activate mise for this session
 if command -v mise &> /dev/null; then
-    eval "$(mise activate bash)" || true
+    eval "$(mise activate "$CURRENT_SHELL")" || true
 
     # Install jq first so it's available for later steps
     echo "📦 Installing jq..."
@@ -35,19 +49,12 @@ if command -v mise &> /dev/null; then
     mise install || echo "⚠ Some mise tools failed to install (continuing)"
 fi
 
-# Setup shell integration
-SHELL_CONFIG=""
-if [ -n "$ZSH_VERSION" ]; then
-    SHELL_CONFIG="$HOME/.zshrc"
-elif [ -n "$BASH_VERSION" ]; then
-    SHELL_CONFIG="$HOME/.bashrc"
-fi
-
+# Setup shell integration for the detected shell
 if [ -n "$SHELL_CONFIG" ]; then
     if ! grep -q 'mise activate' "$SHELL_CONFIG" 2>/dev/null; then
         echo "" >> "$SHELL_CONFIG"
         echo "# mise activation" >> "$SHELL_CONFIG"
-        echo 'eval "$(mise activate bash)"' >> "$SHELL_CONFIG"
+        echo "eval \"\$(mise activate $CURRENT_SHELL)\"" >> "$SHELL_CONFIG"
         echo "✓ Added mise activation to $SHELL_CONFIG"
     else
         echo "✓ mise activation already in $SHELL_CONFIG"
@@ -108,4 +115,4 @@ if command -v mise &> /dev/null; then
     mise list || true
 fi
 echo ""
-echo "Please restart your shell or run: source ~/.bashrc (or ~/.zshrc)"
+echo "Please restart your shell or run: source $SHELL_CONFIG"
