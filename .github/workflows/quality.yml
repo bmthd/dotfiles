@@ -7,6 +7,7 @@ on:
 
 jobs:
   mise-doctor:
+    name: Mise
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
