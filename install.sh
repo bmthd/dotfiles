@@ -25,10 +25,12 @@ curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/.mise.toml -o "
 # Activate mise for this session
 if command -v mise &> /dev/null; then
     eval "$(mise activate bash)" || true
-fi
 
-# Install tools via mise
-if command -v mise &> /dev/null; then
+    # Install jq first so it's available for later steps
+    echo "📦 Installing jq..."
+    mise install jq 2>/dev/null || echo "⚠ Failed to install jq via mise"
+
+    # Install remaining tools via mise
     echo "📦 Installing all tools via mise..."
     mise install || echo "⚠ Some mise tools failed to install (continuing)"
 fi
@@ -69,12 +71,6 @@ if command -v rtk &> /dev/null; then
   echo "✓ RTK hooks installed"
 else
   echo "⚠ rtk not found on PATH; skipping hook setup"
-fi
-
-# Ensure jq is available for skills installation
-if ! command -v jq &> /dev/null; then
-    echo "📦 Installing jq..."
-    mise install jq 2>/dev/null || echo "⚠ Failed to install jq via mise"
 fi
 
 # Install all skills from .agents/skills/
