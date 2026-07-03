@@ -71,6 +71,12 @@ else
   echo "⚠ rtk not found on PATH; skipping hook setup"
 fi
 
+# Ensure jq is available for skills installation
+if ! command -v jq &> /dev/null; then
+    echo "📦 Installing jq..."
+    mise install jq 2>/dev/null || echo "⚠ Failed to install jq via mise"
+fi
+
 # Install all skills from .agents/skills/
 echo "📦 Installing skills..."
 if command -v jq &> /dev/null; then
