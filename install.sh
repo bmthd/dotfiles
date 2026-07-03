@@ -1,13 +1,13 @@
 #!/bin/bash
 
-set -e
-
 echo "🚀 Installing development tools..."
 
 # Install mise
 if ! command -v mise &> /dev/null; then
     echo "📦 Installing mise..."
-    curl https://mise.run | sh
+    if ! curl https://mise.run | sh; then
+        echo "⚠ mise installation failed; skipping"
+    fi
 
     # Add mise to PATH for this session
     export PATH="$HOME/.local/bin:$PATH"
@@ -18,15 +18,20 @@ fi
 # Download mise config
 echo "📦 Setting up mise configuration..."
 mkdir -p "$HOME/.config/mise"
-curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/.mise.toml -o "$HOME/.config/mise/config.toml"
+curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/.mise.toml -o "$HOME/.config/mise/config.toml" \
+  || echo "⚠ Failed to download mise config"
 # Note: .mise.toml uses @playwright/cli (playwright-cli is deprecated)
 
 # Activate mise for this session
-eval "$(mise activate bash)"
+if command -v mise &> /dev/null; then
+    eval "$(mise activate bash)" || true
+fi
 
 # Install tools via mise
-echo "📦 Installing all tools via mise..."
-mise install
+if command -v mise &> /dev/null; then
+    echo "📦 Installing all tools via mise..."
+    mise install || echo "⚠ Some mise tools failed to install (continuing)"
+fi
 
 # Setup shell integration
 SHELL_CONFIG=""
@@ -50,7 +55,8 @@ fi
 # Setup Claude Code settings
 echo "📦 Setting up Claude Code configuration..."
 mkdir -p "$HOME/.claude/skills"
-curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/.claude/settings.json -o "$HOME/.claude/settings.json"
+curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/.claude/settings.json -o "$HOME/.claude/settings.json" \
+  || echo "⚠ Failed to download Claude Code settings"
 
 # Setup OpenCode
 echo "📦 Setting up OpenCode configuration..."
@@ -67,22 +73,37 @@ fi
 
 # Install all skills from .agents/skills/
 echo "📦 Installing skills..."
-for skill in $(curl -fsSL https://api.github.com/repos/bmthd/dotfiles/contents/.agents/skills | jq -r '.[].name'); do
-  mkdir -p "$HOME/.claude/skills/$skill" "$HOME/.config/opencode/skills/$skill"
-  curl -fsSL "https://raw.githubusercontent.com/bmthd/dotfiles/main/.agents/skills/$skill/SKILL.md" \
-    -o "$HOME/.claude/skills/$skill/SKILL.md"
-  cp "$HOME/.claude/skills/$skill/SKILL.md" "$HOME/.config/opencode/skills/$skill/SKILL.md"
-  echo "✓ $skill skill installed"
-done
+if command -v jq &> /dev/null; then
+    SKILLS=$(curl -fsSL https://api.github.com/repos/bmthd/dotfiles/contents/.agents/skills 2>/dev/null | jq -r '.[].name' 2>/dev/null) || SKILLS=""
+    if [ -n "$SKILLS" ]; then
+        for skill in $SKILLS; do
+            mkdir -p "$HOME/.claude/skills/$skill" "$HOME/.config/opencode/skills/$skill"
+            if curl -fsSL "https://raw.githubusercontent.com/bmthd/dotfiles/main/.agents/skills/$skill/SKILL.md" \
+                -o "$HOME/.claude/skills/$skill/SKILL.md" 2>/dev/null; then
+                cp "$HOME/.claude/skills/$skill/SKILL.md" "$HOME/.config/opencode/skills/$skill/SKILL.md"
+                echo "✓ $skill skill installed"
+            else
+                echo "⚠ Failed to install $skill skill"
+            fi
+        done
+    else
+        echo "⚠ Could not fetch skills list from GitHub"
+    fi
+else
+    echo "⚠ jq not found; skipping skills installation"
+fi
 
 # Install third-party skills
-npx skills add obra/superpowers -y -g -a claude-code -a opencode
-echo "✓ superpowers skills installed"
+npx skills add obra/superpowers -y -g -a claude-code -a opencode 2>/dev/null \
+  && echo "✓ superpowers skills installed" \
+  || echo "⚠ superpowers skills installation failed (continuing)"
 
 echo ""
 echo "✨ Installation complete!"
 echo ""
 echo "Installed versions:"
-mise list
+if command -v mise &> /dev/null; then
+    mise list || true
+fi
 echo ""
 echo "Please restart your shell or run: source ~/.bashrc (or ~/.zshrc)"
