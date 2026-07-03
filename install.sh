@@ -61,6 +61,20 @@ if [ -n "$SHELL_CONFIG" ]; then
     fi
 fi
 
+# Install Claude Code via the official installer (not mise/npm, which cannot
+# complete the native binary postinstall)
+if ! command -v claude &> /dev/null; then
+    echo "📦 Installing Claude Code..."
+    if curl -fsSL https://claude.ai/install.sh | bash; then
+        export PATH="$HOME/.local/bin:$PATH"
+        echo "✓ Claude Code installed"
+    else
+        echo "⚠ Claude Code installation failed; skipping"
+    fi
+else
+    echo "✓ Claude Code is already installed"
+fi
+
 # Setup Claude Code settings
 echo "📦 Setting up Claude Code configuration..."
 mkdir -p "$HOME/.claude/skills"
