@@ -66,6 +66,12 @@ echo "📦 Setting up Claude Code configuration..."
 mkdir -p "$HOME/.claude/skills"
 curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/.claude/settings.json -o "$HOME/.claude/settings.json" \
   || echo "⚠ Failed to download Claude Code settings"
+if curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/.claude/statusline.sh -o "$HOME/.claude/statusline.sh"; then
+    chmod +x "$HOME/.claude/statusline.sh"
+    echo "✓ Claude Code status line installed"
+else
+    echo "⚠ Failed to download Claude Code status line"
+fi
 
 # Setup OpenCode
 echo "📦 Setting up OpenCode configuration..."
