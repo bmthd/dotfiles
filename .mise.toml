@@ -9,18 +9,18 @@ uv = "latest"
 "cargo:similarity-ts" = "latest"
 "npm:@antfu/ni" = "latest"
 "github:rtk-ai/rtk" = "latest"
-[tools."npm:ctx7"]
-version = "latest"
-postinstall = "npx ctx7@latest setup --cli --claude --opencode --yes"
-[tools."npm:@playwright/cli"]
-version = "latest"
-postinstall = "npx skills add microsoft/playwright-cli -y -g -a claude-code -a opencode"
 "npm:@anthropic-ai/claude-code" = "latest"
 "npm:@openai/codex" = "latest"
 opencode = "latest"
 oci = "latest"
 cloudflared = "latest"
 wrangler = "latest"
+[tools."npm:ctx7"]
+version = "latest"
+postinstall = "npx ctx7@latest setup --cli --claude --opencode --yes"
+[tools."npm:@playwright/cli"]
+version = "latest"
+postinstall = "npx skills add microsoft/playwright-cli -y -g -a claude-code -a opencode"
 [tools."npm:difit"]
 version = "latest"
 postinstall = "npx skills add yoshiko-pg/difit -y -g -a claude-code -a opencode"
