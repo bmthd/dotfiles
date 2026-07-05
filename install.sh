@@ -127,6 +127,24 @@ npx skills add obra/superpowers -y -g -a claude-code -a opencode 2>/dev/null \
   && echo "✓ superpowers skills installed" \
   || echo "⚠ superpowers skills installation failed (continuing)"
 
+# Install grill-me (and its grilling dependency) via the official `gh skill`
+# command (gh >= 2.92.0). This keeps mattpocock/skills as the source of truth:
+# `gh skill install` injects source-tracking metadata so `gh skill update` can
+# later pull upstream changes. grill-me's body is just "Run a /grilling session",
+# so grilling must be installed alongside it. Exact paths skip full-tree
+# discovery. --scope user maps to ~/.claude/skills and ~/.config/opencode/skills.
+echo "📦 Installing grill-me skills..."
+if command -v gh &> /dev/null; then
+    for agent in claude-code opencode; do
+        gh skill install mattpocock/skills skills/productivity/grill-me --agent "$agent" --scope user --force 2>/dev/null \
+          && gh skill install mattpocock/skills skills/productivity/grilling --agent "$agent" --scope user --force 2>/dev/null \
+          && echo "✓ grill-me skills installed for $agent" \
+          || echo "⚠ grill-me skills installation failed for $agent (continuing)"
+    done
+else
+    echo "⚠ gh not found on PATH; skipping grill-me skills installation"
+fi
+
 # Install official Codex plugin for Claude Code
 echo "📦 Setting up Codex plugin..."
 if command -v claude &> /dev/null; then
