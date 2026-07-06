@@ -24,6 +24,11 @@ postinstall = "npx skills add microsoft/playwright-cli -y -g -a claude-code -a o
 version = "latest"
 postinstall = "npx skills add yoshiko-pg/difit -y -g -a claude-code -a opencode"
 
+[hooks]
+# Run after `mise install` (no shell activation required); keeps git defaults
+# colocated with tool config instead of scripted in install.sh.
+postinstall = "git config --global init.defaultBranch main"
+
 [settings]
 # Auto-install tools when entering directories with .tool-versions or .mise.toml
 auto_install = true
