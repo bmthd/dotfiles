@@ -110,15 +110,6 @@ fi
 echo "📦 Setting up OpenCode configuration..."
 mkdir -p "$HOME/.config/opencode/skills"
 
-echo "📦 Setting up RTK hooks..."
-if command -v rtk &> /dev/null; then
-  rtk init -g --auto-patch || echo "⚠ RTK Claude Code hook setup failed"
-  rtk init -g --opencode --auto-patch || echo "⚠ RTK OpenCode hook setup failed"
-  echo "✓ RTK hooks installed"
-else
-  echo "⚠ rtk not found on PATH; skipping hook setup"
-fi
-
 # Install skills via the `skills` CLI — one mechanism for every source.
 # Own skills live in this repo's .agents/skills/; third-party skills come from
 # their upstream repos. grill-me pulls only grill-me + its grilling dependency.
