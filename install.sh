@@ -119,50 +119,20 @@ else
   echo "⚠ rtk not found on PATH; skipping hook setup"
 fi
 
-# Install all skills from .agents/skills/
+# Install skills via the `skills` CLI — one mechanism for every source.
+# Own skills live in this repo's .agents/skills/; third-party skills come from
+# their upstream repos. grill-me pulls only grill-me + its grilling dependency.
+# Update any of them later with `npx skills update`.
 echo "📦 Installing skills..."
-if command -v jq &> /dev/null; then
-    SKILLS=$(curl -fsSL https://api.github.com/repos/bmthd/dotfiles/contents/.agents/skills 2>/dev/null | jq -r '.[].name' 2>/dev/null) || SKILLS=""
-    if [ -n "$SKILLS" ]; then
-        for skill in $SKILLS; do
-            mkdir -p "$HOME/.claude/skills/$skill" "$HOME/.config/opencode/skills/$skill"
-            if curl -fsSL "https://raw.githubusercontent.com/bmthd/dotfiles/main/.agents/skills/$skill/SKILL.md" \
-                -o "$HOME/.claude/skills/$skill/SKILL.md" 2>/dev/null; then
-                cp "$HOME/.claude/skills/$skill/SKILL.md" "$HOME/.config/opencode/skills/$skill/SKILL.md"
-                echo "✓ $skill skill installed"
-            else
-                echo "⚠ Failed to install $skill skill"
-            fi
-        done
-    else
-        echo "⚠ Could not fetch skills list from GitHub"
-    fi
-else
-    echo "⚠ jq not found; skipping skills installation"
-fi
-
-# Install third-party skills
-npx skills add obra/superpowers -y -g -a claude-code -a opencode 2>/dev/null \
-  && echo "✓ superpowers skills installed" \
-  || echo "⚠ superpowers skills installation failed (continuing)"
-
-# Install grill-me (and its grilling dependency) via the official `gh skill`
-# command (gh >= 2.92.0). This keeps mattpocock/skills as the source of truth:
-# `gh skill install` injects source-tracking metadata so `gh skill update` can
-# later pull upstream changes. grill-me's body is just "Run a /grilling session",
-# so grilling must be installed alongside it. Exact paths skip full-tree
-# discovery. --scope user maps to ~/.claude/skills and ~/.config/opencode/skills.
-echo "📦 Installing grill-me skills..."
-if command -v gh &> /dev/null; then
-    for agent in claude-code opencode; do
-        gh skill install mattpocock/skills skills/productivity/grill-me --agent "$agent" --scope user --force 2>/dev/null \
-          && gh skill install mattpocock/skills skills/productivity/grilling --agent "$agent" --scope user --force 2>/dev/null \
-          && echo "✓ grill-me skills installed for $agent" \
-          || echo "⚠ grill-me skills installation failed for $agent (continuing)"
-    done
-else
-    echo "⚠ gh not found on PATH; skipping grill-me skills installation"
-fi
+install_skills() {
+    local label="$1"; shift
+    npx skills add "$@" -y -g -a claude-code -a opencode 2>/dev/null \
+      && echo "✓ $label skills installed" \
+      || echo "⚠ $label skills installation failed (continuing)"
+}
+install_skills "own" bmthd/dotfiles
+install_skills "superpowers" obra/superpowers
+install_skills "grill-me" mattpocock/skills -s grill-me -s grilling
 
 # Install official Codex plugin for Claude Code
 echo "📦 Setting up Codex plugin..."
