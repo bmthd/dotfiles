@@ -20,3 +20,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ludeeus/action-shellcheck@master
+
+  syntax:
+    name: Shell syntax
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: bash -n
+        run: |
+          bash -n install.sh
+          bash -n .claude/statusline.sh
+      - name: zsh -n
+        # install.sh is documented to run under zsh too (see README), so
+        # verify it parses cleanly there in addition to bash.
+        run: |
+          sudo apt-get update && sudo apt-get install -y zsh
+          zsh -n install.sh
