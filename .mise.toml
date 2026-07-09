@@ -8,7 +8,6 @@ jq = "latest"
 uv = "latest"
 "cargo:similarity-ts" = "latest"
 "npm:@antfu/ni" = "latest"
-"github:rtk-ai/rtk" = "latest"
 "npm:@openai/codex" = "latest"
 opencode = "latest"
 oci = "latest"
@@ -24,6 +23,10 @@ postinstall = "npx skills add microsoft/playwright-cli -y -g -a claude-code -a o
 [tools."npm:difit"]
 version = "latest"
 postinstall = "npx skills add yoshiko-pg/difit -y -g -a claude-code -a opencode"
+[tools."github:rtk-ai/rtk"]
+version = "latest"
+# rtk init needs ~/.claude to exist before it can write RTK.md there.
+postinstall = "mkdir -p \"$HOME/.claude\" && rtk init -g --auto-patch && rtk init -g --opencode --auto-patch"
 
 [hooks]
 # Run after `mise install` (no shell activation required); keeps git defaults
