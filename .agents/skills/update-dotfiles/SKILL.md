@@ -1,6 +1,6 @@
 ---
 name: update-dotfiles
-description: Use when the user wants to modify the bmthd/dotfiles repository (skills, install.sh, mise tools, shellrc, docs) and open a PR from ANY terminal, even one where the repo is not checked out. Clones via ghq if absent, always branches off fresh main, and opens a PR. Invoke as /update-dotfiles <change>.
+description: Use when the user wants to modify the bmthd/dotfiles repository (skills, install.sh, mise tools, docs) and open a PR from ANY terminal, even one where the repo is not checked out. Clones via ghq if absent, always branches off fresh main, and opens a PR. Invoke as /update-dotfiles <change>.
 argument-hint: <change to make>
 ---
 
