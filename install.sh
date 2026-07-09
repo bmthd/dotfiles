@@ -52,9 +52,11 @@ fi
 # Setup shell integration for the detected shell
 if [ -n "$SHELL_CONFIG" ]; then
     if ! grep -q 'mise activate' "$SHELL_CONFIG" 2>/dev/null; then
-        echo "" >> "$SHELL_CONFIG"
-        echo "# mise activation" >> "$SHELL_CONFIG"
-        echo "eval \"\$(mise activate $CURRENT_SHELL)\"" >> "$SHELL_CONFIG"
+        {
+            echo ""
+            echo "# mise activation"
+            echo "eval \"\$(mise activate $CURRENT_SHELL)\""
+        } >> "$SHELL_CONFIG"
         echo "✓ Added mise activation to $SHELL_CONFIG"
     else
         echo "✓ mise activation already in $SHELL_CONFIG"
