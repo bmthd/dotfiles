@@ -24,7 +24,8 @@ version = "latest"
 postinstall = "npx skills add yoshiko-pg/difit -y -g -a claude-code -a opencode"
 [tools."github:rtk-ai/rtk"]
 version = "latest"
-postinstall = "rtk init -g --auto-patch && rtk init -g --opencode --auto-patch"
+# rtk init needs ~/.claude to exist before it can write RTK.md there.
+postinstall = "mkdir -p \"$HOME/.claude\" && rtk init -g --auto-patch && rtk init -g --opencode --auto-patch"
 
 [hooks]
 # Run after `mise install` (no shell activation required); keeps git defaults
