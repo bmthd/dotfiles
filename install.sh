@@ -34,17 +34,12 @@ echo "📦 Setting up mise configuration..."
 mkdir -p "$HOME/.config/mise"
 curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/.mise.toml -o "$HOME/.config/mise/config.toml" \
   || echo "⚠ Failed to download mise config"
-# Note: .mise.toml uses @playwright/cli (playwright-cli is deprecated)
 
 # Activate mise for this session
 if command -v mise &> /dev/null; then
     eval "$(mise activate "$CURRENT_SHELL")" || true
 
-    # Install jq first so it's available for later steps
-    echo "📦 Installing jq..."
-    mise install jq 2>/dev/null || echo "⚠ Failed to install jq via mise"
-
-    # Install remaining tools via mise
+    # Install all tools via mise
     echo "📦 Installing all tools via mise..."
     mise install || echo "⚠ Some mise tools failed to install (continuing)"
 fi
