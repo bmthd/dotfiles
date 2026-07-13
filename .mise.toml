@@ -15,18 +15,18 @@ cloudflared = "latest"
 wrangler = "latest"
 [tools."npm:ctx7"]
 version = "latest"
-postinstall = "npx ctx7@latest setup --cli --claude --opencode --yes"
+postinstall = "npx ctx7@latest setup --cli --claude --opencode --cursor --yes"
 # playwright-cli is deprecated; use @playwright/cli
 [tools."npm:@playwright/cli"]
 version = "latest"
-postinstall = "npx skills add microsoft/playwright-cli -y -g -a claude-code -a opencode"
+postinstall = "npx skills add microsoft/playwright-cli -y -g -a claude-code -a opencode -a cursor"
 [tools."npm:difit"]
 version = "latest"
-postinstall = "npx skills add yoshiko-pg/difit -y -g -a claude-code -a opencode"
+postinstall = "npx skills add yoshiko-pg/difit -y -g -a claude-code -a opencode -a cursor"
 [tools."github:rtk-ai/rtk"]
 version = "latest"
 # rtk init needs ~/.claude to exist before it can write RTK.md there.
-postinstall = "mkdir -p \"$HOME/.claude\" && rtk init -g --auto-patch && rtk init -g --opencode --auto-patch"
+postinstall = "mkdir -p \"$HOME/.claude\" && rtk init -g --auto-patch && rtk init -g --opencode --auto-patch && rtk init -g --agent cursor --auto-patch"
 
 [hooks]
 # Run after `mise install` (no shell activation required); keeps git defaults

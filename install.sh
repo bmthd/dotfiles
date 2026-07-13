@@ -107,6 +107,10 @@ fi
 echo "📦 Setting up OpenCode configuration..."
 mkdir -p "$HOME/.config/opencode/skills"
 
+# Setup Cursor CLI (reads skills from the universal ~/.agents/skills)
+echo "📦 Setting up Cursor CLI configuration..."
+mkdir -p "$HOME/.agents/skills"
+
 # Install skills via the `skills` CLI — one mechanism for every source.
 # Own skills live in this repo's .agents/skills/; third-party skills come from
 # their upstream repos. grill-me pulls only grill-me + its grilling dependency.
@@ -114,7 +118,7 @@ mkdir -p "$HOME/.config/opencode/skills"
 echo "📦 Installing skills..."
 install_skills() {
     local label="$1"; shift
-    npx skills add "$@" -y -g -a claude-code -a opencode 2>/dev/null \
+    npx skills add "$@" -y -g -a claude-code -a opencode -a cursor 2>/dev/null \
       && echo "✓ $label skills installed" \
       || echo "⚠ $label skills installation failed (continuing)"
 }
