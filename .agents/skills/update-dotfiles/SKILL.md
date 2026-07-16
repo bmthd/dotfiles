@@ -64,8 +64,8 @@ If the branch already exists from a prior run, pick a new slug (append `-2`, etc
 
 Make the change the user requested using the normal edit tools. Keep it focused —
 one logical change per PR. For skill edits, the source of truth is
-`.agents/skills/<name>/SKILL.md` (install.sh distributes it to `~/.claude/skills`
-and `~/.config/opencode/skills`).
+`.agents/skills/<name>/SKILL.md` (the `setup:skills` mise task distributes it to
+`~/.claude/skills` and `~/.config/opencode/skills` via `npx skills add`).
 
 ### 6. Commit
 
