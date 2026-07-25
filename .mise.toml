@@ -34,8 +34,10 @@ postinstall = "npx skills add yoshiko-pg/difit -y -g -a claude-code -a opencode 
 
 [tools."github:rtk-ai/rtk"]
 version = "latest"
-# rtk init needs ~/.claude to exist before it can write RTK.md there.
-postinstall = "mkdir -p \"$HOME/.claude\" && rtk init -g --auto-patch && rtk init -g --opencode --auto-patch && rtk init -g --agent cursor --auto-patch"
+# rtk init writes into each agent's config dir and fails outright if the dir
+# is missing, so create all three up front. On a fresh machine (and in CI)
+# nothing else has necessarily created ~/.cursor yet.
+postinstall = "mkdir -p \"$HOME/.claude\" \"$HOME/.cursor\" \"$HOME/.config/opencode\" && rtk init -g --auto-patch && rtk init -g --opencode --auto-patch && rtk init -g --agent cursor --auto-patch"
 
 [env]
 # Claude Code installs to ~/.local/bin; make it visible to setup tasks and
