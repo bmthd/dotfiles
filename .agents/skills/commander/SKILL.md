@@ -44,6 +44,15 @@ Dispatch independent units in parallel in a single message. Use `SendMessage` to
 continue an existing agent with its context intact instead of re-spawning for
 follow-ups on the same unit.
 
+Pick an isolation mode before writing prompts. With three or more units, or any
+overlap in the files they touch, default to `isolation: "worktree"` — each agent
+gets its own checkout and can run formatters, builds, and tests without wrecking
+another agent's in-flight edits. Under worktree isolation, require each agent to
+**commit to its own worktree branch** (uncommitted work in a worktree cannot be
+integrated) while still forbidding pushes and PRs. Machine-global resources —
+dev-server ports especially — still collide across worktrees, so assign them per
+agent.
+
 ### 3. Review each report
 
 The subagent's report is a claim, not a fact. Verify it read-only: read the
@@ -56,6 +65,13 @@ If a report reveals a gap or a bug, dispatch a fix — to the same agent via
 included. Never patch it yourself.
 
 ### 5. Integrate and report
+
+Integration is yours to *direct*, not to perform. Merging worktree branches,
+resolving conflicts, and re-running the suite afterwards are hands-on work: the
+Iron Law covers them exactly as it covers the original edits. Dispatch an
+integration agent with the branch list, the merge order you chose, how to settle
+the conflicts you expect, and the verification it must produce. Then check its
+report read-only, the same as any other.
 
 When all units pass review, summarize for the user: what was done, by which
 agents, what you verified, and anything left open. Subagent output is not shown
@@ -78,6 +94,17 @@ to the user — relay what matters.
   the dispatch prompt; it is the only interface you have.
 - **Parallel writes conflict**: never let two parallel agents touch the same
   files. If units overlap, serialize them or use worktree isolation.
+- **File partitioning is not free**: it buys you a merge-free shared tree by
+  banning repo-wide `fmt` / `lint --fix` / `check` / `build` for everyone and
+  deferring any unit that shares a file. Past two units, worktree isolation is
+  usually cheaper even counting the merge.
+- **Verify the ground before dispatching**: a detached HEAD, a branch diverged
+  from `main`, or a task written against code that is not in this checkout will
+  waste every agent at once. Read `git status -sb` and `git log --oneline -1`,
+  and resolve a few of the file/line references the task cites, first.
+- **Unreferenced commits vanish quietly**: before moving HEAD, check
+  `git branch --contains <sha>`. If nothing points at it, create a rescue branch
+  and tell the user.
 - **Verification is your job**: subagents overstate success. "Tests pass" in a
   report means nothing until you have seen the evidence (paste of test output,
   or your own read-only check).
