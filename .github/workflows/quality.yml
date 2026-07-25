@@ -10,8 +10,13 @@ jobs:
     name: Mise
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: jdx/mise-action@v4
+        env:
+          # ctx7's postinstall otherwise waits out the full 10-minute OAuth
+          # device-code lifetime here, since no one can approve it on a runner.
+          # setup only stores the key, it never validates it.
+          CONTEXT7_API_KEY: ci-placeholder-not-a-real-key
       - run: mise doctor
       - name: Validate setup tasks parse
         run: mise tasks ls
@@ -20,14 +25,14 @@ jobs:
     name: ShellCheck
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ludeeus/action-shellcheck@master
 
   syntax:
     name: Shell syntax
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: bash -n
         run: |
           bash -n install.sh
