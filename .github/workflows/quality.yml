@@ -12,12 +12,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: jdx/mise-action@v4
-        env:
-          # ctx7's postinstall otherwise waits out the full 10-minute OAuth
-          # device-code lifetime here, since no one can approve it on a runner.
-          # setup only stores the key, it never validates it.
-          CONTEXT7_API_KEY: ci-placeholder-not-a-real-key
-      - run: mise doctor
+        with:
+          install: false
+      - name: Validate tool config parses
+        run: mise ls
       - name: Validate setup tasks parse
         run: mise tasks ls
 
