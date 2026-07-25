@@ -21,7 +21,10 @@ wrangler = "latest"
 
 [tools."npm:ctx7"]
 version = "latest"
-postinstall = "npx ctx7@latest setup --cli --claude --opencode --cursor --yes"
+# `ctx7 setup` blocks on an interactive OAuth device-code prompt that neither
+# --yes nor CI=true suppresses; only --api-key skips it. Pass the flag when
+# CONTEXT7_API_KEY is set (CI) and otherwise keep the interactive sign-in.
+postinstall = "npx ctx7@latest setup --cli --claude --opencode --cursor --yes ${CONTEXT7_API_KEY:+--api-key \"$CONTEXT7_API_KEY\"}"
 
 # playwright-cli is deprecated; use @playwright/cli
 [tools."npm:@playwright/cli"]
