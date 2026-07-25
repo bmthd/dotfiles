@@ -120,7 +120,8 @@ mkdir -p "$HOME/.claude/skills" "$HOME/.config/opencode/skills" "$HOME/.agents/s
 
 # Install skills via the `skills` CLI — one mechanism for every source.
 # Own skills live in this repo's .agents/skills/; third-party skills come from
-# their upstream repos. grill-me pulls only grill-me + its grilling dependency.
+# their upstream repos. grill-me pulls only grill-me + its grilling dependency
+# from the upstream productivity skills folder.
 # Update any of them later with `npx skills update`.
 echo "📦 Installing skills..."
 install_skills() {
@@ -131,7 +132,7 @@ install_skills() {
 }
 install_skills "own" bmthd/dotfiles
 install_skills "superpowers" obra/superpowers
-install_skills "grill-me" mattpocock/skills -s grill-me -s grilling
+install_skills "grill-me" https://github.com/mattpocock/skills/tree/main/skills/productivity -s grill-me -s grilling
 '''
 
 [tasks."setup:codex"]
