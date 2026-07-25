@@ -10,7 +10,7 @@ jobs:
     name: Mise
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: jdx/mise-action@v4
         env:
           # ctx7's postinstall otherwise waits out the full 10-minute OAuth
@@ -25,14 +25,14 @@ jobs:
     name: ShellCheck
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ludeeus/action-shellcheck@master
 
   syntax:
     name: Shell syntax
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: bash -n
         run: |
           bash -n install.sh
