@@ -119,6 +119,8 @@ After issue selection, switch into commander behavior:
 
 - Decompose selected issues into independent units.
 - Choose an isolation mode (see below) before writing any prompt.
+- Keep an explicit unit table: issue/unit → assignee → status
+  (`not-started` / `in-progress` / `committed` / `PR-opened`).
 - Dispatch independent units in parallel in one message.
 - Put issue context, relevant comments, scope, constraints, and report format in
   each prompt.
@@ -148,9 +150,17 @@ which mode you picked rather than letting them assume.
 - **Shared tree:** forbid commits. Changes land in one tree; the user reviews the
   combined diff.
 - **Worktree isolation:** local commits on the agent's own worktree branch are
-  **required** — uncommitted work in a worktree cannot be integrated. Forbid
-  `push`, PR creation, and issue edits, and forbid switching to or modifying
-  `main` / the work branch / any rescue branch.
+  **required** — uncommitted work in a worktree cannot be integrated.
+  Implementing agents must not `push`, create PRs, or edit issues.
+
+For independent units that map 1:1 to issues, the default handoff is **one PR per
+unit after independent verification**. Local-commit-only is for users who
+explicitly want one combined diff. Confirm the policy before dispatch, or at
+least state it plainly.
+
+Use a two-stage flow for PR delivery: implementation agent commits locally;
+separate verification agent re-runs tests/typecheck, then pushes and opens the
+PR. The implementer's own "tests pass" claim is not enough evidence for a PR.
 
 Either way, `gh issue` comments, labels, assignments, and closures stay forbidden
 unless the user asked for that state change.
@@ -165,6 +175,8 @@ unless the user asked for that state change.
 - **The corrected line numbers** when they drifted from the issue body.
 - **Minimal diffs** when other agents touch the same file in another worktree:
   no drive-by reformatting, or the merge becomes unreadable.
+- **No `git clean`, with any options.** `.claude/worktrees/` may live inside the
+  repo; `git clean -fd`-style cleanup can delete other agents' worktrees.
 
 Use this dispatch prompt shape:
 
@@ -176,7 +188,7 @@ Environment: <worktree-isolated or shared tree; install step; allowed commands;
 assigned dev-server port>
 Scope: <files/areas allowed, files/areas not allowed, state-changing limits>
 Parallel safety: <other selected issues and known overlap constraints>
-Constraints: <commit policy for this mode; no pushes/PRs/issue edits>
+Constraints: <commit policy for this mode; no git clean; no pushes/PRs/issue edits>
 Report format: files changed, commands run with results, risks, blockers,
 open questions, and verification evidence.
 ```
@@ -190,6 +202,7 @@ open questions, and verification evidence.
 | Check the baseline | `git status -sb`, `git log --oneline -1 origin/main`, resolve cited lines. |
 | Decide actionability | Use concrete outcome, bounded scope, context, verification, and blockers. |
 | Dispatch work | Use `commander`; delegate hands-on work, keep verification read-only. |
+| Agent failure | Reconcile selected units against assigned units; inspect worktrees before redispatch. |
 
 ## Red Flags
 
@@ -201,6 +214,9 @@ open questions, and verification evidence.
 - Two parallel agents may edit the same files.
 - You are doing implementation work yourself while claiming commander mode.
 - A subagent prompt lacks issue context, scope, constraints, or report format.
+- The selected unit set and the assigned unit set differ after an agent failure.
+- Worktree isolation has no explicit PR-per-unit vs combined-diff policy.
+- Any dispatch prompt permits `git clean`.
 
 ## Common Mistakes
 
@@ -218,7 +234,17 @@ open questions, and verification evidence.
   the user which one you picked.
 - **Forbidding commits under worktree isolation:** the work then has no way back.
   Require local commits on the agent's own branch; forbid pushes and PRs instead.
+- **Hiding completed work:** local commits alone are invisible from outside. For
+  independent issue units, stream verified PRs as each unit finishes unless the
+  user chose one combined diff.
 - **Dispatching too early:** show candidates and get selection unless automatic
   selection was explicitly authorized.
 - **Under-specifying prompts:** subagents start cold. Include issue context,
   constraints, other selected issues, and exact report fields.
+- **Redispatching blindly after failure:** first run `git worktree list` and
+  `git status --porcelain` in each worktree. Hand salvageable partial work to the
+  successor instead of starting from zero.
+- **Reassigning started units:** once a unit is in progress, treat that agent as
+  the owner. Reassign only units that have not started. If duplicate
+  implementations collide, adopt one diff and repurpose the other agent as a
+  reviewer of the adopted diff.
