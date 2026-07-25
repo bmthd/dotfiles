@@ -12,6 +12,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: jdx/mise-action@v4
+        with:
+          install: false
       - run: mise doctor
       - name: Validate setup tasks parse
         run: mise tasks ls
