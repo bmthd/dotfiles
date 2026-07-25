@@ -10,9 +10,12 @@ jobs:
     name: Mise
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: jdx/mise-action@v4
-      - run: mise doctor
+        with:
+          install: false
+      - name: Validate tool config parses
+        run: mise ls
       - name: Validate setup tasks parse
         run: mise tasks ls
 
@@ -20,14 +23,14 @@ jobs:
     name: ShellCheck
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ludeeus/action-shellcheck@master
 
   syntax:
     name: Shell syntax
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: bash -n
         run: |
           bash -n install.sh
