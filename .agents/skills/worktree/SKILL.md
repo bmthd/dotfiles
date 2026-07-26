@@ -1,12 +1,12 @@
 ---
 name: worktree
-description: Create a new git branch and worktree at ../{repo}.worktrees/{slug}, then open it in VS Code. Use when the user wants to start isolated work on a new branch without switching the main checkout. Invoke as /worktree <branch-name>.
+description: Create a new git branch and worktree at ../{repo}.worktrees/{slug}. Use when the user wants to start isolated work on a new branch without switching the main checkout. Invoke as /worktree <branch-name>.
 argument-hint: <branch-name>
 ---
 
 # Worktree
 
-Create a new branch and worktree from the specified branch name, then open it in VS Code.
+Create a new branch and worktree from the specified branch name.
 
 ## Steps (follow strictly)
 
@@ -64,13 +64,7 @@ git ls-remote --heads origin "{branch_name}"
 - **Remote only**: `git fetch` first, then create as a tracking branch with `--track -b`
 - **Local exists**: check out the existing branch without `-b` (regardless of remote state)
 
-### 6. Open in VS Code
-
-```bash
-code "{worktree_path}"
-```
-
-### 7. Report completion
+### 6. Report completion
 
 Tell the user the worktree path and branch name that were created.
 
