@@ -65,6 +65,22 @@ if [ -n "$SHELL_CONFIG" ]; then
     else
         echo "✓ mise activation already in $SHELL_CONFIG"
     fi
+
+    UPDATE_NOTICE="$HOME/.config/dotfiles/update-notice.sh"
+    mkdir -p "$HOME/.config/dotfiles"
+    if curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/.dotfiles/update-notice.sh -o "$UPDATE_NOTICE"; then
+        if ! grep -q 'dotfiles/update-notice.sh' "$SHELL_CONFIG" 2>/dev/null; then
+            {
+                echo ""
+                echo "# dotfiles update notification"
+                echo "source \"$UPDATE_NOTICE\""
+            } >> "$SHELL_CONFIG"
+            echo "✓ Added dotfiles update notification to $SHELL_CONFIG"
+        fi
+        bash "$UPDATE_NOTICE" install
+    else
+        echo "⚠ Failed to install dotfiles update notification"
+    fi
 fi
 
 echo ""

@@ -35,9 +35,12 @@ jobs:
         run: |
           bash -n install.sh
           bash -n .claude/statusline.sh
+          bash -n .dotfiles/update-notice.sh
       - name: zsh -n
         # install.sh is documented to run under zsh too (see README), so
         # verify it parses cleanly there in addition to bash.
         run: |
           sudo apt-get update && sudo apt-get install -y zsh
           zsh -n install.sh
+      - name: Test update notification
+        run: bash tests/update-notice-test.sh
