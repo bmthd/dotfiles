@@ -47,6 +47,16 @@ mise run setup:codex     # Claude Code 用 Codex プラグイン
 
 ツール本体の更新は `mise upgrade`、スキルの更新は `npx skills update` で行えます。
 
+対話シェルの起動時には、1 日に 1 回まで dotfiles の `main` ブランチを確認します。
+インストール時に記録した revision より新しいコミットがあれば通知しますが、自動更新はしません。
+通知された場合は、次のコマンドで更新できます。
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/install.sh | bash
+```
+
+ghq で clone を管理する場合は `ghq get -u github.com/bmthd/dotfiles` で更新できます。
+
 ## License
 
 MIT
