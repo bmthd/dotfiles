@@ -36,7 +36,8 @@ gh repo view --json nameWithOwner,defaultBranchRef -q '.nameWithOwner + " " + .d
 
 If auth fails, stop and ask the user to authenticate. Use read-only `gh issue`
 commands during discovery. Do not edit issues, labels, assignments, projects, or
-comments unless the user explicitly asks for that state change.
+comments unless the user explicitly asks for that state change — the one standing
+exception is a dispatched agent reporting a dead end on its own issue (step 5).
 
 ### 2b. Verify the baseline (do not skip)
 
@@ -107,7 +108,7 @@ alone are not enough.
 | `actionable` | Concrete desired outcome, bounded scope, enough context, open, not blocked, likely verifiable. |
 | `needs clarification` | Goal is plausible but product intent, reproduction, or acceptance criteria are missing. |
 | `blocked` | Marked blocked, assigned to someone else where assignment appears to mean ownership, depends on external access, or needs maintainer decision. |
-| `not parallel-safe` | Actionable alone but likely overlaps selected work or needs shared sequencing. |
+| `not parallel-safe` | Reserved for true sequencing: the issue needs another selected issue's outcome before it can start. Touching the same files is **not** enough to land here — overlapping work is dispatched in parallel and reconciled at merge time. |
 
 Report candidates with issue number, URL, title, rationale, likely touched area,
 verification signal, and risks. Ask the user which issues to dispatch unless the
@@ -149,11 +150,26 @@ which mode you picked rather than letting them assume.
   combined diff.
 - **Worktree isolation:** local commits on the agent's own worktree branch are
   **required** — uncommitted work in a worktree cannot be integrated. Forbid
-  `push`, PR creation, and issue edits, and forbid switching to or modifying
-  `main` / the work branch / any rescue branch.
+  `push` and PR creation, and forbid switching to or modifying `main` / the work
+  branch / any rescue branch.
 
-Either way, `gh issue` comments, labels, assignments, and closures stay forbidden
-unless the user asked for that state change.
+Either way, `gh issue` labels, assignments, and closures stay forbidden unless the
+user asked for that state change.
+
+`gh issue comment` has one standing exception. **When a unit ends without a
+PR-ready result — blocked, root cause not found, tests not green, a product
+decision needed — the agent must not finish silently.** It posts its findings to
+the issue with `gh issue comment <n>`, in Japanese, covering:
+
+- what it established (分かったこと),
+- what it tried (試したこと),
+- the evidence behind both (numbers, failing output, screenshots),
+- why the work did not reach a PR,
+- the options it recommends next.
+
+When the work does reach a PR, no comment is needed — `Closes #N` in the PR body
+covers it. A transcript is not a report: an investigation that never lands on the
+issue is lost the moment the agent exits.
 
 #### Other constraints worth putting in every prompt
 
@@ -163,8 +179,15 @@ unless the user asked for that state change.
 - **The baseline numbers.** Give the pre-change test count and type-check status
   from step 2b, so the agent can tell its own regressions from pre-existing ones.
 - **The corrected line numbers** when they drifted from the issue body.
-- **Minimal diffs** when other agents touch the same file in another worktree:
-  no drive-by reformatting, or the merge becomes unreadable.
+- **Overlap is expected, not forbidden.** Tell each agent that other agents may
+  be editing the same files right now. That is never a reason to stall, ask
+  permission, or narrow the fix — the conflict is resolved when the branches
+  merge.
+- **Minimal diffs**, precisely because of that overlap: no drive-by reformatting,
+  no unrelated cleanups, the smallest change that closes the issue. Sprawl is
+  what makes the merge unreadable, not the overlap itself.
+- **The fallback report.** If the unit will not reach a PR, the agent comments
+  its findings on the issue in Japanese rather than ending on a shrug.
 
 Use this dispatch prompt shape:
 
@@ -175,8 +198,11 @@ Baseline: <branch, HEAD sha, test count, type-check status, corrected line refs>
 Environment: <worktree-isolated or shared tree; install step; allowed commands;
 assigned dev-server port>
 Scope: <files/areas allowed, files/areas not allowed, state-changing limits>
-Parallel safety: <other selected issues and known overlap constraints>
-Constraints: <commit policy for this mode; no pushes/PRs/issue edits>
+Shared files: <other units running now and the files they may also touch; overlap
+is expected — keep the diff minimal, do not stall on it>
+Constraints: <commit policy for this mode; no pushes, PRs, labels, assignments,
+or closures; if the unit does not reach a PR-ready result, comment the findings
+on issue #N in Japanese with `gh issue comment`>
 Report format: files changed, commands run with results, risks, blockers,
 open questions, and verification evidence.
 ```
@@ -190,6 +216,8 @@ open questions, and verification evidence.
 | Check the baseline | `git status -sb`, `git log --oneline -1 origin/main`, resolve cited lines. |
 | Decide actionability | Use concrete outcome, bounded scope, context, verification, and blockers. |
 | Dispatch work | Use `commander`; delegate hands-on work, keep verification read-only. |
+| Handle file overlap | Dispatch anyway under worktree isolation; resolve the conflict at merge time. |
+| Close out a dead end | `gh issue comment <n>` in Japanese: findings, attempts, evidence, why no PR, next options. |
 
 ## Red Flags
 
@@ -198,7 +226,9 @@ open questions, and verification evidence.
 - You have not checked that the cited files and lines exist in *this* checkout.
 - HEAD is detached, or diverged from `origin/main`, and you dispatched anyway.
 - Three or more units are going into one shared tree.
-- Two parallel agents may edit the same files.
+- You serialized a unit, dropped it, or asked the user to pick one, because two
+  agents might edit the same files.
+- An agent ended with neither a PR nor a comment on its issue.
 - You are doing implementation work yourself while claiming commander mode.
 - A subagent prompt lacks issue context, scope, constraints, or report format.
 
@@ -211,8 +241,12 @@ open questions, and verification evidence.
   unmerged branch, in which case its "actionable" issues have nothing to edit.
   Verify in step 2b, before selection — a candidate list built on the wrong tree
   is wrong in ways the user cannot see.
-- **Confusing actionable with parallel-safe:** an issue can be clear but still
-  conflict with another selected task.
+- **Treating file overlap as a blocker:** two issues touching one file is a merge
+  to perform, not a reason to serialize the units, drop one, or make the user
+  choose. Dispatch both, isolate them in worktrees, reconcile at the end.
+- **Letting a dead end die in the transcript:** a unit that produced no PR still
+  produced knowledge. If it is not on the issue, the next agent starts from
+  zero.
 - **Reaching for file partitioning by reflex:** it is the right call for two
   units and a tax on every unit beyond that. Pick the mode deliberately and tell
   the user which one you picked.
