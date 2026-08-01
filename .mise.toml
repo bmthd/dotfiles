@@ -64,8 +64,14 @@ experimental = false
 # time with `mise run setup`, or a single piece (e.g. `mise run setup:skills`).
 
 [tasks.setup]
-description = "Run the full dotfiles setup (Claude Code, skills, Codex plugin)"
-depends = ["setup:claude", "setup:skills", "setup:codex", "setup:update-notice"]
+description = "Run the full dotfiles setup (Claude Code, skills, plugins)"
+depends = [
+  "setup:claude",
+  "setup:skills",
+  "setup:codex",
+  "setup:claude-plugins",
+  "setup:update-notice",
+]
 
 [tasks."setup:update-notice"]
 description = "Install the shell-startup dotfiles update notification"
@@ -169,4 +175,29 @@ if command -v claude &> /dev/null; then
 else
     echo "⚠ claude not found on PATH; skipping Codex plugin installation"
 fi
+'''
+
+[tasks."setup:claude-plugins"]
+description = "Install official Anthropic plugins for Claude Code (TypeScript LSP)"
+depends = ["setup:claude"]
+shell = "bash -c"
+run = '''
+echo "📦 Setting up official Claude Code plugins..."
+if ! command -v claude &> /dev/null; then
+    echo "⚠ claude not found on PATH; skipping official plugin installation"
+    exit 0
+fi
+
+# 公式マーケットプレイスは登録済みでも add は失敗しないが、念のため結果を握り潰す
+claude plugin marketplace add anthropics/claude-plugins-official 2>/dev/null || true
+
+# インストール対象の公式プラグイン。増やす場合はここに追記する
+OFFICIAL_PLUGINS=(
+    typescript-lsp
+)
+for plugin in "${OFFICIAL_PLUGINS[@]}"; do
+    claude plugin install "$plugin@claude-plugins-official" -s user 2>/dev/null \
+      && echo "✓ $plugin installed" \
+      || echo "⚠ $plugin installation failed (continuing)"
+done
 '''
