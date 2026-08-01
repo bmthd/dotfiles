@@ -43,6 +43,7 @@ mise run setup           # フルセットアップ
 mise run setup:claude    # Claude Code 本体・settings.json・ステータスライン
 mise run setup:skills    # エージェントスキル (Claude Code / OpenCode / Cursor)
 mise run setup:codex     # Claude Code 用 Codex プラグイン
+mise run setup:claude-plugins  # 公式プラグイン (TypeScript LSP)
 ```
 
 ツール本体の更新は `mise upgrade`、スキルの更新は `npx skills update` で行えます。
