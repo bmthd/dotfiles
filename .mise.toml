@@ -156,6 +156,9 @@ mkdir -p "$HOME/.claude/skills" "$HOME/.config/opencode/skills" "$HOME/.agents/s
 # install, so this repo vendors them under .agents/skills/ and the "own" line
 # below installs them. Skills cross-reference each other by name, so all four
 # resolve once they share an agent's skills directory.
+# mizchi/skills contributes empirical-prompt-tuning: a prompt/skill tuning loop
+# that dispatches fresh subagents and scores them, so it pairs with the
+# superpowers skills (writing-skills / dispatching-parallel-agents) it cites.
 # Update any of them later with `npx skills update`.
 echo "📦 Installing skills..."
 install_skills() {
@@ -168,6 +171,7 @@ install_skills "own" bmthd/dotfiles
 install_skills "superpowers" obra/superpowers
 install_skills "productivity" https://github.com/mattpocock/skills/tree/main/skills/productivity -s '*'
 install_skills "mathbullet" mathbullet/skills -s html -s explain
+install_skills "mizchi" mizchi/skills -s empirical-prompt-tuning
 '''
 
 [tasks."setup:codex"]
