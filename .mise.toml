@@ -152,10 +152,11 @@ mkdir -p "$HOME/.claude/skills" "$HOME/.config/opencode/skills" "$HOME/.agents/s
 # upstream productivity skills folder.
 # mathbullet contributes html and explain, the two skills html's SKILL.md
 # recommends using together. The other two it recommends, japanese-tech-writing
-# and cognitive-rhythm-writing, are published as gists that the CLI cannot
-# install, so this repo vendors them under .agents/skills/ and the "own" line
-# below installs them. Skills cross-reference each other by name, so all four
-# resolve once they share an agent's skills directory.
+# and cognitive-rhythm-writing, are published as gists. cognitive-rhythm-writing
+# is still vendored under .agents/skills/ and lands via the "own" line below;
+# japanese-tech-writing is fetched from its gist directly. Skills
+# cross-reference each other by name, so all four resolve once they share an
+# agent's skills directory.
 # Update any of them later with `npx skills update`.
 echo "📦 Installing skills..."
 install_skills() {
@@ -168,6 +169,11 @@ install_skills "own" bmthd/dotfiles
 install_skills "superpowers" obra/superpowers
 install_skills "productivity" https://github.com/mattpocock/skills/tree/main/skills/productivity -s '*'
 install_skills "mathbullet" mathbullet/skills -s html -s explain
+# japanese-tech-writing is Keiichiro Shikano's (k16shikano) gist:
+# https://gist.github.com/k16shikano/fd287c3133457c4fd8f5601d34aa817d
+# Use the .git clone URL, not the page URL: the skills CLI source parser
+# mistakes gist.github.com for github.com and the page URL 404s.
+install_skills "japanese-tech-writing" https://gist.github.com/fd287c3133457c4fd8f5601d34aa817d.git
 '''
 
 [tasks."setup:codex"]
