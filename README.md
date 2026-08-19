@@ -33,6 +33,9 @@ curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/install.sh | ba
 - [`.mise.toml`](.mise.toml) — ツール定義 (`[tools]`) とセットアップタスク
   (`[tasks]`)。グローバル設定として配置されるため、タスクはどのディレクトリ
   からでも実行できます。
+- [`.agents/skills`](.agents/skills) — このリポジトリ専用のスキルのみ。汎用の
+  スキルは [bmthd/skills](https://github.com/bmthd/skills) に分離しました
+  (`npx skills add bmthd/skills`)。
 
 ## Update
 
