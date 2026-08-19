@@ -1,99 +1,36 @@
 ---
 name: update-dotfiles
-description: Use when the user wants to modify the bmthd/dotfiles repository (skills, install.sh, mise tools, docs) and open a PR from ANY terminal, even one where the repo is not checked out. Clones via ghq if absent, always branches off fresh main, and opens a PR. Invoke as /update-dotfiles <change>.
+description: Use when the user wants to modify the bmthd/dotfiles repository (mise tools, install.sh, docs, the skills that still live here) and open a PR from ANY terminal, even one where the repo is not checked out. Thin wrapper over update-repo. Invoke as /update-dotfiles <change>.
 argument-hint: <change to make>
 ---
 
 # Update Dotfiles
 
-Make a change to the `bmthd/dotfiles` repository and open a pull request, from any
-terminal. Always works in the ghq-managed clone so behaviour is identical everywhere
-and never disturbs whatever checkout you happen to be sitting in.
+Shorthand for the `update-repo` skill with the target fixed to
+`github.com/bmthd/dotfiles`.
 
-Repository: `github.com/bmthd/dotfiles`
+Follow `update-repo` exactly, with two adjustments:
 
-## Steps (follow strictly)
+- **Do not parse a repository out of `args`.** The target is always
+  `bmthd/dotfiles`; the whole of `args` is the change to make. If `args` is empty,
+  ask the user what to change.
+- Apply the repository notes below when editing.
 
-### 1. Get the change to make
+`update-repo` lives in [`bmthd/skills`](https://github.com/bmthd/skills) and the
+`setup:skills` mise task installs it alongside this skill. If it is missing, install
+it with `npx skills add bmthd/skills -s update-repo -y -g -a claude-code`.
 
-Read the requested change from `args`. If empty, ask the user what to change.
+## Repository notes
 
-### 2. Preflight: gh auth and ghq
-
-```bash
-# GitHub CLI must be authenticated (needed for the PR)
-gh auth status
-```
-
-If `gh auth status` fails, STOP and tell the user to run `! gh auth login`, then wait.
-
-```bash
-# Ensure ghq is installed; install via mise if missing
-command -v ghq || mise use -g ghq@latest
-```
-
-If `mise use -g ghq@latest` fails to resolve, fall back to `mise use -g ubi:x-motemen/ghq`.
-
-### 3. Get (clone or update) the repository
-
-```bash
-# Clones if absent, fast-forwards if already present (idempotent)
-ghq get -u github.com/bmthd/dotfiles
-
-# Resolve the absolute path and enter it
-repo="$(ghq list --full-path --exact github.com/bmthd/dotfiles)"
-cd "$repo"
-```
-
-### 4. Sync main and create a branch
-
-Always branch off fresh `main` — never edit `main` directly, never push to `main`.
-
-```bash
-git switch main
-git pull --ff-only
-git switch -c "<type>/<slug>"
-```
-
-- `<type>`: `feat` / `fix` / `refactor` / `docs` / `chore` (match the change)
-- `<slug>`: short kebab-case summary, e.g. `feat/add-ripgrep`, `fix/install-typo`
-
-If the branch already exists from a prior run, pick a new slug (append `-2`, etc.).
-
-### 5. Apply the edit
-
-Make the change the user requested using the normal edit tools. Keep it focused —
-one logical change per PR. For skill edits, the source of truth is
-`.agents/skills/<name>/SKILL.md` (the `setup:skills` mise task distributes it to
-`~/.claude/skills` and `~/.config/opencode/skills` via `npx skills add`).
-
-### 6. Commit
-
-Follow the repo's Conventional Commits style (see `git log`). 
-
-```bash
-git add -A
-git commit -m "<type>: <summary>"
-```
-
-### 7. Push and open the PR
-
-```bash
-git push -u origin "<branch>"
-gh pr create --fill --base main
-```
-
-Use `--fill` or pass an explicit `--title` / `--body` summarising the change.
-bmthd owns the repo, so push directly to an origin branch — no fork.
-
-### 8. Report
-
-Output the PR URL returned by `gh pr create`.
-
-## Gotchas
-
-- **gh not authenticated**: step 7 fails cryptically. Always verify with `gh auth status` in step 2 first.
-- **Never touch the current checkout**: even if invoked from inside a dotfiles checkout, work in the ghq clone. This keeps behaviour identical on every terminal and avoids disturbing uncommitted work.
-- **`command -v ghq` is checked by exit code**: `|| mise use ...` only installs when truly missing.
-- **`git pull --ff-only`**: fails loudly if the local clone diverged from origin (e.g. leftover commits on main). If it fails, `git reset --hard origin/main` after confirming there is nothing to keep.
-- **Branch already exists**: `git switch -c` fails. Reuse it (`git switch <branch>`) only if it is yours and clean, otherwise choose a new slug.
+- **Most skills are no longer here.** The portable ones moved to `bmthd/skills` —
+  change them there. What remains under `.agents/skills/` is `update-dotfiles`
+  itself and `cognitive-rhythm-writing`, a vendored gist.
+- **Setup logic lives in `.mise.toml`**, not `install.sh`. `install.sh` is only a
+  bootstrapper (install mise → place the config → `mise install` → `mise run setup`).
+  Changes to tools, environment, or setup steps belong in `.mise.toml`.
+- **CI runs `mise ls`, `mise tasks ls`, ShellCheck, `bash -n` and `zsh -n`.** Editing
+  `.mise.toml` or any shell script means the config must still parse and the scripts
+  must stay ShellCheck-clean under both shells.
+- **Adding a third-party skill**: add an `install_skills` line to the `setup:skills`
+  task rather than copying the skill into this repo. Gists work too, via their `.git`
+  clone URL — see the `japanese-tech-writing` line for the reason the page URL fails.
