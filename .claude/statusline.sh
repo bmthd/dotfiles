@@ -5,8 +5,8 @@
 # Claude Code pipes a JSON payload to this script on stdin. Relevant fields:
 #   .workspace.current_dir  current working directory
 #   .model.display_name     human-readable model name
-#   .transcript_path        JSONL transcript (used to compute context usage)
-#   .exceeds_200k_tokens    true when the 1M-token context window is active
+#   .context_window         live context usage from the most recent API response
+#   .transcript_path        JSONL transcript (fallback for older Claude Code)
 set -uo pipefail
 
 input="$(cat)"
@@ -24,9 +24,8 @@ if have_jq; then
   cwd="$(printf '%s' "$input" | jq -r '.workspace.current_dir // .cwd // empty')"
   model="$(printf '%s' "$input" | jq -r '.model.display_name // .model.id // "?"')"
   transcript="$(printf '%s' "$input" | jq -r '.transcript_path // empty')"
-  exceeds="$(printf '%s' "$input" | jq -r '.exceeds_200k_tokens // false')"
 else
-  cwd="$PWD"; model="?"; transcript=""; exceeds="false"
+  cwd="$PWD"; model="?"; transcript=""
 fi
 [ -n "${cwd:-}" ] || cwd="$PWD"
 
@@ -44,29 +43,54 @@ if git_dir="$(git -C "$cwd" rev-parse --git-dir 2>/dev/null)"; then
   fi
 fi
 
-# ---- context usage (from latest transcript usage record) ------------------
+# ---- context usage --------------------------------------------------------
+# Claude Code reports the live context window in the payload, already scaled to
+# the model's real window (200k, or 1M with extended context). Prefer it: it is
+# what /context shows. Deriving the window from .exceeds_200k_tokens is wrong —
+# that flag is a fixed 200k threshold on the last response, not a "1M window is
+# active" signal, so it only flips *after* the gauge has already pinned at 100%.
+pct=""
+if have_jq; then
+  pct="$(printf '%s' "$input" | jq -r '
+    (.context_window // {}) as $c
+    | ($c.context_window_size // 200000) as $size
+    | ( $c.used_percentage
+        // ( $c.current_usage
+             | if . == null or $size <= 0 then null
+               else ( ( (.input_tokens // 0)
+                      + (.cache_creation_input_tokens // 0)
+                      + (.cache_read_input_tokens // 0) ) * 100 / $size )
+               end ) )
+    | if . == null then empty else floor end' 2>/dev/null)"
+fi
+
+# Fallback for Claude Code versions that predate .context_window: read the last
+# usage record from the transcript. Skip sidechain (subagent) records — their
+# usage is the subagent's own context, not this conversation's.
+if [ -z "${pct:-}" ] && [ -n "$transcript" ] && [ -f "$transcript" ] && have_jq; then
+  pct="$(jq -rs '
+    [ .[] | select(.type == "assistant" and .isSidechain != true and .message.usage != null) ]
+    | last | .message.usage
+    | if . == null then empty
+      else ( ( (.input_tokens // 0)
+             + (.cache_read_input_tokens // 0)
+             + (.cache_creation_input_tokens // 0) ) * 100 / 200000 | floor )
+      end' "$transcript" 2>/dev/null)"
+fi
+
 gauge=""; pct_label=""
-if [ -n "$transcript" ] && [ -f "$transcript" ] && have_jq; then
-  tokens="$(jq -rs '
-    [ .[] | select(.message.usage != null) ] | last | .message.usage
-    | ( (.input_tokens // 0)
-      + (.cache_read_input_tokens // 0)
-      + (.cache_creation_input_tokens // 0) )' "$transcript" 2>/dev/null)"
-  if [[ "${tokens:-}" =~ ^[0-9]+$ ]]; then
-    if [ "$exceeds" = "true" ]; then window=1000000; else window=200000; fi
-    pct=$(( tokens * 100 / window ))
-    [ "$pct" -gt 100 ] && pct=100
-    # colour by pressure
-    if   [ "$pct" -lt 50 ]; then col="$GREEN"
-    elif [ "$pct" -lt 80 ]; then col="$YELLOW"
-    else col="$RED"; fi
-    width=10; filled=$(( pct * width / 100 )); bar=""
-    for ((i=0;i<width;i++)); do
-      if [ "$i" -lt "$filled" ]; then bar+="█"; else bar+="░"; fi
-    done
-    gauge="${col}${bar}${RESET}"
-    pct_label="${col}${pct}%${RESET}"
-  fi
+if [[ "${pct:-}" =~ ^[0-9]+$ ]]; then
+  [ "$pct" -gt 100 ] && pct=100
+  # colour by pressure
+  if   [ "$pct" -lt 50 ]; then col="$GREEN"
+  elif [ "$pct" -lt 80 ]; then col="$YELLOW"
+  else col="$RED"; fi
+  width=10; filled=$(( pct * width / 100 )); bar=""
+  for ((i=0;i<width;i++)); do
+    if [ "$i" -lt "$filled" ]; then bar+="█"; else bar+="░"; fi
+  done
+  gauge="${col}${bar}${RESET}"
+  pct_label="${col}${pct}%${RESET}"
 fi
 
 # ---- compose --------------------------------------------------------------
