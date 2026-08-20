@@ -44,3 +44,5 @@ jobs:
           zsh -n install.sh
       - name: Test update notification
         run: bash tests/update-notice-test.sh
+      - name: Test status line
+        run: bash tests/statusline-test.sh
