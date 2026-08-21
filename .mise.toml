@@ -20,6 +20,7 @@ opencode = "latest"
 oci = "latest"
 cloudflared = "latest"
 wrangler = "latest"
+hunk = "latest"
 
 [tools."npm:ctx7"]
 version = "latest"
@@ -179,6 +180,8 @@ install_skills "dotfiles-local" bmthd/dotfiles
 install_skills "superpowers" obra/superpowers
 install_skills "productivity" https://github.com/mattpocock/skills/tree/main/skills/productivity -s '*'
 install_skills "mathbullet" mathbullet/skills -s html -s explain
+# hunk ships four skills; only hunk-review drives a review session from an agent
+install_skills "hunk" modem-dev/hunk -s hunk-review
 # japanese-tech-writing and cognitive-rhythm-writing are Keiichiro Shikano's
 # (k16shikano) gists:
 # https://gist.github.com/k16shikano/fd287c3133457c4fd8f5601d34aa817d
