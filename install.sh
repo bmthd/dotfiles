@@ -69,6 +69,12 @@ if command -v mise &> /dev/null; then
     echo "📦 Configuring npm registry..."
     mise run --skip-tools setup:npm-registry || echo "⚠ Failed to configure npm registry (continuing)"
 
+    # Current mise resolves OCI through vfox. Replace the legacy asdf plugin
+    # that older dotfiles installations left under the same plugin name before
+    # mise tries to load it as Lua.
+    echo "📦 Configuring OCI plugin..."
+    mise run --skip-tools setup:oci-plugin || echo "⚠ Failed to configure OCI plugin (continuing)"
+
     # Install all tools via mise
     echo "📦 Installing all tools via mise..."
     mise install || echo "⚠ Some mise tools failed to install (continuing)"

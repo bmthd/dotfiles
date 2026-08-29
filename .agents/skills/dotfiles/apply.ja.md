@@ -114,8 +114,14 @@ mise ls --installed | awk '{print $1}' | sort > "$W/tools.before"   # 配置前�
 cp "$W/merged" ~/.config/mise/config.toml
 mise tasks ls >/dev/null || echo "!! config が壊れた。バックアップから戻す"
 mise ls --installed | awk '{print $1}' | sort | diff "$W/tools.before" -
+mise run --skip-tools setup:oci-plugin
 mise install
 ```
+
+`setup:oci-plugin` は `mise install` より先に実行する。古い環境では asdf 版 OCI
+プラグインが mise の `oci` という名前で残っている。現在の mise は同じ名前を vfox
+として解決するため、そのままでは Bash 製プラグインを Lua として読み込んで失敗する。
+このタスクは旧 checkout だけを置き換え、vfox 導入後は何もしない。
 
 TOML としてパースできることと mise の設定として正しいことは別物。**config に書いたツールが
 `mise ls` に現れているか**を確認する。`[tools.xxx]` のサブテーブル見出しは、それ以降の平坦な

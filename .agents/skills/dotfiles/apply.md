@@ -123,8 +123,14 @@ mise ls --installed | awk '{print $1}' | sort > "$W/tools.before"   # capture be
 cp "$W/merged" ~/.config/mise/config.toml
 mise tasks ls >/dev/null || echo "!! config is broken — restore from the backup"
 mise ls --installed | awk '{print $1}' | sort | diff "$W/tools.before" -
+mise run --skip-tools setup:oci-plugin
 mise install
 ```
+
+`setup:oci-plugin` must run before `mise install`. Older installations left the
+asdf OCI plugin under mise's `oci` plugin name; current mise resolves that name
+through vfox and otherwise tries to load the old Bash plugin as Lua. The task
+replaces only that legacy checkout and is a no-op once vfox is installed.
 
 Parsing as TOML and being a correct mise config are different things. **Check that the
 tools written in the config actually appear in `mise ls`.** A `[tools.xxx]` sub-table
