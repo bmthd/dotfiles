@@ -1,11 +1,13 @@
 # dotfiles
 
-新しいマシンに開発環境を入れるための dotfiles。
-コマンド 1 本で CLI ツール一式と、Claude Code / Codex / OpenCode / Cursor の設定が揃います。
+English | [日本語](README.ja.md)
+
+Dotfiles for setting up a development machine.
+One command installs the CLI toolchain and configures Claude Code, Codex, OpenCode, and Cursor.
 
 ## Install
 
-パイプ先のシェルを検出して、対応する設定ファイル (`~/.zshrc` / `~/.bashrc`) に mise の有効化を追記します。
+The installer detects the shell it is piped into and appends the mise activation to the matching config file (`~/.zshrc` or `~/.bashrc`).
 
 ```zsh
 curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/install.sh | zsh
@@ -15,53 +17,53 @@ curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/install.sh | zs
 curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/install.sh | bash
 ```
 
-終わったらシェルを再起動するか、`source ~/.zshrc`（bash なら `source ~/.bashrc`）で PATH が通ります。
+Afterwards, restart the shell or run `source ~/.zshrc` (`source ~/.bashrc` for bash) to put everything on `PATH`.
 
-## 入るもの
+## What you get
 
-- **CLI ツール** — node, bun, pnpm, uv, gh, ghq, jq, wrangler など（一覧は [`.mise.toml`](.mise.toml) の `[tools]`）
-- **Claude Code** — 本体、`settings.json`（既存があればマージ）、ステータスライン
-- **エージェントスキル** — Claude Code / OpenCode / Cursor の 3 つに同じものを導入
-- **プラグイン** — Codex、および公式プラグイン (TypeScript LSP)
-- **npm レジストリ** — マルウェアを遮断する [Takumi Guard](https://npm.flatt.tech/) プロキシ経由に変更
+- **CLI tools** — node, bun, pnpm, uv, gh, ghq, jq, wrangler, and more (see `[tools]` in [`.mise.toml`](.mise.toml))
+- **Claude Code** — the binary itself, `settings.json` (merged into an existing one), and the status line
+- **Agent skills** — the same set installed for Claude Code, OpenCode, and Cursor
+- **Plugins** — Codex, plus the official plugins (TypeScript LSP)
+- **npm registry** — routed through [Takumi Guard](https://npm.flatt.tech/), a proxy that refuses known-malicious packages
 
-セットアップはいつでも mise タスクとして再実行できます。
+The setup can be re-run at any time as a mise task.
 
 ```bash
-mise run setup   # フルセットアップ
-mise tasks       # 個別のタスク一覧
+mise run setup   # full setup
+mise tasks       # list the individual tasks
 ```
 
 ## Update
 
-対話シェルの起動時に、1 日 1 回 `main` を確認します。
-インストール時のリビジョンより新しいコミットがあれば通知しますが、自動更新はしません。
+Interactive shells check `main` once a day.
+If there are commits newer than the revision recorded at install time, you get a notice — nothing updates itself.
 
-通知されたら、`install.sh` を再実行すれば更新できます。
+When notified, re-running `install.sh` brings the machine up to date.
 
-ただし再実行は `~/.config/mise/config.toml` などをリモートの内容で上書きします。
-端末ごとに固定したバージョンや、その端末だけのツール・設定がある場合は、Claude Code で `/dotfiles apply` を使ってください。
-差分を見て、取り込む変更とローカルに残す差分を切り分けてから適用します（[`.agents/skills/dotfiles`](.agents/skills/dotfiles/SKILL.ja.md)）。
+But re-running overwrites `~/.config/mise/config.toml` and friends with whatever is on the remote.
+If this machine has pinned versions, machine-local tools, or hand-edited settings, use `/dotfiles apply` in Claude Code instead.
+It diffs against the installed revision and separates what to pull in from what to keep local ([`.agents/skills/dotfiles`](.agents/skills/dotfiles/SKILL.md)).
 
-スキルの更新は `npx skills update` です。取得される Markdown はエージェントのコンテキストに直接入るので、内容を確認してから実行してください。
+Skills update with `npx skills update`. The Markdown it fetches goes straight into an agent's context, so review the diff before running it.
 
-## 構成
+## Layout
 
-セットアップのロジックはすべて mise に集約されています。
+All of the setup logic lives in mise.
 
-| ファイル | 役割 |
+| File | Role |
 | --- | --- |
-| [`install.sh`](install.sh) | ブートストラップのみ。mise の導入、設定ファイルの配置、シェル連携の追記 |
-| [`.mise.toml`](.mise.toml) | ツール定義 (`[tools]`) とセットアップタスク (`[tasks]`)。グローバル設定として配置される |
-| [`mise.lock`](mise.lock) | 実際に入るバージョンとチェックサム |
-| [`.agents/skills`](.agents/skills) | このリポジトリ専用のスキル。汎用のものは [bmthd/skills](https://github.com/bmthd/skills) に分離 |
-| [`renovate.json`](renovate.json) | GitHub Actions の更新 PR の方針 |
+| [`install.sh`](install.sh) | Bootstrap only: install mise, place the config files, wire up the shell |
+| [`.mise.toml`](.mise.toml) | Tool definitions (`[tools]`) and setup tasks (`[tasks]`), installed as the global config |
+| [`mise.lock`](mise.lock) | The versions and checksums that actually get installed |
+| [`.agents/skills`](.agents/skills) | Skills specific to this repository; the general-purpose ones live in [bmthd/skills](https://github.com/bmthd/skills) |
+| [`renovate.json`](renovate.json) | Update policy for GitHub Actions PRs |
 
-ツールのバージョンは `mise upgrade` ではなく、毎日走る [`bump-tools.yml`](.github/workflows/bump-tools.yml) が `mise.lock` を進めることで上がります。
-手元で先に進めたい場合は `mise lock --bump --minimum-release-age 2d --global`。
+Tool versions move when the daily [`bump-tools.yml`](.github/workflows/bump-tools.yml) advances `mise.lock`, not through `mise upgrade`.
+To get ahead locally: `mise lock --bump --minimum-release-age 2d --global`.
 
-このバージョン管理は、npm レジストリのプロキシと合わせてサプライチェーン対策を兼ねています。
-仕組みと、`bump-tools.yml` の初回セットアップ手順は [docs/supply-chain.md](docs/supply-chain.md) に分けてあります。
+This version management, together with the npm registry proxy, doubles as the supply-chain defense.
+How it works, and the one-time setup for `bump-tools.yml`, are in [docs/supply-chain.md](docs/supply-chain.md).
 
 ## License
 

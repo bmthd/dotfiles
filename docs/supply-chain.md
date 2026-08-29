@@ -1,60 +1,62 @@
-# サプライチェーン対策
+# Supply-chain defense
 
-対策は 3 層に分かれ、それぞれ守る範囲が違います。
+English | [日本語](supply-chain.ja.md)
 
-| 層 | 手段 | 守る範囲 |
+The defense is three layers, each covering a different range.
+
+| Layer | Mechanism | Covers |
 | --- | --- | --- |
-| バージョン | `mise.lock` + `--minimum-release-age 2d` | publish 直後の 2 日間 |
-| 成果物 | `mise.lock` のチェックサム | 検証済みバージョンの差し替え・再 publish |
-| パッケージ | `~/.npmrc` の [Takumi Guard](https://npm.flatt.tech/) プロキシ | npm 経由すべて。特にロックできない実行時の `npx ctx7@latest` / `npx skills add` |
+| Version | `mise.lock` + `--minimum-release-age 2d` | the first two days after publish |
+| Artifact | checksums in `mise.lock` | substitution or re-publish of a verified version |
+| Package | the [Takumi Guard](https://npm.flatt.tech/) proxy in `~/.npmrc` | everything through npm, especially the run-time `npx ctx7@latest` / `npx skills add` that cannot be locked |
 
-## バージョン: `latest` 宣言 + ロックファイル
+## Version: `latest` declarations plus a lockfile
 
-`.mise.toml` の `[tools]` は `latest` を宣言していますが、`latest` がそのまま入るわけではありません。
-mise は fuzzy な指定よりロックファイルのバージョンを優先するため、実際に入るのは `mise.lock` が決めたバージョンです。
+`[tools]` in `.mise.toml` declares `latest`, but `latest` is not what gets installed.
+A locked version always wins over a fuzzy selector in mise, so what actually lands is whatever `mise.lock` decided.
 
-ロックファイルは [`bump-tools.yml`](../.github/workflows/bump-tools.yml) が毎日進めます。
+The lockfile is advanced daily by [`bump-tools.yml`](../.github/workflows/bump-tools.yml).
 
 ```bash
 mise lock --bump --minimum-release-age 2d
 ```
 
-`--minimum-release-age` は公開から 2 日経っていないリリースを候補から外します。
-侵害されたリリースが取り込まれるのは publish 直後の数時間なので、この待機だけでその時間帯を丸ごと回避できます。
-レビューではなくこのフラグが安全性を担保しているため、PR は作らず main に直接コミットします。
+`--minimum-release-age` drops any release younger than two days from consideration.
+A compromised release is picked up in the first few hours after publish, so this wait alone avoids that window entirely.
+Because the flag — not review — is what makes this safe, the workflow commits straight to main rather than opening a PR.
 
-このフラグは `latest` のような fuzzy な指定にのみ効きます。バージョンを `.mise.toml` 側で固定しない理由がこれです。
+The flag only applies to fuzzy selectors like `latest`. That is exactly why the versions in `.mise.toml` are not pinned there.
 
-ロックファイルは必須です。取得に失敗した場合 `install.sh` は中断します。
-`latest` のまま `mise install` すると待機期間を迂回して最新版が入ってしまうためです。
-ロックされていないツールの混入は CI ([`tests/mise-pins-test.sh`](../tests/mise-pins-test.sh)) が検出します。
+The lockfile is mandatory: `install.sh` aborts if it cannot be fetched.
+Running `mise install` against bare `latest` would bypass the waiting period and pull the newest release.
+CI ([`tests/mise-pins-test.sh`](../tests/mise-pins-test.sh)) catches any tool that slips in unlocked.
 
-## パッケージ: npm レジストリのプロキシ
+## Package: the npm registry proxy
 
-プロキシが効くのは `~/.npmrc` を書いた時点以降だけなので、`install.sh` は `mise install` より前に `mise run --skip-tools setup:npm-registry` を実行します。
-`--skip-tools` を落とすと `mise run` 自体がツール一式を先に入れてしまい、順序が逆転します。
-パッケージは問題なく入るため失敗が表に出ません ([`tests/install-order-test.sh`](../tests/install-order-test.sh) が検出します)。
+The proxy only takes effect once `~/.npmrc` is written, so `install.sh` runs `mise run --skip-tools setup:npm-registry` before `mise install`.
+Drop `--skip-tools` and `mise run` installs the whole toolchain first, inverting the order.
+The packages still install fine, so the failure never surfaces ([`tests/install-order-test.sh`](../tests/install-order-test.sh) catches it).
 
-レジストリは環境変数ではなく `~/.npmrc` に書くため、プライベートレジストリを使うプロジェクトはリポジトリ側の `.npmrc` で上書きできます。
-既に独自のレジストリが設定されている場合、セットアップはそれを変更しません。
+The registry goes into `~/.npmrc` rather than an environment variable, so a project on a private registry can still override it with its own `.npmrc`.
+If a custom registry is already configured, the setup leaves it alone.
 
-## 対象外: スキル
+## Not covered: skills
 
-`npx skills add` が取得する Markdown は各エージェントのコンテキストに直接入るため、プロンプトインジェクションの経路になり得ます。
-しかし skills CLI にリビジョン固定の手段がありません。`npx skills update` は差分を確認してから実行してください。
+The Markdown that `npx skills add` fetches goes straight into every agent's context, which makes it a prompt-injection channel.
+The skills CLI has no way to pin a revision. Review the diff before running `npx skills update`.
 
-## bump-tools.yml のセットアップ（初回のみ）
+## One-time setup for bump-tools.yml
 
-main は ruleset `main-guardrails` で保護されており、`pull_request` ルールが直接 push を禁止しています。
-既定の `GITHUB_TOKEN` は bypass に登録できません（GitHub Actions を bypass actor にできるのは Organization 所有のリポジトリだけで、ここは User 所有のため）。
-GitHub App なら登録できるので、App のトークンを使います。
+main is protected by the `main-guardrails` ruleset, whose `pull_request` rule forbids direct pushes.
+The default `GITHUB_TOKEN` cannot be registered as a bypass actor (GitHub Actions can only be one on organization-owned repositories, and this one belongs to a user).
+A GitHub App can, so the workflow uses an App token.
 
-1. [GitHub App を作成](https://github.com/settings/apps/new)する。Repository permissions は **Contents: Read and write** のみ。Webhook は不要
-2. 作成後、Client ID を控え、Private key を生成してダウンロードする
-3. その App をこのリポジトリに install する
-4. リポジトリの Secrets に登録する
-   - `BUMP_APP_CLIENT_ID` — 手順 2 の Client ID
-   - `BUMP_APP_PRIVATE_KEY` — ダウンロードした `.pem` の中身
-5. Settings > Rules > `main-guardrails` の Bypass list に、作成した App を Integration として追加する
+1. [Create a GitHub App](https://github.com/settings/apps/new). Repository permissions: **Contents: Read and write** only. No webhook.
+2. Note the Client ID, then generate and download a private key.
+3. Install the App on this repository.
+4. Register the repository secrets:
+   - `BUMP_APP_CLIENT_ID` — the Client ID from step 2
+   - `BUMP_APP_PRIVATE_KEY` — the contents of the downloaded `.pem`
+5. Add the App as an Integration in the Bypass list of Settings > Rules > `main-guardrails`.
 
-`workflow_dispatch` から手動実行して、push まで通ることを確認してください。
+Trigger the workflow manually from `workflow_dispatch` and confirm that the push goes through.
