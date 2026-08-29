@@ -72,6 +72,10 @@ postinstall = "git config --global init.defaultBranch main"
 # Auto-install tools when entering directories with .tool-versions or .mise.toml
 auto_install = true
 
+# Re-run cryptographic provenance verification at install time for artifacts
+# whose backend provides it, even when mise.lock already records verification.
+locked_verify_provenance = true
+
 # Use latest stable versions
 experimental = false
 

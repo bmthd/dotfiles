@@ -30,12 +30,14 @@ jobs:
       - name: Verify every locked version still resolves
         # Plain `mise lock` (no --bump) refreshes metadata for the versions
         # already in the lockfile rather than advancing them, and resolves URLs
-        # and checksums without installing — so this checks all 18 locked
-        # versions without running any postinstall hook (ctx7's blocks on an
+        # and checksums without installing — so this checks every locked
+        # version without running any postinstall hook (ctx7's blocks on an
         # interactive login when CONTEXT7_API_KEY is absent, which it is here).
         run: mise lock --dry-run
       - name: Test tool pins and lockfile
-        run: bash tests/mise-pins-test.sh
+        run: |
+          bash tests/mise-pins-test.sh
+          bash tests/mise-pins-policy-test.sh
 
   shellcheck:
     name: ShellCheck
