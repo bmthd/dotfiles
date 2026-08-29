@@ -2,5 +2,20 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended"
+  ],
+  "minimumReleaseAge": "2 days",
+  "internalChecksFilter": "strict",
+  "mise": {
+    "description": "Tools are declared as `latest` and pinned by mise.lock instead, which .github/workflows/bump-tools.yml advances daily. Renovate has nothing to bump here, and enabling it would only produce PRs that fight the lockfile.",
+    "enabled": false
+  },
+  "packageRules": [
+    {
+      "description": "Digest pins are not a new release, so the age check would only stall them",
+      "matchUpdateTypes": [
+        "pinDigest"
+      ],
+      "minimumReleaseAge": null
+    }
   ]
 }
