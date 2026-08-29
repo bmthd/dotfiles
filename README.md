@@ -121,6 +121,13 @@ mise run setup:claude-plugins  # 公式プラグイン (TypeScript LSP)
 スキルの更新は `npx skills update` ですが、上記のとおり内容を確認してから実行して
 ください。
 
+ただし `install.sh` の再実行と `mise run setup` は、リモートの内容で
+`~/.config/mise/config.toml` などを上書きします。端末ごとにピン留めしたバージョンや
+その端末だけのツール、手で足した設定がある場合は、Claude Code で
+`/dotfiles apply` を実行してください。インストール済みリビジョンとの差分を見て、
+取り込む変更とローカルに残す差分を切り分けてから適用します
+(スキル: [`.agents/skills/dotfiles`](.agents/skills/dotfiles/SKILL.ja.md))。
+
 対話シェルの起動時には、1 日に 1 回まで dotfiles の `main` ブランチを確認します。
 インストール時に記録した revision より新しいコミットがあれば通知しますが、自動更新はしません。
 ロックファイルの更新も main へのコミットなので、ツールに更新があった日は通知が出ます。

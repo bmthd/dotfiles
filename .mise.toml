@@ -223,7 +223,7 @@ mkdir -p "$HOME/.claude/skills" "$HOME/.config/opencode/skills" "$HOME/.agents/s
 # Install skills via the `skills` CLI — one mechanism for every source.
 # Own skills live in bmthd/skills, split out of this repo so they can be shared
 # on their own. What stays in this repo's .agents/skills/ is what does not
-# belong anywhere else: update-dotfiles, which only makes sense against this
+# belong anywhere else: the dotfiles skill, which only makes sense against this
 # repo. Third-party skills come from their upstream repos. productivity pulls
 # all skills from Matt Pocock's upstream productivity skills folder.
 # mathbullet contributes html and explain, the two skills html's SKILL.md
@@ -247,11 +247,16 @@ install_skills() {
       || echo "⚠ $label skills installation failed (continuing)"
 }
 install_skills "own" bmthd/skills
-# update-dotfiles targets this repository, so it still lives here
+# the dotfiles skill (pr / apply) targets this repository, so it still lives here
 install_skills "dotfiles-local" bmthd/dotfiles
 install_skills "superpowers" obra/superpowers
 install_skills "productivity" https://github.com/mattpocock/skills/tree/main/skills/productivity -s '*'
 install_skills "mathbullet" mathbullet/skills -s html -s explain
+# Orca (the parallel-agent ADE) ships its skills in the app's own repo. The CLI
+# itself is not installable here — it comes from the desktop app, or over the
+# SSH relay on a VPS — but the skills teach an agent to drive it, so install
+# them all and let the ones for absent features simply never trigger.
+install_skills "orca" stablyai/orca -s '*'
 # japanese-tech-writing and cognitive-rhythm-writing are Keiichiro Shikano's
 # (k16shikano) gists:
 # https://gist.github.com/k16shikano/fd287c3133457c4fd8f5601d34aa817d
