@@ -224,6 +224,15 @@ Re-fetch `update-notice.sh` only if step 1's diff touched it.
 git -C "$REPO" show origin/main:.dotfiles/update-notice.sh > ~/.config/dotfiles/update-notice.sh
 ```
 
+The notice watches `bmthd/skills` as well, and step 6's `mise run setup:skills` records
+that revision on its way out. Record it by hand only if you re-ran a source with
+`npx skills add` instead of running the task — and do it after the re-fetch above, since
+an older copy of the script has no `record` subcommand and ignores it silently.
+
+```bash
+bash ~/.config/dotfiles/update-notice.sh record skills
+```
+
 Confirm the notification actually stopped.
 
 ```bash
@@ -255,4 +264,4 @@ the judgment calls you made on their behalf lives.
 | Replaced `permissions.allow` with the remote array | Every command this machine had allowed goes back to prompting |
 | Reverted a local pin to `latest` because it "looked old" | Pins have reasons. Do not remove one without confirming |
 | Dropped local divergence without asking or reporting | Nobody can work out why the machine broke |
-| Forgot to update the revision file | The update notification fires every day despite being current |
+| Forgot to update a revision file (dotfiles / skills) | The update notification fires every day despite being current |

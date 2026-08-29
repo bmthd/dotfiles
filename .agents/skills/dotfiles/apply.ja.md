@@ -213,6 +213,15 @@ git -C "$REPO" rev-parse origin/main > ~/.config/dotfiles/revision
 git -C "$REPO" show origin/main:.dotfiles/update-notice.sh > ~/.config/dotfiles/update-notice.sh
 ```
 
+通知は `bmthd/skills` も見ている。そちらのリビジョンはステップ 6 の
+`mise run setup:skills` が記録するので、通常は何もしなくてよい。タスクを流さず
+`npx skills add` でソースを入れ直しただけのときは自分で記録する。**上の取り直しより後で
+実行すること** — 古いスクリプトには `record` サブコマンドが無く、黙って無視される。
+
+```bash
+bash ~/.config/dotfiles/update-notice.sh record skills
+```
+
 通知が実際に止まったかを確認する。
 
 ```bash
@@ -243,4 +252,4 @@ bash -c 'source ~/.config/dotfiles/update-notice.sh; dotfiles_update_notice_chec
 | `permissions.allow` をリモートの配列で置換した | その端末で許可していたコマンドが全部プロンプトに戻る |
 | ローカルのピン留めを「古いから」と `latest` に戻した | ピン留めには理由がある。確認せずに外さない |
 | ローカル差分を確認も報告もせず捨てた | 端末が壊れた理由が誰にも分からなくなる |
-| revision ファイルの更新を忘れた | 更新済みなのに毎日通知が出続ける |
+| revision ファイル (dotfiles / skills) の更新を忘れた | 更新済みなのに毎日通知が出続ける |

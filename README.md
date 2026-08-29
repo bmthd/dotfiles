@@ -37,15 +37,17 @@ mise tasks       # list the individual tasks
 
 ## Update
 
-Interactive shells check `main` once a day.
-If there are commits newer than the revision recorded at install time, you get a notice — nothing updates itself.
+Interactive shells check `main` once a day — this repository and [`bmthd/skills`](https://github.com/bmthd/skills), the two whose contents this setup installs.
+If either has commits newer than the revision recorded at install time, you get a notice — nothing updates itself.
 
 Update with `/dotfiles apply`.
-It diffs against the installed revision and separates what to pull in from what to keep local ([`.agents/skills/dotfiles`](.agents/skills/dotfiles/SKILL.md)).
+It diffs against the installed revision and separates what to pull in from what to keep local ([`.agents/skills/dotfiles`](.agents/skills/dotfiles/SKILL.md)), and reinstalls the skills on the way through.
+
+When only the skills moved, `mise run setup:skills` is the entire update: skills hold no per-machine state, so there is nothing to merge.
 
 Re-running `install.sh` also updates the machine, but it overwrites `~/.config/mise/config.toml` and friends with whatever is on the remote — losing pinned versions, machine-local tools, and hand-edited settings.
 
-Skills update with `npx skills update`. The Markdown it fetches goes straight into an agent's context, so review the diff before running it.
+Third-party skill sources are deliberately not watched: they move on their own schedule, mostly for reasons unrelated to the skills installed from them. Update those with `npx skills update`. The Markdown it fetches goes straight into an agent's context, so review the diff before running it.
 
 ## Layout
 
