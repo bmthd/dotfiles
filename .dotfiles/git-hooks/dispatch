@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# bmthd/dotfiles global git hook dispatcher, installed to ~/.config/git/hooks
+# by install.sh and pointed at by core.hooksPath. install.sh greps for that
+# name to tell its own files from ones somebody else left in the directory.
+#
+# core.hooksPath replaces git's hook search path rather than extending it, so a
+# repository's own .git/hooks stops being consulted. Every hook name therefore
+# links here, and this script forwards to the repository's hook after doing its
+# own work.
+#
+# No `set -e`: this runs in front of every git operation on the machine,
+# including ones where there is no repository yet (`git init` fires
+# reference-transaction before the git dir exists). Failing here would fail
+# somebody else's git command, so every step is guarded and the script exits 0
+# unless the forwarded hook says otherwise.
+set -uo pipefail
+
+hook="$(basename "$0")"
+
+git_dir="$(git rev-parse --path-format=absolute --git-dir 2>/dev/null)" || git_dir=""
+common_dir="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" || common_dir=""
+
+# `git worktree add` runs post-checkout inside the new worktree, where git-dir
+# is .git/worktrees/<name> and so differs from git-common-dir. That is the only
+# case we act on: mise refuses to parse a config at a path it has not trusted,
+# and a worktree is a new path every time, so the error would come back after
+# every `mise trust`. A clone has the two equal and stays untrusted — that is
+# where an unreviewed [env] or [hooks] would actually be a risk.
+#
+# The two conditions are not enough on their own: git-dir keeps differing for
+# the rest of the worktree's life, so a plain `git checkout` of somebody's
+# branch would be trusted too. Only worktree creation reports the null old-HEAD
+# ($1); an ordinary checkout reports the commit it came from.
+null_head="0000000000000000000000000000000000000000"
+if [ "$hook" = post-checkout ] && [ "${1:-}" = "$null_head" ] &&
+    [ -n "$git_dir" ] && [ "$git_dir" != "$common_dir" ] &&
+    command -v mise > /dev/null 2>&1; then
+    if root="$(git rev-parse --show-toplevel 2>/dev/null)"; then
+        for config in mise.toml .mise.toml mise.local.toml .mise.local.toml \
+            mise/config.toml .mise/config.toml .config/mise.toml \
+            .config/mise/config.toml .tool-versions; do
+            if [ -f "$root/$config" ]; then
+                mise trust --quiet "$root/$config" > /dev/null 2>&1 || true
+            fi
+        done
+    fi
+fi
+
+# Forward to the repository's own hook. Resolve it through git-common-dir
+# rather than `git rev-parse --git-path`, which honours core.hooksPath and
+# would point straight back at this script.
+if [ -n "$common_dir" ] && [ -x "$common_dir/hooks/$hook" ]; then
+    exec "$common_dir/hooks/$hook" "$@"
+fi

@@ -54,6 +54,8 @@ jobs:
           bash -n install.sh
           bash -n .claude/statusline.sh
           bash -n .dotfiles/update-notice.sh
+          bash -n .dotfiles/git-hooks/dispatch
+          bash -n .dotfiles/git-hooks/install.sh
       - name: zsh -n
         # install.sh is documented to run under zsh too (see README), so
         # verify it parses cleanly there in addition to bash.
@@ -66,3 +68,5 @@ jobs:
         run: bash tests/statusline-test.sh
       - name: Test install ordering
         run: bash tests/install-order-test.sh
+      - name: Test global git hooks
+        run: bash tests/git-hooks-test.sh

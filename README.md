@@ -26,6 +26,7 @@ Afterwards, restart the shell or run `source ~/.zshrc` (`source ~/.bashrc` for b
 - **Agent skills** — the same set installed for Claude Code, OpenCode, and Cursor
 - **Plugins** — Codex, plus the official plugins (TypeScript LSP)
 - **npm registry** — routed through [Takumi Guard](https://npm.flatt.tech/), a proxy that refuses known-malicious packages
+- **Global git hooks** — a new worktree gets its mise config trusted as it is created, so shells started there don't fail with "Config files ... are not trusted" ([`.dotfiles/git-hooks`](.dotfiles/git-hooks))
 
 The setup can be re-run at any time as a mise task.
 
