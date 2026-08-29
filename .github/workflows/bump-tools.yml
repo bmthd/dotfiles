@@ -10,7 +10,7 @@ name: Bump tools
 # default GITHUB_TOKEN cannot be one: GitHub Actions can only be registered as a
 # bypass actor on organization-owned repositories, and this repository belongs to
 # a user. A GitHub App can, which is why this workflow mints an App token.
-# One-time setup is documented in README.md.
+# One-time setup is documented in docs/supply-chain.md.
 on:
   schedule:
     - cron: "17 3 * * *"
