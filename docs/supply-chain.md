@@ -29,7 +29,9 @@ The flag only applies to fuzzy selectors like `latest`. That is exactly why the 
 
 The lockfile is mandatory: `install.sh` aborts if it cannot be fetched.
 Running `mise install` against bare `latest` would bypass the waiting period and pull the newest release.
-CI ([`tests/mise-pins-test.sh`](../tests/mise-pins-test.sh)) catches any tool that slips in unlocked.
+[`tests/mise-pins-test.sh`](../tests/mise-pins-test.sh) catches any tool that slips in unlocked, and any `[tools]` entry not written as a single-line inline table.
+That second check is what keeps a tool from being silently dropped: a `[tools.<name>]` sub-table ends the `[tools]` table, so every plain key after one becomes a key of that tool instead of a new tool.
+It runs both in CI and, once linked, as the pre-commit hook in [`.githooks`](../.githooks).
 
 ## Package: the npm registry proxy
 

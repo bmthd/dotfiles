@@ -25,23 +25,26 @@
   同じものを流す:
 
   ```bash
-  bash -n install.sh .dotfiles/update-notice.sh .claude/statusline.sh
+  bash -n install.sh .dotfiles/update-notice.sh .claude/statusline.sh \
+    .dotfiles/git-hooks/dispatch .dotfiles/git-hooks/install.sh
   zsh -n install.sh
-  shellcheck install.sh .claude/statusline.sh .dotfiles/update-notice.sh tests/*.sh
+  shellcheck install.sh .claude/statusline.sh .dotfiles/update-notice.sh \
+    .dotfiles/git-hooks/* .githooks/pre-commit tests/*.sh
   bash tests/update-notice-test.sh && bash tests/statusline-test.sh
+  bash tests/mise-pins-test.sh && bash tests/install-order-test.sh && bash tests/git-hooks-test.sh
   mise ls >/dev/null && mise tasks ls >/dev/null
   ```
 
-- **`mise ls` が通ることは `.mise.toml` が正しいことを意味しない。** `[tools.xxx]` の
-  サブテーブル見出しは、それ以降の平坦なキーをすべて自分の子として吸い込み、後続の
-  ツールを黙って無効化する。既存のサブテーブルの周辺にツールを足すときは、exit code
-  ではなくパース結果を確認する:
-
-  ```bash
-  python3 -c "import tomllib; print(list(tomllib.load(open('.mise.toml','rb'))['tools']))"
-  ```
-
-  平坦な `name = "version"` の行は、最初の `[tools.xxx]` 見出しより前にまとめて置く
+- **`mise ls` が通ることは `.mise.toml` が正しいことを意味しない。** `[tools]` の各行は
+  `version` しか持たないツールも含めて、すべて 1 行のインラインテーブルで書く
+  (`node = { version = "latest" }`)。これが崩れる経路が 2 つあり、どちらも無言で壊れる。
+  `[tools.<name>]` のサブテーブルは `[tools]` を終わらせるため、以降の平坦なキーは
+  新しいツールではなくそのツールのキーになる。そして `mise fmt` は配列を含む
+  インラインテーブルを改行で分解し、mise は読めるが TOML 1.0 パーサが読めない
+  TOML 1.1 の構文にしてしまう。**このファイルに `mise fmt` をかけないこと。**
+  どちらも `bash tests/mise-pins-test.sh` が検出する — 上のチェック一覧に含まれ、CI でも
+  走り、このリポジトリの pre-commit フックでもある (clone しただけでは有効にならない。
+  [`.githooks/pre-commit`](../../../.githooks/pre-commit) の冒頭を参照)
 
 - **このスキル自体を編集するとき**: 各ファイルと `.ja.md` の対を同じコミットで揃える。
   食い違った翻訳は翻訳が無いより悪い
