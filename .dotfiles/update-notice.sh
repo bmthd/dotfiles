@@ -51,7 +51,8 @@ dotfiles_update_notice_check() {
     printf '\n🔔 dotfiles の更新があります (%s → %s)\n' \
         "${installed_revision:0:7}" "${remote_revision:0:7}"
     printf '更新するには: curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/install.sh | %s\n' "${SHELL:-bash}"
-    printf 'ローカルの clone は: ghq get -u github.com/bmthd/dotfiles\n\n'
+    printf 'ローカルの clone は: ghq get -u github.com/bmthd/dotfiles\n'
+    printf 'この端末の設定を残したまま更新するには: claude で /dotfiles apply\n\n'
 }
 
 if [ "${1:-}" = "install" ]; then
