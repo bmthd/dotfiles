@@ -26,6 +26,7 @@ curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/install.sh | ba
 - **エージェントスキル** — Claude Code / OpenCode / Cursor の 3 つに同じものを導入
 - **プラグイン** — Codex、および公式プラグイン (TypeScript LSP)
 - **npm レジストリ** — マルウェアを遮断する [Takumi Guard](https://npm.flatt.tech/) プロキシ経由に変更
+- **グローバル git フック** — worktree を切った時点でその mise config を trust するので、そこで開いたシェルが "Config files ... are not trusted" で落ちない ([`.dotfiles/git-hooks`](.dotfiles/git-hooks))
 
 セットアップはいつでも mise タスクとして再実行できます。
 
