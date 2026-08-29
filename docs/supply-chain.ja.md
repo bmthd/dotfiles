@@ -29,7 +29,9 @@ mise lock --bump --minimum-release-age 2d
 
 ロックファイルは必須です。取得に失敗した場合 `install.sh` は中断します。
 `latest` のまま `mise install` すると待機期間を迂回して最新版が入ってしまうためです。
-ロックされていないツールの混入は CI ([`tests/mise-pins-test.sh`](../tests/mise-pins-test.sh)) が検出します。
+ロックされていないツールの混入と、`[tools]` が 1 行のインラインテーブルで書かれていない行は [`tests/mise-pins-test.sh`](../tests/mise-pins-test.sh) が検出します。
+後者はツールが黙って消えるのを防ぐためのものです。`[tools.<name>]` のサブテーブルは `[tools]` を終わらせるため、それ以降の平坦なキーは新しいツールではなくそのツールのキーになります。
+このテストは CI と、リンクすれば [`.githooks`](../.githooks) の pre-commit フックの両方から走ります。
 
 ## パッケージ: npm レジストリのプロキシ
 

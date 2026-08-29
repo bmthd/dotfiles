@@ -27,23 +27,26 @@ Read the repository facts in [SKILL.md](SKILL.md) first. In addition:
   locally before pushing:
 
   ```bash
-  bash -n install.sh .dotfiles/update-notice.sh .claude/statusline.sh
+  bash -n install.sh .dotfiles/update-notice.sh .claude/statusline.sh \
+    .dotfiles/git-hooks/dispatch .dotfiles/git-hooks/install.sh
   zsh -n install.sh
-  shellcheck install.sh .claude/statusline.sh .dotfiles/update-notice.sh tests/*.sh
+  shellcheck install.sh .claude/statusline.sh .dotfiles/update-notice.sh \
+    .dotfiles/git-hooks/* .githooks/pre-commit tests/*.sh
   bash tests/update-notice-test.sh && bash tests/statusline-test.sh
+  bash tests/mise-pins-test.sh && bash tests/install-order-test.sh && bash tests/git-hooks-test.sh
   mise ls >/dev/null && mise tasks ls >/dev/null
   ```
 
-- **`mise ls` passing does not mean `.mise.toml` is correct.** A `[tools.xxx]`
-  sub-table heading swallows every plain key that follows it into that tool's table,
-  silently disabling the rest. Adding tools around an existing sub-table requires
-  checking the parsed result, not just the exit code:
-
-  ```bash
-  python3 -c "import tomllib; print(list(tomllib.load(open('.mise.toml','rb'))['tools']))"
-  ```
-
-  Keep every plain `name = "version"` entry above the first `[tools.xxx]` heading.
+- **`mise ls` passing does not mean `.mise.toml` is correct.** Every entry in
+  `[tools]` is a single-line inline table — `node = { version = "latest" }` — and has
+  to stay one, including a tool whose only option is `version`. Two ways that breaks,
+  both silent: a `[tools.<name>]` sub-table ends the `[tools]` table, so any bare key
+  after one becomes a key of *that tool* instead of a new tool; and `mise fmt` splits
+  an inline table containing an array across lines, producing TOML 1.1 syntax that
+  mise reads but no TOML 1.0 parser does. **Never run `mise fmt` on this file.**
+  `bash tests/mise-pins-test.sh` catches both — it is in the check list above, runs in
+  CI, and is this repository's pre-commit hook, which cloning does not enable (see the
+  header of [`.githooks/pre-commit`](../../../.githooks/pre-commit)).
 
 - **Editing this skill**: keep each file and its `.ja.md` twin in sync in the same
   commit. Divergence is worse than no translation.

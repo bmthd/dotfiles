@@ -14,63 +14,48 @@
 # compromised release would be picked up — the first hours after publish, when
 # supply-chain worms do their damage. It applies to fuzzy selectors only, which
 # is exactly why the versions below stay `latest` rather than being pinned here.
+#
+# Every entry is written as an inline table — including the ones whose only key
+# is `version`. Two reasons to keep that uniform. TOML closes the `[tools]`
+# table as soon as a `[tools.<name>]` sub-table appears, so any bare key written
+# after one becomes a key of *that tool* instead of a new tool; ten tools were
+# silently never installed that way. And with no mix of styles there is no
+# question of which form a new tool should use, or where in the block it goes.
+# Inline tables must stay on a single line: multi-line ones are TOML 1.1, which
+# non-mise parsers reject and `mise fmt` reorders.
 [tools]
-node = "latest"
-"npm:pnpm" = "latest"
-bun = "latest"
-ghq = "latest"
-jq = "latest"
-uv = "latest"
-"cargo:similarity-ts" = "latest"
-"npm:@antfu/ni" = "latest"
-"npm:@openai/codex" = "latest"
-opencode = "latest"
-oci = "latest"
-cloudflared = "latest"
-wrangler = "latest"
-
-# NOTE: keep every plain `tool = "version"` entry above this line. A
-# `[tools.<name>]` table ends the `[tools]` table, so bare keys written after
-# one become keys of *that tool* instead of new tools. ghq, jq, uv,
-# similarity-ts, @antfu/ni, @openai/codex, opencode, oci, cloudflared and
-# wrangler all sat under `[tools.github-cli]` and were silently never
-# installed.
-[tools.github-cli]
-version = "latest"
-postinstall = "gh extension install github/gh-stack 2>/dev/null || gh extension upgrade stack 2>/dev/null || true"
-
-[tools."npm:ctx7"]
-version = "latest"
-# The postinstall shells out to `npx`, which only exists once node is installed.
-# Without an explicit dependency mise may run it while node is still being
-# (re)installed — `mise upgrade` then fails the postinstall with exit code 127.
-depends = ["node"]
-# `ctx7 setup` blocks on an interactive OAuth device-code prompt that neither
-# --yes nor CI=true suppresses; only --api-key skips it. Pass the flag when
-# CONTEXT7_API_KEY is set (CI) and otherwise keep the interactive sign-in.
-postinstall = "npx ctx7@latest setup --cli --claude --opencode --cursor --yes ${CONTEXT7_API_KEY:+--api-key \"$CONTEXT7_API_KEY\"}"
-
+node = { version = "latest" }
+"npm:pnpm" = { version = "latest" }
+bun = { version = "latest" }
+ghq = { version = "latest" }
+jq = { version = "latest" }
+uv = { version = "latest" }
+"cargo:similarity-ts" = { version = "latest" }
+"npm:@antfu/ni" = { version = "latest" }
+"npm:@openai/codex" = { version = "latest" }
+opencode = { version = "latest" }
+oci = { version = "latest" }
+cloudflared = { version = "latest" }
+wrangler = { version = "latest" }
+github-cli = { version = "latest", postinstall = "gh extension install github/gh-stack 2>/dev/null || gh extension upgrade stack 2>/dev/null || true" }
+# `depends = ["node"]` on the npm: tools below: their postinstall shells out to
+# `npx`, which only exists once node is installed. Without the explicit
+# dependency mise may run it while node is still being (re)installed — `mise
+# upgrade` then fails the postinstall with exit code 127.
+#
+# ctx7: `ctx7 setup` blocks on an interactive OAuth device-code prompt that
+# neither --yes nor CI=true suppresses; only --api-key skips it. Pass the flag
+# when CONTEXT7_API_KEY is set (CI) and otherwise keep the interactive sign-in.
+"npm:ctx7" = { version = "latest", depends = ["node"], postinstall = "npx ctx7@latest setup --cli --claude --opencode --cursor --yes ${CONTEXT7_API_KEY:+--api-key \"$CONTEXT7_API_KEY\"}" }
 # playwright-cli is deprecated; use @playwright/cli. Note that the version
 # series restarted with the rename, so the current 0.1.x is newer than the
 # 0.262.0 that the old playwright-cli package left behind on some machines.
-[tools."npm:@playwright/cli"]
-version = "latest"
-# `npx` comes from node; see the note on npm:ctx7
-depends = ["node"]
-postinstall = "npx skills add microsoft/playwright-cli -y -g -a claude-code -a opencode -a cursor"
-
-[tools."npm:difit"]
-version = "latest"
-# `npx` comes from node; see the note on npm:ctx7
-depends = ["node"]
-postinstall = "npx skills add yoshiko-pg/difit -y -g -a claude-code -a opencode -a cursor"
-
-[tools."github:rtk-ai/rtk"]
-version = "latest"
-# rtk init writes into each agent's config dir and fails outright if the dir
-# is missing, so create all three up front. On a fresh machine (and in CI)
-# nothing else has necessarily created ~/.cursor yet.
-postinstall = "mkdir -p \"$HOME/.claude\" \"$HOME/.cursor\" \"$HOME/.config/opencode\" && rtk init -g --auto-patch && rtk init -g --opencode --auto-patch && rtk init -g --agent cursor --auto-patch"
+"npm:@playwright/cli" = { version = "latest", depends = ["node"], postinstall = "npx skills add microsoft/playwright-cli -y -g -a claude-code -a opencode -a cursor" }
+"npm:difit" = { version = "latest", depends = ["node"], postinstall = "npx skills add yoshiko-pg/difit -y -g -a claude-code -a opencode -a cursor" }
+# rtk init writes into each agent's config dir and fails outright if the dir is
+# missing, so create all three up front. On a fresh machine (and in CI) nothing
+# else has necessarily created ~/.cursor yet.
+"github:rtk-ai/rtk" = { version = "latest", postinstall = "mkdir -p \"$HOME/.claude\" \"$HOME/.cursor\" \"$HOME/.config/opencode\" && rtk init -g --auto-patch && rtk init -g --opencode --auto-patch && rtk init -g --agent cursor --auto-patch" }
 
 [env]
 # Claude Code installs to ~/.local/bin; make it visible to setup tasks and
