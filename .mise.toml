@@ -174,7 +174,7 @@ install_skills() {
       || echo "⚠ $label skills installation failed (continuing)"
 }
 install_skills "own" bmthd/skills
-# the dotfiles skill targets this repository, so it still lives here
+# the dotfiles skill (pr / apply) targets this repository, so it still lives here
 install_skills "dotfiles-local" bmthd/dotfiles
 install_skills "superpowers" obra/superpowers
 install_skills "productivity" https://github.com/mattpocock/skills/tree/main/skills/productivity -s '*'
