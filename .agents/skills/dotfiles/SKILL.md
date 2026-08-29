@@ -1,36 +1,43 @@
 ---
 name: dotfiles
-description: Use when the user wants to modify the bmthd/dotfiles repository (mise tools, install.sh, docs, the skills that still live here) and open a PR from ANY terminal, even one where the repo is not checked out. Thin wrapper over pr-anywhere. Invoke as /dotfiles <change>.
-argument-hint: <change to make>
+description: Use when working with the bmthd/dotfiles setup — either changing the repository itself (mise tools, install.sh, docs, the skills that live there) and opening a PR, or applying an available update to THIS machine after the shell printed "dotfiles の更新があります". Invoke as /dotfiles pr <change> or /dotfiles apply.
+argument-hint: pr <change> | apply
 ---
 
 # Dotfiles
 
-Shorthand for the `pr-anywhere` skill with the target fixed to
-`github.com/bmthd/dotfiles`.
+Two directions of work against [`bmthd/dotfiles`](https://github.com/bmthd/dotfiles).
+They are opposites and must not be confused: `pr` changes the repository for every
+machine, `apply` changes this one machine to match the repository.
 
-Follow `pr-anywhere` exactly, with two adjustments:
+| Subcommand | Direction | Read |
+|---|---|---|
+| `pr <change>` | repository ← change, opened as a PR | [pr.md](pr.md) |
+| `apply` | this machine ← repository | [apply.md](apply.md) |
 
-- **Do not parse a repository out of `args`.** The target is always
-  `bmthd/dotfiles`; the whole of `args` is the change to make. If `args` is empty,
-  ask the user what to change.
-- Apply the repository notes below when editing.
+**Read the subcommand's file before doing anything.** The procedures are detailed and
+neither is safe to improvise.
 
-`pr-anywhere` lives in [`bmthd/skills`](https://github.com/bmthd/skills) and the
-`setup:skills` mise task installs it alongside this skill. If it is missing, install
-it with `npx skills add bmthd/skills -s pr-anywhere -y -g -a claude-code`.
+## Routing
 
-## Repository notes
+- `args` starts with `pr` — the rest is the change to make. If nothing follows, ask what to change.
+- `args` starts with `apply` (or is empty and the user is reacting to an update notification) — read [apply.md](apply.md).
+- Neither, and the intent is unclear: ask which one. Do not guess from the current
+  directory — being inside a dotfiles checkout does not mean the user wants `pr`.
 
-- **Most skills are no longer here.** The portable ones moved to `bmthd/skills` —
-  change them there. What remains under `.agents/skills/` is `dotfiles` itself and
-  `cognitive-rhythm-writing`, a vendored gist.
+## Repository facts
+
+Both subcommands rely on these.
+
 - **Setup logic lives in `.mise.toml`**, not `install.sh`. `install.sh` is only a
   bootstrapper (install mise → place the config → `mise install` → `mise run setup`).
   Changes to tools, environment, or setup steps belong in `.mise.toml`.
-- **CI runs `mise ls`, `mise tasks ls`, ShellCheck, `bash -n` and `zsh -n`.** Editing
-  `.mise.toml` or any shell script means the config must still parse and the scripts
-  must stay ShellCheck-clean under both shells.
-- **Adding a third-party skill**: add an `install_skills` line to the `setup:skills`
-  task rather than copying the skill into this repo. Gists work too, via their `.git`
-  clone URL — see the `japanese-tech-writing` line for the reason the page URL fails.
+- **`.mise.toml` is installed to `~/.config/mise/config.toml`** as the global mise
+  config, so its tasks run from any directory.
+- **Most skills are no longer in this repository.** The portable ones moved to
+  [`bmthd/skills`](https://github.com/bmthd/skills). What remains under
+  `.agents/skills/` is this `dotfiles` skill, which only makes sense against this
+  repository. Third-party skills are installed from their upstream by the
+  `setup:skills` task rather than vendored.
+- **CI (`.github/workflows/quality.yml`) runs** `mise ls`, `mise tasks ls`, ShellCheck,
+  `bash -n`, `zsh -n`, and the scripts under `tests/`.
