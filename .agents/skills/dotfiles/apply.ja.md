@@ -174,8 +174,30 @@ mise run --skip-deps setup:claude-plugins
 npx skills update -g -y   # 実行するなら -g
 ```
 
-upstream から消えたスキルの削除警告が出ることがある。非対話モードでは削除されないので、
-重複インストールが無いことだけ確認して先へ進む。
+**`setup:skills` はソースが失敗しても成功として終わる。** タスクの各行は
+`install_skills` を通り、エラーを握り潰して
+`⚠ <label> skills installation failed (continuing)` と出すだけ。タスク自体は exit 0 で
+終わるため、何も入らなかったソースと成功したソースが区別できない。タスクの出力から
+この警告を拾い、各ソースが実際に入ったか確認する。
+
+```bash
+npx skills list -g
+```
+
+失敗したソースは手で流し直す。transient な失敗であることが多い。
+
+```bash
+npx skills add <ソース> -y -g -a claude-code -a opencode -a cursor
+```
+
+**upstream で削除・改名されたスキルは残り続ける。** `npx skills` は非対話モードでは
+削除を拒否して警告を出すだけなので、改名すると古い名前が新しい名前の隣に残る。
+同じ仕事を主張するスキルが2つある状態は、どちらか一方だけより悪い。警告と
+`npx skills list -g` を突き合わせて残骸を消す。
+
+```bash
+npx skills remove <古い名前> -g -y
+```
 
 ### 7. リビジョンを記録して報告する
 
@@ -217,6 +239,7 @@ bash -c 'source ~/.config/dotfiles/update-notice.sh; dotfiles_update_notice_chec
 | 衝突マーカーを残して配置した | mise が config をパースできず全ツールが落ちる |
 | 検証を `mise ls` の exit code で済ませた | ツールが丸ごと無効化されていても素通りする |
 | `--skip-deps` なしで `setup:codex` を実行した | `setup:claude` 経由で `settings.json` が上書きされる |
+| `setup:skills` の exit 0 をスキルが入った証拠にした | 何も入らなかったソースと成功したソースが区別できない |
 | `permissions.allow` をリモートの配列で置換した | その端末で許可していたコマンドが全部プロンプトに戻る |
 | ローカルのピン留めを「古いから」と `latest` に戻した | ピン留めには理由がある。確認せずに外さない |
 | ローカル差分を確認も報告もせず捨てた | 端末が壊れた理由が誰にも分からなくなる |
