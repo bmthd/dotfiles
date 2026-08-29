@@ -39,11 +39,15 @@ mise tasks       # list the individual tasks
 Interactive shells check `main` once a day.
 If there are commits newer than the revision recorded at install time, you get a notice — nothing updates itself.
 
-When notified, re-running `install.sh` brings the machine up to date.
+The notice lists the subjects of the commits in that range, newest first, up to five.
+`main` only ever takes squash merges, so one subject line is one PR.
+Subjects come from GitHub's compare API; when that call cannot be made — offline, rate limited, `jq` not yet on PATH — the notice still appears, just with the revision range alone.
 
-But re-running overwrites `~/.config/mise/config.toml` and friends with whatever is on the remote.
-If this machine has pinned versions, machine-local tools, or hand-edited settings, use `/dotfiles apply` in Claude Code instead.
+Update with `/dotfiles apply`.
 It diffs against the installed revision and separates what to pull in from what to keep local ([`.agents/skills/dotfiles`](.agents/skills/dotfiles/SKILL.md)).
+The skill is not Claude Code specific: it goes to every agent `mise run setup:skills` targets.
+
+Re-running `install.sh` also updates the machine, but it overwrites `~/.config/mise/config.toml` and friends with whatever is on the remote — losing pinned versions, machine-local tools, and hand-edited settings.
 
 Skills update with `npx skills update`. The Markdown it fetches goes straight into an agent's context, so review the diff before running it.
 
