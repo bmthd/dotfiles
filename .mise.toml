@@ -37,6 +37,7 @@ opencode = { version = "latest" }
 oci = { version = "latest" }
 cloudflared = { version = "latest" }
 wrangler = { version = "latest" }
+hunk = { version = "latest" }
 github-cli = { version = "latest", postinstall = "gh extension install github/gh-stack 2>/dev/null || gh extension upgrade stack 2>/dev/null || true" }
 # `depends = ["node"]` on the npm: tools below: their postinstall shells out to
 # `npx`, which only exists once node is installed. Without the explicit
@@ -256,6 +257,8 @@ install_skills "mathbullet" mathbullet/skills -s html -s explain
 # SSH relay on a VPS — but the skills teach an agent to drive it, so install
 # them all and let the ones for absent features simply never trigger.
 install_skills "orca" stablyai/orca -s '*'
+# hunk ships four skills; only hunk-review drives a review session from an agent
+install_skills "hunk" modem-dev/hunk -s hunk-review
 # japanese-tech-writing and cognitive-rhythm-writing are Keiichiro Shikano's
 # (k16shikano) gists:
 # https://gist.github.com/k16shikano/fd287c3133457c4fd8f5601d34aa817d
