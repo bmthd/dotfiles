@@ -64,3 +64,5 @@ jobs:
         run: bash tests/update-notice-test.sh
       - name: Test status line
         run: bash tests/statusline-test.sh
+      - name: Test install ordering
+        run: bash tests/install-order-test.sh
