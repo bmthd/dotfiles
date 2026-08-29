@@ -92,6 +92,12 @@ push を禁止しています。既定の `GITHUB_TOKEN` は bypass に登録で
 CI ([`tests/mise-pins-test.sh`](tests/mise-pins-test.sh)) が、ロックされていない
 ツールの混入を検出します。
 
+プロキシが効くのは `~/.npmrc` を書いた時点以降だけなので、`install.sh` は
+`mise install` より前に `mise run --skip-tools setup:npm-registry` を実行します。
+`--skip-tools` を落とすと `mise run` 自体がツール一式を先に入れてしまい、順序が
+逆転します。パッケージは問題なく入るため失敗が表に出ません
+([`tests/install-order-test.sh`](tests/install-order-test.sh) が検出します)。
+
 npm レジストリは環境変数ではなく `~/.npmrc` に書くため、プライベートレジストリを
 使うプロジェクトはリポジトリ側の `.npmrc` で上書きできます。既に独自のレジストリが
 設定されている場合、セットアップはそれを変更しません。

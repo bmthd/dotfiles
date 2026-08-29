@@ -59,9 +59,15 @@ if command -v mise &> /dev/null; then
 
     # Point npm at the malware-blocking proxy before anything is installed:
     # the `npm:` tools and the postinstall hooks that call `npx` all resolve
-    # through it. Tasks need no tools, so this runs before `mise install`.
+    # through it.
+    #
+    # --skip-tools is what makes "before" true. `mise run` installs the entire
+    # tool set before it runs any task, whether or not the task needs it, so
+    # without the flag this line pulls every `npm:` tool from the default
+    # registry and only then writes ~/.npmrc — exactly backwards. The task body
+    # is plain shell (touch/sed/grep), so skipping the tools costs it nothing.
     echo "📦 Configuring npm registry..."
-    mise run setup:npm-registry || echo "⚠ Failed to configure npm registry (continuing)"
+    mise run --skip-tools setup:npm-registry || echo "⚠ Failed to configure npm registry (continuing)"
 
     # Install all tools via mise
     echo "📦 Installing all tools via mise..."
