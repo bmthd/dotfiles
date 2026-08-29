@@ -46,6 +46,14 @@ if [ "$hook" = post-checkout ] && [ "${1:-}" = "$null_head" ] &&
     fi
 fi
 
+# Pin the exact workflow snapshot about to be committed. The helper updates the
+# index without staging unrelated working-tree edits, then mirrors its small
+# fix back to the working tree when that can be done without a conflict.
+dispatch_dir="$(cd "$(dirname "$0")" && pwd)"
+if [ "$hook" = pre-commit ] && [ -x "$dispatch_dir/pinact-staged" ]; then
+    "$dispatch_dir/pinact-staged" || exit $?
+fi
+
 # Forward to the repository's own hook. Resolve it through git-common-dir
 # rather than `git rev-parse --git-path`, which honours core.hooksPath and
 # would point straight back at this script.

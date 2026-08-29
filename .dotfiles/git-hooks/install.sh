@@ -9,9 +9,11 @@ set -uo pipefail
 
 HOOKS_DIR="${GIT_HOOKS_DIR:-$HOME/.config/git/hooks}"
 DISPATCH_URL="https://raw.githubusercontent.com/bmthd/dotfiles/main/.dotfiles/git-hooks/dispatch"
+PINACT_STAGED_URL="https://raw.githubusercontent.com/bmthd/dotfiles/main/.dotfiles/git-hooks/pinact-staged"
 # Identifies a dispatch this script wrote, so a re-run refreshes its own files
 # and only its own.
 MARKER="bmthd/dotfiles global git hook dispatcher"
+PINACT_MARKER="bmthd/dotfiles staged pinact helper"
 
 # githooks(5), including the server-side and p4 hooks. core.hooksPath replaces
 # git's hook search path rather than extending it, so a name missing here is a
@@ -36,6 +38,11 @@ if [ -e "$HOOKS_DIR/dispatch" ] && ! grep -q "$MARKER" "$HOOKS_DIR/dispatch" 2> 
     echo "⚠ $HOOKS_DIR/dispatch exists and was not written by this script; aborting"
     exit 1
 fi
+if [ -e "$HOOKS_DIR/pinact-staged" ] &&
+    ! grep -q "$PINACT_MARKER" "$HOOKS_DIR/pinact-staged" 2> /dev/null; then
+    echo "⚠ $HOOKS_DIR/pinact-staged exists and was not written by this script; aborting"
+    exit 1
+fi
 
 local_dispatch="$(cd "$(dirname "$0")" && pwd)/dispatch"
 if [ -f "$local_dispatch" ]; then
@@ -45,6 +52,15 @@ elif ! curl -fsSL "$DISPATCH_URL" -o "$HOOKS_DIR/dispatch"; then
     exit 1
 fi
 chmod +x "$HOOKS_DIR/dispatch"
+
+local_pinact_staged="$(cd "$(dirname "$0")" && pwd)/pinact-staged"
+if [ -f "$local_pinact_staged" ]; then
+    cp "$local_pinact_staged" "$HOOKS_DIR/pinact-staged"
+elif ! curl -fsSL "$PINACT_STAGED_URL" -o "$HOOKS_DIR/pinact-staged"; then
+    echo "⚠ Failed to download the staged pinact helper"
+    exit 1
+fi
+chmod +x "$HOOKS_DIR/pinact-staged"
 
 skipped=()
 for hook in "${HOOK_NAMES[@]}"; do

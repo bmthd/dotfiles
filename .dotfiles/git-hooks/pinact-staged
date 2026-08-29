@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# bmthd/dotfiles staged pinact helper. Pins staged GitHub Actions references
+# without adding unstaged content.
+set -euo pipefail
+
+repo="$(git rev-parse --show-toplevel)"
+files=()
+while IFS= read -r -d '' file; do
+    files+=("$file")
+done < <(git diff --cached --name-only --diff-filter=ACMR -z -- \
+    ':(glob).github/workflows/*.yml' ':(glob).github/workflows/*.yaml')
+
+if [[ ${#files[@]} -eq 0 ]]; then
+    exit 0
+fi
+
+if ! command -v pinact > /dev/null 2>&1; then
+    echo "✗ pinact is required to commit GitHub Actions workflows (run: mise install pinact)" >&2
+    exit 1
+fi
+
+staged="$(mktemp -d)"
+trap 'rm -rf "$staged"' EXIT
+pin_files=()
+for file in "${files[@]}"; do
+    mkdir -p "$staged/original/$(dirname "$file")" "$staged/pinned/$(dirname "$file")"
+    git show ":$file" > "$staged/original/$file"
+    cp "$staged/original/$file" "$staged/pinned/$file"
+    pin_files+=("$staged/pinned/$file")
+done
+
+pinact run --branch-to-tag '^main$' --branch-to-tag '^master$' "${pin_files[@]}"
+
+patch="$staged/worktree.patch"
+: > "$patch"
+for file in "${files[@]}"; do
+    diff -U0 --label "a/$file" --label "b/$file" \
+        "$staged/original/$file" "$staged/pinned/$file" >> "$patch" || status=$?
+    if [[ ${status:-0} -gt 1 ]]; then
+        exit "$status"
+    fi
+    unset status
+done
+
+if [[ ! -s "$patch" ]]; then
+    :
+elif git -C "$repo" apply --unidiff-zero --check "$patch" 2> /dev/null; then
+    git -C "$repo" apply --unidiff-zero "$patch"
+else
+    echo "⚠ pinact fixed the staged snapshot; conflicting unstaged workflow edits were left unchanged" >&2
+fi
+
+for file in "${files[@]}"; do
+    if ! cmp -s "$staged/original/$file" "$staged/pinned/$file"; then
+        printf 'pinact: pinned %s\n' "$file"
+    fi
+    mode="$(git ls-files -s -- "$file" | awk 'NR == 1 { print $1 }')"
+    blob="$(git hash-object -w "$staged/pinned/$file")"
+    git update-index --cacheinfo "$mode,$blob,$file"
+done

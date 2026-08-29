@@ -2,13 +2,14 @@
 
 English | [日本語](supply-chain.ja.md)
 
-The defense is three layers, each covering a different range.
+The defense is four layers, each covering a different range.
 
 | Layer | Mechanism | Covers |
 | --- | --- | --- |
 | Version | `mise.lock` + `--minimum-release-age 2d` | the first two days after publish |
 | Artifact | checksums in `mise.lock` | substitution or re-publish of a verified version |
 | Package | the [Takumi Guard](https://npm.flatt.tech/) proxy in `~/.npmrc` | everything through npm, especially the run-time `npx ctx7@latest` / `npx skills add` that cannot be locked |
+| Action source | full commit SHAs verified by `pinact` | movement or compromise of a GitHub Actions release tag |
 
 ## Version: `latest` declarations plus a lockfile
 
@@ -32,6 +33,20 @@ Running `mise install` against bare `latest` would bypass the waiting period and
 [`tests/mise-pins-test.sh`](../tests/mise-pins-test.sh) catches any tool that slips in unlocked, and any `[tools]` entry not written as a single-line inline table.
 That second check is what keeps a tool from being silently dropped: a `[tools.<name>]` sub-table ends the `[tools]` table, so every plain key after one becomes a key of that tool instead of a new tool.
 It runs both in CI and, once linked, as the pre-commit hook in [`.githooks`](../.githooks).
+
+## Action source: immutable commit SHAs
+
+Every `uses:` reference under [`.github/workflows`](../.github/workflows) is pinned to a full 40-character commit SHA.
+The release tag remains in an end-of-line comment, so a review still shows the recognizable version without trusting that mutable tag at run time.
+
+`pinact` performs both enforcement paths.
+CI runs `pinact run -check -verify-comment`, which rejects an unpinned reference and a SHA whose version comment no longer matches.
+The global pre-commit dispatcher runs pinact first for staged workflow files, then forwards to the repository's own pre-commit hook as before.
+It pins a temporary copy of the index and writes the resulting blobs back to the index, so unrelated unstaged edits and partial staging do not leak into the commit.
+When the same fix applies cleanly to the working tree, the hook mirrors it there; a conflicting unstaged edit is left untouched.
+
+pinact itself is a mise-managed tool and is checksum-pinned in `mise.lock`.
+Its lock entry advances through the same daily `--minimum-release-age 2d` gate as the rest of the toolchain.
 
 ## Package: the npm registry proxy
 

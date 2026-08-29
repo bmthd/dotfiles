@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Tests the global git hooks installed by setup:git-hooks.
 #
-# Three properties matter and none is visible from reading the scripts:
+# Four properties matter and none is visible from reading the scripts:
 #
 #   1. a new worktree gets its mise config trusted, so shells started there do
 #      not fail with "Config files ... are not trusted"
@@ -10,9 +10,11 @@
 #      git's hook search path rather than extending it, so a dispatcher that
 #      forgot to forward would silently disable lefthook, pre-commit and
 #      friends in every repository on the machine
+#   4. pinact fixes the staged workflow snapshot without staging unrelated
+#      working-tree edits, including in a partially staged file
 #
-# mise is stubbed: the hook only has to invoke it correctly. The global git
-# config is redirected so the test never touches the real one.
+# mise and pinact are stubbed: the hooks only have to invoke them correctly.
+# The global git config is redirected so the test never touches the real one.
 
 set -euo pipefail
 
@@ -26,6 +28,25 @@ cat > "$work/bin/mise" <<'STUB'
 printf '%s\n' "$*" >> "$MISE_CALL_LOG"
 STUB
 chmod +x "$work/bin/mise"
+cat > "$work/bin/pinact" <<'STUB'
+#!/usr/bin/env bash
+if [[ "${PINACT_FAIL:-}" = 1 ]]; then
+  exit 3
+fi
+shift # run
+files=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --branch-to-tag) shift 2 ;;
+    *) files+=("$1"); shift ;;
+  esac
+done
+for file in "${files[@]}"; do
+  sed -i.bak 's|actions/checkout@v4|actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4|' "$file"
+  rm -f "$file.bak"
+done
+STUB
+chmod +x "$work/bin/pinact"
 export PATH="$work/bin:$PATH"
 export MISE_CALL_LOG="$work/mise-calls.log"
 export GIT_CONFIG_GLOBAL="$work/gitconfig"
@@ -37,6 +58,11 @@ GIT_HOOKS_DIR="$hooks" bash "$repo_root/.dotfiles/git-hooks/install.sh" > /dev/n
 
 if [[ "$(git config --global --get core.hooksPath)" != "$hooks" ]]; then
   echo "✗ install.sh did not point core.hooksPath at $hooks" >&2
+  exit 1
+fi
+
+if [[ ! -x "$hooks/pinact-staged" ]]; then
+  echo "✗ install.sh did not install the staged pinact helper" >&2
   exit 1
 fi
 
@@ -137,5 +163,77 @@ if [[ ! -L "$theirs/post-checkout" ]]; then
   echo "✗ install.sh skipped hooks it had no reason to skip" >&2
   exit 1
 fi
+
+# The helper name is in a user-owned global hooks directory too. An unrelated
+# existing file must stop installation before either managed file is replaced.
+collision="$work/helper-collision"
+mkdir -p "$collision"
+printf '#!/bin/sh\necho mine\n' > "$collision/pinact-staged"
+chmod +x "$collision/pinact-staged"
+if GIT_HOOKS_DIR="$collision" bash "$repo_root/.dotfiles/git-hooks/install.sh" > /dev/null; then
+  echo "✗ install.sh overwrote a pre-existing staged pinact helper" >&2
+  exit 1
+fi
+if ! grep -q 'echo mine' "$collision/pinact-staged"; then
+  echo "✗ install.sh changed the pre-existing staged pinact helper" >&2
+  exit 1
+fi
+
+# pre-commit pins the snapshot in the index, not an unstaged version of the
+# same workflow. The working tree should receive the same one-line fix while
+# retaining unrelated unstaged edits.
+git config --global core.hooksPath "$hooks"
+pin_repo="$work/pin-repo"
+git init -q "$pin_repo"
+mkdir -p "$pin_repo/.github/workflows"
+cat > "$pin_repo/.github/workflows/quality.yml" <<'YAML'
+name: Quality
+jobs:
+  test:
+    steps:
+      - uses: actions/checkout@v4
+YAML
+git -C "$pin_repo" add .github/workflows/quality.yml
+printf '%s\n' '# unstaged note' >> "$pin_repo/.github/workflows/quality.yml"
+git -C "$pin_repo" -c user.email=t@example.com -c user.name=t commit -qm pin
+
+pinned='actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4'
+if ! git -C "$pin_repo" show HEAD:.github/workflows/quality.yml | grep -qF "$pinned"; then
+  echo "✗ pre-commit did not pin the staged workflow content" >&2
+  exit 1
+fi
+if git -C "$pin_repo" show HEAD:.github/workflows/quality.yml | grep -qF 'unstaged note'; then
+  echo "✗ pre-commit mixed an unstaged workflow edit into the commit" >&2
+  exit 1
+fi
+if ! grep -qF "$pinned" "$pin_repo/.github/workflows/quality.yml" ||
+   ! grep -qF 'unstaged note' "$pin_repo/.github/workflows/quality.yml"; then
+  echo "✗ pre-commit did not preserve the partially staged working tree" >&2
+  exit 1
+fi
+
+# An API or pinning failure must block the commit and leave both snapshots
+# untouched.
+printf '%s\n' '      - uses: actions/checkout@v4' >> "$pin_repo/.github/workflows/quality.yml"
+git -C "$pin_repo" add .github/workflows/quality.yml
+before_index="$(git -C "$pin_repo" show :.github/workflows/quality.yml)"
+before_worktree="$(cat "$pin_repo/.github/workflows/quality.yml")"
+if PINACT_FAIL=1 git -C "$pin_repo" -c user.email=t@example.com -c user.name=t commit -qm fail; then
+  echo "✗ pre-commit allowed a commit after pinact failed" >&2
+  exit 1
+fi
+if [[ "$(git -C "$pin_repo" show :.github/workflows/quality.yml)" != "$before_index" ]] ||
+   [[ "$(cat "$pin_repo/.github/workflows/quality.yml")" != "$before_worktree" ]]; then
+  echo "✗ pre-commit changed repository state after pinact failed" >&2
+  exit 1
+fi
+
+# The global hook runs in every repository. A commit with no staged workflow
+# must not require pinact to be installed or available on PATH.
+git -C "$pin_repo" reset -q HEAD -- .github/workflows/quality.yml
+mv "$work/bin/pinact" "$work/bin/pinact.disabled"
+printf '%s\n' 'ordinary file' > "$pin_repo/note.txt"
+git -C "$pin_repo" add note.txt
+git -C "$pin_repo" -c user.email=t@example.com -c user.name=t commit -qm ordinary
 
 echo "git hook tests passed"

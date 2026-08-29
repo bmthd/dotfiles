@@ -15,12 +15,12 @@ jobs:
     name: Mise
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # Resolving the `npm:` tools below reaches the npm registry, so send that
       # traffic through the same malware-blocking proxy the installed machines
       # use. Anonymous mode needs no bot-id and no extra permissions.
-      - uses: flatt-security/setup-takumi-guard-npm@v1
-      - uses: jdx/mise-action@v4
+      - uses: flatt-security/setup-takumi-guard-npm@6d4182745c1e474c35a023573c2612c085be45a4 # v1.2.0
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         with:
           install: false
       - name: Validate tool config parses
@@ -30,25 +30,29 @@ jobs:
       - name: Verify every locked version still resolves
         # Plain `mise lock` (no --bump) refreshes metadata for the versions
         # already in the lockfile rather than advancing them, and resolves URLs
-        # and checksums without installing — so this checks all 18 locked
+        # and checksums without installing — so this checks all 20 locked
         # versions without running any postinstall hook (ctx7's blocks on an
         # interactive login when CONTEXT7_API_KEY is absent, which it is here).
         run: mise lock --dry-run
       - name: Test tool pins and lockfile
         run: bash tests/mise-pins-test.sh
+      - name: Verify immutable GitHub Actions references
+        run: mise x pinact -- pinact run -check -verify-comment
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
 
   shellcheck:
     name: ShellCheck
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: ludeeus/action-shellcheck@master
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ludeeus/action-shellcheck@00cae500b08a931fb5698e11e79bfbd38e612a38 # 2.0.0
 
   syntax:
     name: Shell syntax
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: bash -n
         run: |
           bash -n install.sh
