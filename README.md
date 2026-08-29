@@ -59,6 +59,25 @@ mise lock --bump --minimum-release-age 2d
 ため、PR は作らず main に直接コミットします。なお、このフラグは `latest` のような
 fuzzy な指定にのみ効きます。バージョンをここで固定しない理由がこれです。
 
+### bump-tools.yml のセットアップ（初回のみ）
+
+main は ruleset `main-guardrails` で保護されており、`pull_request` ルールが直接
+push を禁止しています。既定の `GITHUB_TOKEN` は bypass に登録できません
+（GitHub Actions を bypass actor にできるのは Organization 所有のリポジトリだけで、
+ここは User 所有のため）。GitHub App なら登録できるので、App のトークンを使います。
+
+1. [GitHub App を作成](https://github.com/settings/apps/new)する。Repository
+   permissions は **Contents: Read and write** のみ。Webhook は不要
+2. 作成後、Client ID を控え、Private key を生成してダウンロードする
+3. その App をこのリポジトリに install する
+4. リポジトリの Secrets に登録する
+   - `BUMP_APP_CLIENT_ID` — 手順 2 の Client ID
+   - `BUMP_APP_PRIVATE_KEY` — ダウンロードした `.pem` の中身
+5. Settings > Rules > `main-guardrails` の Bypass list に、作成した App を
+   Integration として追加する
+
+`workflow_dispatch` から手動実行して、push まで通ることを確認してください。
+
 対策は 3 層に分かれ、それぞれ守る範囲が違います。
 
 | 層 | 手段 | 守る範囲 |
