@@ -7,9 +7,6 @@
 node = "latest"
 "npm:pnpm" = "latest"
 bun = "latest"
-[tools.github-cli]
-version = "latest"
-postinstall = "gh extension install github/gh-stack 2>/dev/null || gh extension upgrade stack 2>/dev/null || true"
 ghq = "latest"
 jq = "latest"
 uv = "latest"
@@ -20,6 +17,12 @@ opencode = "latest"
 oci = "latest"
 cloudflared = "latest"
 wrangler = "latest"
+
+# NOTE: Do not add bare tool keys below this line. TOML assigns them to the
+# most recent [tools.xxx] subtable instead of [tools].
+[tools.github-cli]
+version = "latest"
+postinstall = "gh extension install github/gh-stack 2>/dev/null || gh extension upgrade stack 2>/dev/null || true"
 
 [tools."npm:ctx7"]
 version = "latest"

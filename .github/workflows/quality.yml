@@ -16,6 +16,8 @@ jobs:
           install: false
       - name: Validate tool config parses
         run: mise ls
+      - name: Test tool declarations
+        run: bash tests/mise-tools-test.sh
       - name: Validate setup tasks parse
         run: mise tasks ls
 
