@@ -2,9 +2,9 @@
 
 set -euo pipefail
 
-# macOS ships bash 3.2, whose `[[ $s == *"..."* ]]` does not reliably match a
-# multibyte pattern — it silently reports "no match" and an assertion written
-# that way passes without testing anything. Match with grep -F instead.
+# Assert through grep -F rather than a bare `[[ $s == *"..."* ]]`: when one of
+# these fails it prints what was actually produced, which is what you need to
+# see when the notice is assembled from several printf calls.
 contains() { printf '%s' "$2" | grep -qF -- "$1"; }
 assert_contains() {
   contains "$1" "$2" || { printf 'expected to find %s in:\n%s\n' "$1" "$2" >&2; exit 1; }
@@ -93,6 +93,10 @@ fi
 
 # The notice degrades to the revision range alone when the compare call fails.
 printf '0\n' > "$config_dir/last-update-check"
+# export, not a `DOTFILES_TEST_COMPARE_FAIL=1 output=$(...)` prefix: that form
+# assigns in this shell without exporting, so the fake curl — an external
+# command — would never see the flag and this case would silently pass while
+# testing the success path.
 export DOTFILES_TEST_COMPARE_FAIL=1
 output="$(dotfiles_update_notice_check)"
 unset DOTFILES_TEST_COMPARE_FAIL
