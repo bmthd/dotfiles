@@ -1,30 +1,30 @@
 ---
-name: update-dotfiles
-description: Use when the user wants to modify the bmthd/dotfiles repository (mise tools, install.sh, docs, the skills that still live here) and open a PR from ANY terminal, even one where the repo is not checked out. Thin wrapper over update-repo. Invoke as /update-dotfiles <change>.
+name: dotfiles
+description: Use when the user wants to modify the bmthd/dotfiles repository (mise tools, install.sh, docs, the skills that still live here) and open a PR from ANY terminal, even one where the repo is not checked out. Thin wrapper over pr-anywhere. Invoke as /dotfiles <change>.
 argument-hint: <change to make>
 ---
 
-# Update Dotfiles
+# Dotfiles
 
-Shorthand for the `update-repo` skill with the target fixed to
+Shorthand for the `pr-anywhere` skill with the target fixed to
 `github.com/bmthd/dotfiles`.
 
-Follow `update-repo` exactly, with two adjustments:
+Follow `pr-anywhere` exactly, with two adjustments:
 
 - **Do not parse a repository out of `args`.** The target is always
   `bmthd/dotfiles`; the whole of `args` is the change to make. If `args` is empty,
   ask the user what to change.
 - Apply the repository notes below when editing.
 
-`update-repo` lives in [`bmthd/skills`](https://github.com/bmthd/skills) and the
+`pr-anywhere` lives in [`bmthd/skills`](https://github.com/bmthd/skills) and the
 `setup:skills` mise task installs it alongside this skill. If it is missing, install
-it with `npx skills add bmthd/skills -s update-repo -y -g -a claude-code`.
+it with `npx skills add bmthd/skills -s pr-anywhere -y -g -a claude-code`.
 
 ## Repository notes
 
 - **Most skills are no longer here.** The portable ones moved to `bmthd/skills` —
-  change them there. What remains under `.agents/skills/` is `update-dotfiles`
-  itself and `cognitive-rhythm-writing`, a vendored gist.
+  change them there. What remains under `.agents/skills/` is `dotfiles` itself and
+  `cognitive-rhythm-writing`, a vendored gist.
 - **Setup logic lives in `.mise.toml`**, not `install.sh`. `install.sh` is only a
   bootstrapper (install mise → place the config → `mise install` → `mise run setup`).
   Changes to tools, environment, or setup steps belong in `.mise.toml`.
