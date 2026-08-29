@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
 # Tests for the [tools] section of .mise.toml and its lockfile.
 #
-# Guards three things that have gone wrong or would go unnoticed:
-#   1. a tool drifting back to "latest", which would defeat minimumReleaseAge
+# Tools are declared as "latest", but mise.lock is what actually decides the
+# installed version: a locked version wins over a fuzzy selector. That makes the
+# lockfile the security boundary, so these tests guard it.
+#
+#   1. every declared tool has a locked version — an unlocked one resolves to
+#      whatever was published minutes ago, skipping the release-age gate
 #   2. a bare `tool = "version"` key written after a [tools.<name>] table, which
 #      TOML silently nests under that tool instead of registering a new one
-#   3. mise.lock falling out of sync with the pins, which leaves the bumped
-#      version installed without checksum verification
+#   3. nothing is locked that is no longer declared
 
 set -euo pipefail
 
@@ -31,17 +34,20 @@ def fail(message):
 
 
 # A tool is either `name = "version"` or a [tools.name] table with a `version`.
-pins = {}
+declared = {}
 for name, value in config["tools"].items():
-    if isinstance(value, str):
-        pins[name] = value
-    else:
-        pins[name] = value.get("version")
+    declared[name] = value if isinstance(value, str) else value.get("version")
 
-# 1. every tool is pinned
-for name, version in pins.items():
-    if version in (None, "latest", "lts"):
-        fail(f"{name} is not pinned to an exact version (got {version!r})")
+# 1. every declared tool is locked to a concrete version
+for name in declared:
+    entry = lock.get("tools", {}).get(name)
+    if entry is None:
+        fail(f"{name} is declared but absent from mise.lock; run `mise lock --bump --minimum-release-age 2d`")
+        continue
+    for e in (entry if isinstance(entry, list) else [entry]):
+        version = e.get("version")
+        if not version or version in ("latest", "lts"):
+            fail(f"{name} is locked to {version!r} rather than an exact version")
 
 # 2. no tool has been swallowed by a [tools.<name>] table. Options mise
 # understands on a tool table are known; anything else is a stray tool key.
@@ -58,22 +64,14 @@ for name, value in config["tools"].items():
                 f"tool; move it above the first [tools.<name>] table"
             )
 
-# 3. the lockfile agrees with the pins
-for name, version in pins.items():
-    entry = lock.get("tools", {}).get(name)
-    if entry is None:
-        fail(f"{name} is pinned to {version} but missing from mise.lock")
-        continue
-    locked = {e["version"] for e in (entry if isinstance(entry, list) else [entry])}
-    if version not in locked:
-        fail(
-            f"{name} is pinned to {version} but mise.lock has {sorted(locked)}; "
-            f"run `mise lock` and commit the result"
-        )
+# 3. the lockfile carries nothing that was dropped from the config
+for name in lock.get("tools", {}):
+    if name not in declared:
+        fail(f"{name} is locked but no longer declared in .mise.toml")
 
 if failures:
     print(f"\n{failures} failure(s)")
     sys.exit(1)
 
-print(f"✓ {len(pins)} tools pinned, none nested, lockfile in sync")
+print(f"✓ {len(declared)} tools declared, all locked, none nested")
 PY

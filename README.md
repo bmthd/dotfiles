@@ -36,25 +36,42 @@ curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/install.sh | ba
 - [`.agents/skills`](.agents/skills) — このリポジトリ専用のスキルのみ。汎用の
   スキルは [bmthd/skills](https://github.com/bmthd/skills) に分離しました
   (`npx skills add bmthd/skills`)。
-- [`mise.lock`](mise.lock) — `[tools]` の各バージョンに対応するダウンロード URL
-  とチェックサム。`install.sh` が `~/.config/mise/mise.lock` に配置します。
-- [`renovate.json`](renovate.json) — 更新 PR の方針。
+- [`mise.lock`](mise.lock) — 実際にインストールされるバージョンとチェックサム。
+  `install.sh` が `~/.config/mise/mise.lock` に配置します。
+- [`renovate.json`](renovate.json) — GitHub Actions の更新 PR の方針。
 
 ## サプライチェーン対策
 
-ツールは `latest` ではなく厳密なバージョンで固定しています。新しいバージョンが
-どのマシンに届くかを決めるのは上流の publish ではなく Renovate です。対策は 3 層
-に分かれ、それぞれ守る範囲が違います。
+`[tools]` の宣言は `latest` ですが、`latest` がそのまま入るわけではありません。
+mise は fuzzy な指定よりロックファイルのバージョンを優先するため、実際に入るのは
+`mise.lock` が決めたバージョンです。この 2 つの組み合わせが対策の中心にあります。
+
+ロックファイルは
+[`bump-tools.yml`](.github/workflows/bump-tools.yml) が毎日進めます。
+
+```bash
+mise lock --bump --minimum-release-age 2d
+```
+
+`--minimum-release-age` は公開から 2 日経っていないリリースを候補から外します。
+侵害されたリリースが取り込まれるのは publish 直後の数時間なので、この待機だけで
+その時間帯を丸ごと回避できます。レビューではなくこのフラグが安全性を担保している
+ため、PR は作らず main に直接コミットします。なお、このフラグは `latest` のような
+fuzzy な指定にのみ効きます。バージョンをここで固定しない理由がこれです。
+
+対策は 3 層に分かれ、それぞれ守る範囲が違います。
 
 | 層 | 手段 | 守る範囲 |
 | --- | --- | --- |
-| バージョン | `.mise.toml` のピン留め + Renovate の `minimumReleaseAge: 2 days` | publish 直後の 2 日間（侵害されたリリースが取り込まれる時間帯）を回避 |
-| 成果物 | `mise.lock` のチェックサム | 検証済みバージョンの差し替え・再 publish。npm 以外の 9 ツールが対象 |
-| パッケージ | `~/.npmrc` の [Takumi Guard](https://npm.flatt.tech/) プロキシ | npm 経由すべて。特にピン留めできない実行時の `npx ctx7@latest` / `npx skills add` |
+| バージョン | `mise.lock` + `--minimum-release-age 2d` | publish 直後の 2 日間 |
+| 成果物 | `mise.lock` のチェックサム | 検証済みバージョンの差し替え・再 publish |
+| パッケージ | `~/.npmrc` の [Takumi Guard](https://npm.flatt.tech/) プロキシ | npm 経由すべて。特にロックできない実行時の `npx ctx7@latest` / `npx skills add` |
 
-Renovate の更新は週 1 回の PR にまとめています。ツールのバージョンを変更したら
-`mise lock` を実行して `mise.lock` を更新してください。CI (`tests/mise-pins-test.sh`)
-がピン留めの漏れとロックファイルのずれを検出します。
+ロックファイルは必須です。取得に失敗した場合 `install.sh` は中断します。`latest`
+のまま `mise install` すると待機期間を迂回して最新版が入ってしまうためです。
+
+CI ([`tests/mise-pins-test.sh`](tests/mise-pins-test.sh)) が、ロックされていない
+ツールの混入を検出します。
 
 npm レジストリは環境変数ではなく `~/.npmrc` に書くため、プライベートレジストリを
 使うプロジェクトはリポジトリ側の `.npmrc` で上書きできます。既に独自のレジストリが
@@ -78,15 +95,16 @@ mise run setup:codex     # Claude Code 用 Codex プラグイン
 mise run setup:claude-plugins  # 公式プラグイン (TypeScript LSP)
 ```
 
-ツール本体のバージョンは固定されているため、`mise upgrade` ではなく Renovate の
-PR で更新します。手元で先に進めたい場合は `mise upgrade --bump` で `.mise.toml` の
-ピンを書き換え、`mise lock` でロックファイルを追従させてください。
+ツール本体のバージョンは `mise.lock` が決めるため、`mise upgrade` ではなく毎日の
+`bump-tools.yml` が更新します。手元で先に進めたい場合は
+`mise lock --bump --minimum-release-age 2d --global` を実行してください。
 
 スキルの更新は `npx skills update` ですが、上記のとおり内容を確認してから実行して
 ください。
 
 対話シェルの起動時には、1 日に 1 回まで dotfiles の `main` ブランチを確認します。
 インストール時に記録した revision より新しいコミットがあれば通知しますが、自動更新はしません。
+ロックファイルの更新も main へのコミットなので、ツールに更新があった日は通知が出ます。
 通知された場合は、次のコマンドで更新できます。
 
 ```bash

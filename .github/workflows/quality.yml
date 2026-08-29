@@ -5,8 +5,9 @@ on:
     branches: [main]
   pull_request:
   schedule:
-    # Catch an upstream pin that has been yanked, or a lockfile checksum that no
-    # longer matches its artifact, before a machine does.
+    # Catch a locked version that has been yanked, or a checksum that no longer
+    # matches its artifact, before a machine does. Runs after bump-tools.yml so
+    # it checks the day's freshly locked versions.
     - cron: "17 4 * * *"
 
 jobs:
@@ -26,11 +27,12 @@ jobs:
         run: mise ls
       - name: Validate setup tasks parse
         run: mise tasks ls
-      - name: Verify every pinned version still resolves
-        # `mise lock` resolves download URLs and checksums without installing,
-        # so this checks all 18 pins across the platforms in mise.lock without
-        # running any postinstall hook (ctx7's blocks on an interactive login
-        # when CONTEXT7_API_KEY is absent, which it is here).
+      - name: Verify every locked version still resolves
+        # Plain `mise lock` (no --bump) refreshes metadata for the versions
+        # already in the lockfile rather than advancing them, and resolves URLs
+        # and checksums without installing — so this checks all 18 locked
+        # versions without running any postinstall hook (ctx7's blocks on an
+        # interactive login when CONTEXT7_API_KEY is absent, which it is here).
         run: mise lock --dry-run
       - name: Test tool pins and lockfile
         run: bash tests/mise-pins-test.sh

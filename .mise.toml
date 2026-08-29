@@ -3,27 +3,31 @@
 # is only a thin bootstrapper (install mise → download this file →
 # `mise install` → `mise run setup`).
 
-# Versions are pinned rather than tracking `latest`, so that Renovate — not an
-# upstream publish — decides when a new version reaches any machine. Combined
-# with `minimumReleaseAge` in renovate.json this keeps the window in which a
-# compromised release is picked up (the first hours after publish, when
-# supply-chain worms do their damage) closed. Renovate opens one grouped PR a
-# week; regenerate the lockfile afterwards with `mise lock` in the repo (or
-# `mise lock --global` against the installed ~/.config/mise/config.toml).
+# Tools track `latest` here, but `latest` is not what gets installed: mise.lock
+# pins an exact version and checksum for every one of them, and a locked version
+# always wins over a fuzzy selector like `latest`. So this file says "follow
+# upstream" while the lockfile decides when that actually happens.
+#
+# The lockfile is advanced by .github/workflows/bump-tools.yml, once a week,
+# with `mise lock --bump --minimum-release-age 2d`. That flag only considers
+# releases that are at least two days old, which closes the window in which a
+# compromised release would be picked up — the first hours after publish, when
+# supply-chain worms do their damage. It applies to fuzzy selectors only, which
+# is exactly why the versions below stay `latest` rather than being pinned here.
 [tools]
-node = "26.8.1"
-"npm:pnpm" = "11.24.0"
-bun = "1.4.0"
-ghq = "1.10.1"
-jq = "1.8.2"
-uv = "0.12.7"
-"cargo:similarity-ts" = "0.5.0"
-"npm:@antfu/ni" = "30.5.0"
-"npm:@openai/codex" = "0.150.1"
-opencode = "1.18.23"
-oci = "3.91.0"
-cloudflared = "2026.8.2"
-wrangler = "4.127.0"
+node = "latest"
+"npm:pnpm" = "latest"
+bun = "latest"
+ghq = "latest"
+jq = "latest"
+uv = "latest"
+"cargo:similarity-ts" = "latest"
+"npm:@antfu/ni" = "latest"
+"npm:@openai/codex" = "latest"
+opencode = "latest"
+oci = "latest"
+cloudflared = "latest"
+wrangler = "latest"
 
 # NOTE: keep every plain `tool = "version"` entry above this line. A
 # `[tools.<name>]` table ends the `[tools]` table, so bare keys written after
@@ -32,11 +36,11 @@ wrangler = "4.127.0"
 # wrangler all sat under `[tools.github-cli]` and were silently never
 # installed.
 [tools.github-cli]
-version = "2.98.0"
+version = "latest"
 postinstall = "gh extension install github/gh-stack 2>/dev/null || gh extension upgrade stack 2>/dev/null || true"
 
 [tools."npm:ctx7"]
-version = "0.5.9"
+version = "latest"
 # The postinstall shells out to `npx`, which only exists once node is installed.
 # Without an explicit dependency mise may run it while node is still being
 # (re)installed — `mise upgrade` then fails the postinstall with exit code 127.
@@ -46,23 +50,23 @@ depends = ["node"]
 # CONTEXT7_API_KEY is set (CI) and otherwise keep the interactive sign-in.
 postinstall = "npx ctx7@latest setup --cli --claude --opencode --cursor --yes ${CONTEXT7_API_KEY:+--api-key \"$CONTEXT7_API_KEY\"}"
 
-# playwright-cli is deprecated; use @playwright/cli. The version series
-# restarted with the rename, so 0.1.18 (@playwright/cli's `latest` tag) is
-# newer than the 0.262.0 that the old playwright-cli package left behind.
+# playwright-cli is deprecated; use @playwright/cli. Note that the version
+# series restarted with the rename, so the current 0.1.x is newer than the
+# 0.262.0 that the old playwright-cli package left behind on some machines.
 [tools."npm:@playwright/cli"]
-version = "0.1.18"
+version = "latest"
 # `npx` comes from node; see the note on npm:ctx7
 depends = ["node"]
 postinstall = "npx skills add microsoft/playwright-cli -y -g -a claude-code -a opencode -a cursor"
 
 [tools."npm:difit"]
-version = "5.0.12"
+version = "latest"
 # `npx` comes from node; see the note on npm:ctx7
 depends = ["node"]
 postinstall = "npx skills add yoshiko-pg/difit -y -g -a claude-code -a opencode -a cursor"
 
 [tools."github:rtk-ai/rtk"]
-version = "0.46.0"
+version = "latest"
 # rtk init writes into each agent's config dir and fails outright if the dir
 # is missing, so create all three up front. On a fresh machine (and in CI)
 # nothing else has necessarily created ~/.cursor yet.

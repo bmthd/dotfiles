@@ -1,0 +1,57 @@
+name: Bump tools
+
+# Advances mise.lock — the file that decides which version of each tool is
+# actually installed — and pushes it straight to main. There is no PR to review:
+# the safety property is not human approval but `--minimum-release-age`, which
+# refuses to lock anything published less than two days ago.
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: bump-tools
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    name: Bump locked versions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # Resolving the `npm:` tools reaches the npm registry, so send that
+      # traffic through the same malware-blocking proxy the installed machines
+      # use. Anonymous mode needs no bot-id and no extra permissions.
+      - uses: flatt-security/setup-takumi-guard-npm@v1
+      - uses: jdx/mise-action@v4
+        with:
+          install: false
+
+      - name: Re-resolve every tool, ignoring releases younger than two days
+        # --bump re-resolves the `latest` selectors in .mise.toml against the
+        # newest *eligible* release and rewrites mise.lock. It never installs,
+        # so no postinstall hook runs here.
+        run: mise lock --bump --minimum-release-age 2d
+
+      - name: Test tool pins and lockfile
+        # Runs before the commit, so a bad resolution leaves main untouched
+        # rather than being pushed and reverted.
+        run: bash tests/mise-pins-test.sh
+
+      - name: Commit if anything moved
+        run: |
+          if git diff --quiet -- mise.lock; then
+            echo "No tool updates eligible today."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add mise.lock
+          git commit -m "chore(deps): bump locked tool versions" \
+                     -m "Resolved by mise lock --bump --minimum-release-age 2d."
+          git push
+          echo "### Tool updates" >> "$GITHUB_STEP_SUMMARY"
+          git show --stat --oneline HEAD >> "$GITHUB_STEP_SUMMARY"

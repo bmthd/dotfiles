@@ -39,13 +39,19 @@ mkdir -p "$HOME/.config/mise"
 curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/.mise.toml -o "$HOME/.config/mise/config.toml" \
   || echo "⚠ Failed to download mise config"
 
-# The lockfile that goes with it. mise pins exact versions in config.toml; the
-# lockfile adds download URLs and checksums, so a republished artifact under an
-# already-vetted version number is rejected. mise never creates a global
-# lockfile on its own (only `mise lock --global` does), so it ships with the
-# repo and is placed alongside the config.
-curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/mise.lock -o "$HOME/.config/mise/mise.lock" \
-  || echo "⚠ Failed to download mise lockfile (continuing without checksum verification)"
+# The lockfile that goes with it, and this one is not optional. config.toml
+# declares every tool as `latest`; the lockfile is what turns that into an exact
+# version and checksum. Without it `mise install` would resolve `latest` at run
+# time and install whatever was published minutes ago, skipping the two-day
+# release-age gate entirely — so a missing lockfile is a failure, not a warning.
+# mise never creates a global lockfile on its own (only `mise lock --global`
+# does), which is why it ships with the repo.
+if ! curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/mise.lock -o "$HOME/.config/mise/mise.lock"; then
+    echo "✗ Failed to download mise lockfile."
+    echo "  Aborting: installing without it would bypass the release-age gate"
+    echo "  and pull unverified latest versions."
+    exit 1
+fi
 
 if command -v mise &> /dev/null; then
     # Activate mise for this session

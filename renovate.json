@@ -5,17 +5,11 @@
   ],
   "minimumReleaseAge": "2 days",
   "internalChecksFilter": "strict",
+  "mise": {
+    "description": "Tools are declared as `latest` and pinned by mise.lock instead, which .github/workflows/bump-tools.yml advances daily. Renovate has nothing to bump here, and enabling it would only produce PRs that fight the lockfile.",
+    "enabled": false
+  },
   "packageRules": [
-    {
-      "description": "Hold every mise tool bump in a single weekly PR, so the dotfiles update notification stays meaningful instead of firing on every upstream release",
-      "matchManagers": [
-        "mise"
-      ],
-      "groupName": "mise tools",
-      "schedule": [
-        "before 5am on monday"
-      ]
-    },
     {
       "description": "Digest pins are not a new release, so the age check would only stall them",
       "matchUpdateTypes": [
