@@ -72,5 +72,7 @@ jobs:
         run: bash tests/statusline-test.sh
       - name: Test install ordering
         run: bash tests/install-order-test.sh
+      - name: Test OCI plugin migration
+        run: bash tests/oci-plugin-test.sh
       - name: Test global git hooks
         run: bash tests/git-hooks-test.sh

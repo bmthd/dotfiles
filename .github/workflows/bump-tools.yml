@@ -50,12 +50,12 @@ jobs:
           install: false
 
       # `oci` is the one tool that resolves through a plugin rather than a
-      # registry, and mise clones that plugin lazily. Doing it here rather than
-      # inside the lock step keeps the clone off the resolution path: when the
-      # two race, `mise lock` gives up on the version list and writes the
-      # literal string `latest` into mise.lock.
+      # registry. Use the same task as installed machines so this cannot drift
+      # back to mise's legacy asdf fallback. Installing it before the lock step
+      # also keeps the lazy clone off the resolution path: when the two race,
+      # `mise lock` gives up and writes the literal `latest` into mise.lock.
       - name: Install the plugin oci resolves through
-        run: mise plugins install oci
+        run: mise run --skip-tools setup:oci-plugin
 
       - name: Re-resolve every tool, ignoring releases younger than two days
         # --bump re-resolves the `latest` selectors in .mise.toml against the
