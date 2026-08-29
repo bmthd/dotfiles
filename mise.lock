@@ -303,7 +303,7 @@ backend = "npm:pnpm"
 
 [[tools.oci]]
 version = "3.91.0"
-backend = "asdf:oci"
+backend = "vfox:oci"
 
 [[tools.opencode]]
 version = "1.18.23"
