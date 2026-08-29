@@ -264,6 +264,20 @@ install_skills "orca" stablyai/orca -s '*'
 # mistakes gist.github.com for github.com and the page URL 404s.
 install_skills "japanese-tech-writing" https://gist.github.com/fd287c3133457c4fd8f5601d34aa817d.git
 install_skills "cognitive-rhythm-writing" https://gist.github.com/eb2929f13ed19c97188393d297be8432.git
+
+# Record which revision of bmthd/skills this machine now carries, so the
+# shell-startup notice can tell when that repository has moved on. `skills add`
+# takes no ref, so the head at this moment is the closest thing to "the revision
+# we installed" that exists — and recording it here is also what stops the
+# notice from firing again once an update has been applied.
+#
+# On a first install the notice script is not in place yet (setup:update-notice
+# puts it there, and mise may run the two in either order). That is harmless:
+# its own install step records every watched repository.
+UPDATE_NOTICE="$HOME/.config/dotfiles/update-notice.sh"
+if [ -r "$UPDATE_NOTICE" ]; then
+    bash "$UPDATE_NOTICE" record skills || echo "⚠ Failed to record the skills revision (continuing)"
+fi
 '''
 
 [tasks."setup:codex"]

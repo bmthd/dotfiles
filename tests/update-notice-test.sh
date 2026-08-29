@@ -20,26 +20,42 @@ trap 'rm -rf "$test_dir"' EXIT
 config_dir="$test_dir/config"
 fake_git="$test_dir/git"
 fake_curl="$test_dir/curl"
-compare_json="$test_dir/compare.json"
+compare_dotfiles="$test_dir/compare-dotfiles.json"
+compare_skills="$test_dir/compare-skills.json"
 
+skills_revision_file="$config_dir/revisions/bmthd-skills"
+
+# Both fakes answer per repository, because the point of the watch list is that
+# the two repositories move independently.
 cat > "$fake_git" <<'EOF'
 #!/usr/bin/env bash
-printf '%s\trefs/heads/main\n' "${DOTFILES_TEST_REMOTE_REVISION}"
+# ls-remote <url> <ref>
+case "$2" in
+  *skills*) printf '%s\trefs/heads/main\n' "${DOTFILES_TEST_REV_SKILLS}" ;;
+  *)        printf '%s\trefs/heads/main\n' "${DOTFILES_TEST_REV_DOTFILES}" ;;
+esac
 EOF
 chmod +x "$fake_git"
 
-# Stands in for `curl -fsSL ... /compare/<base>...<head>`. Exporting
-# DOTFILES_TEST_COMPARE_FAIL makes it exit non-zero the way real curl does on an
-# HTTP error, so the fallback path can be tested without a network.
+# Stands in for `curl -fsSL ... /<owner>/<repo>/compare/<base>...<head>`.
+# Exporting DOTFILES_TEST_COMPARE_FAIL makes it exit non-zero the way real curl
+# does on an HTTP error, so the fallback path can be tested without a network.
 cat > "$fake_curl" <<'EOF'
 #!/usr/bin/env bash
 [ -n "${DOTFILES_TEST_COMPARE_FAIL:-}" ] && exit 22
-cat "${DOTFILES_TEST_COMPARE_JSON}"
+url=""
+for arg in "$@"; do
+  case "$arg" in http*) url="$arg" ;; esac
+done
+case "$url" in
+  *skills*) cat "${DOTFILES_TEST_COMPARE_SKILLS}" ;;
+  *)        cat "${DOTFILES_TEST_COMPARE_DOTFILES}" ;;
+esac
 EOF
 chmod +x "$fake_curl"
 
 # Seven commits, so the five-commit cap has something to trim.
-cat > "$compare_json" <<'EOF'
+cat > "$compare_dotfiles" <<'EOF'
 {
   "status": "ahead",
   "total_commits": 7,
@@ -55,44 +71,100 @@ cat > "$compare_json" <<'EOF'
 }
 EOF
 
+cat > "$compare_skills" <<'EOF'
+{
+  "status": "ahead",
+  "total_commits": 1,
+  "commits": [
+    { "commit": { "message": "feat: スキルを追加 (#7)" } }
+  ]
+}
+EOF
+
 export DOTFILES_CONFIG_DIR="$config_dir"
 export DOTFILES_GIT_BIN="$fake_git"
 export DOTFILES_CURL_BIN="$fake_curl"
-export DOTFILES_TEST_COMPARE_JSON="$compare_json"
-export DOTFILES_TEST_REMOTE_REVISION="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+export DOTFILES_TEST_COMPARE_DOTFILES="$compare_dotfiles"
+export DOTFILES_TEST_COMPARE_SKILLS="$compare_skills"
+export DOTFILES_TEST_REV_DOTFILES="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+export DOTFILES_TEST_REV_SKILLS="1111111111111111111111111111111111111111"
 
-# shellcheck disable=SC1091
-source "$(dirname "$0")/../.dotfiles/update-notice.sh"
+notice="$(dirname "$0")/../.dotfiles/update-notice.sh"
 
-bash "$(dirname "$0")/../.dotfiles/update-notice.sh" install
-[ "$(cat "$config_dir/revision")" = "$DOTFILES_TEST_REMOTE_REVISION" ]
+# shellcheck disable=SC1090
+source "$notice"
 
-export DOTFILES_TEST_REMOTE_REVISION="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+# Nothing has been checked yet, so let every check below actually run.
+due() { printf '0\n' > "$config_dir/last-update-check"; }
+
+# `install` records every watched repository.
+bash "$notice" install
+[ "$(cat "$config_dir/revision")" = "$DOTFILES_TEST_REV_DOTFILES" ]
+[ "$(cat "$skills_revision_file")" = "$DOTFILES_TEST_REV_SKILLS" ]
+
+# `record <name>` records that one and leaves the others alone.
+export DOTFILES_TEST_REV_SKILLS="2222222222222222222222222222222222222222"
+export DOTFILES_TEST_REV_DOTFILES="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+bash "$notice" record skills
+[ "$(cat "$skills_revision_file")" = "$DOTFILES_TEST_REV_SKILLS" ]
+[ "$(cat "$config_dir/revision")" = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" ]
+
+# A name that is not on the watch list is a typo, not a silent no-op.
+if bash "$notice" record nosuchrepo 2>/dev/null; then
+  echo "record accepted an unknown repository" >&2
+  exit 1
+fi
 
 if command -v jq >/dev/null 2>&1; then
+  # Both repositories moved: one header, one block each, and the skill — which
+  # reinstalls the skills on its way through — is the single remedy.
+  export DOTFILES_TEST_REV_SKILLS="3333333333333333333333333333333333333333"
+  due
   output="$(dotfiles_update_notice_check)"
-  assert_contains "dotfiles の更新があります" "$output"
+  assert_contains "🔔 更新があります" "$output"
+  assert_contains "dotfiles (aaaaaaa → bbbbbbb)" "$output"
+  assert_contains "skills (2222222 → 3333333)" "$output"
   assert_contains "/dotfiles apply" "$output"
   assert_contains "curl -fsSL" "$output"
+  assert_lacks "mise run setup:skills" "$output"
   # Newest first, capped at five, with the remainder counted.
   assert_contains "  • docs: 7 番目 (#47)" "$output"
   assert_contains "  • feat: 3 番目 (#43)" "$output"
   assert_lacks "feat: 2 番目" "$output"
   assert_contains "ほか 2 件" "$output"
+  assert_contains "  • feat: スキルを追加 (#7)" "$output"
   # Only the subject line, never the squash-merge body.
   assert_lacks "body line" "$output"
+  # The header is printed once, not once per repository.
+  [ "$(printf '%s' "$output" | grep -cF '🔔')" = "1" ]
+
+  # Skills alone moved: no dotfiles block, and the remedy is the task that
+  # reinstalls them (and records the new revision), not the merge procedure.
+  printf '%s\n' "$DOTFILES_TEST_REV_DOTFILES" > "$config_dir/revision"
+  printf '%s\n' "$DOTFILES_TEST_REV_SKILLS" > "$skills_revision_file"
+  export DOTFILES_TEST_REV_SKILLS="4444444444444444444444444444444444444444"
+  due
+  output="$(dotfiles_update_notice_check)"
+  assert_contains "skills (3333333 → 4444444)" "$output"
+  assert_lacks "dotfiles (" "$output"
+  assert_contains "mise run setup:skills" "$output"
+  assert_lacks "/dotfiles apply" "$output"
 
   # An empty range must not print an empty details block.
-  printf '0\n' > "$config_dir/last-update-check"
-  output="$(DOTFILES_TEST_COMPARE_JSON=/dev/null dotfiles_update_notice_check)"
-  assert_contains "dotfiles の更新があります" "$output"
+  printf '%s\n' "3333333333333333333333333333333333333333" > "$skills_revision_file"
+  due
+  output="$(DOTFILES_TEST_COMPARE_SKILLS=/dev/null dotfiles_update_notice_check)"
+  assert_contains "skills (3333333 → 4444444)" "$output"
   assert_lacks "ほか" "$output"
 else
   echo "jq が無いので更新内容の表示テストはスキップ" >&2
 fi
 
+printf '%s\n' "$DOTFILES_TEST_REV_SKILLS" > "$skills_revision_file"
+printf '%s\n' "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" > "$config_dir/revision"
+
 # The notice degrades to the revision range alone when the compare call fails.
-printf '0\n' > "$config_dir/last-update-check"
+due
 # export, not a `DOTFILES_TEST_COMPARE_FAIL=1 output=$(...)` prefix: that form
 # assigns in this shell without exporting, so the fake curl — an external
 # command — would never see the flag and this case would silently pass while
@@ -100,23 +172,42 @@ printf '0\n' > "$config_dir/last-update-check"
 export DOTFILES_TEST_COMPARE_FAIL=1
 output="$(dotfiles_update_notice_check)"
 unset DOTFILES_TEST_COMPARE_FAIL
-assert_contains "dotfiles の更新があります" "$output"
+assert_contains "dotfiles (aaaaaaa → bbbbbbb)" "$output"
 assert_contains "/dotfiles apply" "$output"
-assert_contains "curl -fsSL" "$output"
 assert_lacks "番目" "$output"
 
 # ...and the same when jq is missing, which is the case on a shell that starts
 # before mise has put it on PATH.
-printf '0\n' > "$config_dir/last-update-check"
+due
 DOTFILES_JQ_BIN="$test_dir/absent-jq"
 output="$(dotfiles_update_notice_check)"
 # shellcheck disable=SC2034  # read by the sourced update-notice.sh, not by this file
 DOTFILES_JQ_BIN="jq"
-assert_contains "dotfiles の更新があります" "$output"
+assert_contains "dotfiles (aaaaaaa → bbbbbbb)" "$output"
 assert_lacks "番目" "$output"
 
+# A machine that predates a newly watched repository has no revision file for
+# it. Seed it silently — announcing every commit since the repository began
+# would be noise, and there is nothing here that a merge could lose.
+rm -f "$skills_revision_file"
+due
+output="$(dotfiles_update_notice_check)"
+assert_lacks "skills (" "$output"
+[ "$(cat "$skills_revision_file")" = "$DOTFILES_TEST_REV_SKILLS" ]
+
+# The dotfiles revision file is the common ancestor `/dotfiles apply` merges
+# against, so a missing one must stay silent rather than be invented — while
+# the other repositories are still checked.
+rm -f "$config_dir/revision"
+printf '%s\n' "3333333333333333333333333333333333333333" > "$skills_revision_file"
+due
+output="$(dotfiles_update_notice_check)"
+assert_lacks "dotfiles (" "$output"
+assert_contains "skills (3333333 → 4444444)" "$output"
+[ ! -e "$config_dir/revision" ]
+
 printf '%s\n' "$(date +%s)" > "$config_dir/last-update-check"
-if dotfiles_update_notice_check | grep -q 'dotfiles の更新があります'; then
+if dotfiles_update_notice_check | grep -q '更新があります'; then
   echo "check interval was ignored" >&2
   exit 1
 fi
