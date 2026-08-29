@@ -1,7 +1,10 @@
-# Dotfiles
+---
+name: dotfiles
+description: bmthd/dotfiles のセットアップを扱うときに使う。リポジトリ自体 (mise のツール、install.sh、ドキュメント、そこに残るスキル) を変更して PR を出す場合と、シェルが「dotfiles の更新があります」と表示した後にこの端末へ更新を適用する場合の両方。/dotfiles pr <変更内容> または /dotfiles apply として呼び出す。
+argument-hint: pr <変更内容> | apply
+---
 
-> [SKILL.md](SKILL.md) の日本語版。メンテナがレビューするための翻訳であり、
-> エージェントが従うのは `.md` 側。どちらかを編集したら両方を揃える。
+# Dotfiles
 
 [`bmthd/dotfiles`](https://github.com/bmthd/dotfiles) に対する2方向の作業。
 向きが逆なので混同してはいけない。`pr` は全端末に効くリポジトリを変更し、

@@ -1,7 +1,5 @@
 # /dotfiles pr — リポジトリを変更して PR を作る
 
-> [pr.md](pr.md) の日本語版。エージェントが従うのは `.md` 側。
-
 対象を `github.com/bmthd/dotfiles` に固定した `pr-anywhere` スキルの短縮形。
 リポジトリがチェックアウトされていない端末を含め、どこからでも動く。
 

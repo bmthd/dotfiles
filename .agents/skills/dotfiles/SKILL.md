@@ -41,10 +41,3 @@ Both subcommands rely on these.
   `setup:skills` task rather than vendored.
 - **CI (`.github/workflows/quality.yml`) runs** `mise ls`, `mise tasks ls`, ShellCheck,
   `bash -n`, `zsh -n`, and the scripts under `tests/`.
-
-## Japanese copies
-
-Every file here has a `.ja.md` twin ([SKILL.ja.md](SKILL.ja.md), [pr.ja.md](pr.ja.md),
-[apply.ja.md](apply.ja.md)) so the maintainer can review the content in Japanese.
-They are translations for humans, not additional instructions — follow the `.md`
-files, and keep both sides in sync when editing either.
