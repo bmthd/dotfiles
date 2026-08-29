@@ -3,26 +3,40 @@
 # is only a thin bootstrapper (install mise → download this file →
 # `mise install` → `mise run setup`).
 
+# Versions are pinned rather than tracking `latest`, so that Renovate — not an
+# upstream publish — decides when a new version reaches any machine. Combined
+# with `minimumReleaseAge` in renovate.json this keeps the window in which a
+# compromised release is picked up (the first hours after publish, when
+# supply-chain worms do their damage) closed. Renovate opens one grouped PR a
+# week; regenerate the lockfile afterwards with `mise lock` in the repo (or
+# `mise lock --global` against the installed ~/.config/mise/config.toml).
 [tools]
-node = "latest"
-"npm:pnpm" = "latest"
-bun = "latest"
+node = "26.8.1"
+"npm:pnpm" = "11.24.0"
+bun = "1.4.0"
+ghq = "1.10.1"
+jq = "1.8.2"
+uv = "0.12.7"
+"cargo:similarity-ts" = "0.5.0"
+"npm:@antfu/ni" = "30.5.0"
+"npm:@openai/codex" = "0.150.1"
+opencode = "1.18.23"
+oci = "3.91.0"
+cloudflared = "2026.8.2"
+wrangler = "4.127.0"
+
+# NOTE: keep every plain `tool = "version"` entry above this line. A
+# `[tools.<name>]` table ends the `[tools]` table, so bare keys written after
+# one become keys of *that tool* instead of new tools. ghq, jq, uv,
+# similarity-ts, @antfu/ni, @openai/codex, opencode, oci, cloudflared and
+# wrangler all sat under `[tools.github-cli]` and were silently never
+# installed.
 [tools.github-cli]
-version = "latest"
+version = "2.98.0"
 postinstall = "gh extension install github/gh-stack 2>/dev/null || gh extension upgrade stack 2>/dev/null || true"
-ghq = "latest"
-jq = "latest"
-uv = "latest"
-"cargo:similarity-ts" = "latest"
-"npm:@antfu/ni" = "latest"
-"npm:@openai/codex" = "latest"
-opencode = "latest"
-oci = "latest"
-cloudflared = "latest"
-wrangler = "latest"
 
 [tools."npm:ctx7"]
-version = "latest"
+version = "0.5.9"
 # The postinstall shells out to `npx`, which only exists once node is installed.
 # Without an explicit dependency mise may run it while node is still being
 # (re)installed — `mise upgrade` then fails the postinstall with exit code 127.
@@ -32,21 +46,23 @@ depends = ["node"]
 # CONTEXT7_API_KEY is set (CI) and otherwise keep the interactive sign-in.
 postinstall = "npx ctx7@latest setup --cli --claude --opencode --cursor --yes ${CONTEXT7_API_KEY:+--api-key \"$CONTEXT7_API_KEY\"}"
 
-# playwright-cli is deprecated; use @playwright/cli
+# playwright-cli is deprecated; use @playwright/cli. The version series
+# restarted with the rename, so 0.1.18 (@playwright/cli's `latest` tag) is
+# newer than the 0.262.0 that the old playwright-cli package left behind.
 [tools."npm:@playwright/cli"]
-version = "latest"
+version = "0.1.18"
 # `npx` comes from node; see the note on npm:ctx7
 depends = ["node"]
 postinstall = "npx skills add microsoft/playwright-cli -y -g -a claude-code -a opencode -a cursor"
 
 [tools."npm:difit"]
-version = "latest"
+version = "5.0.12"
 # `npx` comes from node; see the note on npm:ctx7
 depends = ["node"]
 postinstall = "npx skills add yoshiko-pg/difit -y -g -a claude-code -a opencode -a cursor"
 
 [tools."github:rtk-ai/rtk"]
-version = "latest"
+version = "0.46.0"
 # rtk init writes into each agent's config dir and fails outright if the dir
 # is missing, so create all three up front. On a fresh machine (and in CI)
 # nothing else has necessarily created ~/.cursor yet.
@@ -76,12 +92,54 @@ experimental = false
 [tasks.setup]
 description = "Run the full dotfiles setup (Claude Code, skills, plugins)"
 depends = [
+  "setup:npm-registry",
   "setup:claude",
   "setup:skills",
   "setup:codex",
   "setup:claude-plugins",
   "setup:update-notice",
 ]
+
+[tasks."setup:npm-registry"]
+description = "Route npm installs through the Takumi Guard malware-blocking proxy"
+shell = "bash -c"
+run = '''
+# Point npm at Takumi Guard (https://npm.flatt.tech/), a proxy that refuses to
+# serve packages it knows to be malicious. Anonymous mode ("Tier A") needs no
+# account: blocking only, no audit log.
+#
+# This covers the part of the supply chain that pinning cannot. The mise `npm:`
+# tools resolve to a pinned version and Renovate holds new ones back, but the
+# postinstall hooks below shell out to `npx ctx7@latest` and `npx skills add`,
+# which always fetch the newest package at run time. The proxy is the only
+# control that sits in front of those.
+#
+# It is written to ~/.npmrc, not exported as NPM_CONFIG_REGISTRY, so that a
+# project-level .npmrc (a work repo on a private registry) still wins — npm
+# reads env vars at a higher precedence than any .npmrc file.
+NPMRC="$HOME/.npmrc"
+REGISTRY="https://npm.flatt.tech/"
+touch "$NPMRC"
+current="$(sed -n 's/^registry=//p' "$NPMRC" | tail -1)"
+case "$current" in
+    "$REGISTRY")
+        echo "✓ npm registry already points at Takumi Guard"
+        ;;
+    ""|https://registry.npmjs.org*)
+        # No registry line, or still the npm default: safe to (re)write.
+        tmp="$(mktemp)"
+        grep -v '^registry=' "$NPMRC" > "$tmp" || true
+        printf 'registry=%s\n' "$REGISTRY" >> "$tmp"
+        cat "$tmp" > "$NPMRC"
+        rm -f "$tmp"
+        echo "✓ npm registry set to Takumi Guard ($REGISTRY)"
+        ;;
+    *)
+        # Somebody pointed ~/.npmrc at a registry of their own; leave it alone.
+        echo "⚠ ~/.npmrc already uses a custom registry ($current); leaving it unchanged"
+        ;;
+esac
+'''
 
 [tasks."setup:update-notice"]
 description = "Install the shell-startup dotfiles update notification"
@@ -149,6 +207,10 @@ fi
 
 [tasks."setup:skills"]
 description = "Install agent skills for Claude Code, OpenCode, and Cursor"
+# The `npx skills add` calls below must resolve through the Takumi Guard proxy,
+# so make the registry configuration an explicit dependency rather than relying
+# on the order of the parent task's depends list.
+depends = ["setup:npm-registry"]
 shell = "bash -c"
 run = '''
 # Skill directories for each agent CLI (Cursor reads ~/.agents/skills)
@@ -166,6 +228,13 @@ mkdir -p "$HOME/.claude/skills" "$HOME/.config/opencode/skills" "$HOME/.agents/s
 # there directly. Skills cross-reference each other by name, so all four
 # resolve once they share an agent's skills directory.
 # Update any of them later with `npx skills update`.
+#
+# SECURITY: these are the one dependency here that nothing checks. A skill is
+# Markdown that is loaded straight into every agent's context, so a compromised
+# one is a prompt-injection channel, not just a malicious package — and the
+# skills CLI has no way to pin a revision (`skills add` takes no ref, and the
+# skills-lock.json restore path is experimental and project-scoped). Treat
+# `npx skills update` as a change to review, not to run unattended.
 echo "📦 Installing skills..."
 install_skills() {
     local label="$1"; shift

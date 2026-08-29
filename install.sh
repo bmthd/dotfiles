@@ -39,9 +39,23 @@ mkdir -p "$HOME/.config/mise"
 curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/.mise.toml -o "$HOME/.config/mise/config.toml" \
   || echo "⚠ Failed to download mise config"
 
+# The lockfile that goes with it. mise pins exact versions in config.toml; the
+# lockfile adds download URLs and checksums, so a republished artifact under an
+# already-vetted version number is rejected. mise never creates a global
+# lockfile on its own (only `mise lock --global` does), so it ships with the
+# repo and is placed alongside the config.
+curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/mise.lock -o "$HOME/.config/mise/mise.lock" \
+  || echo "⚠ Failed to download mise lockfile (continuing without checksum verification)"
+
 if command -v mise &> /dev/null; then
     # Activate mise for this session
     eval "$(mise activate "$CURRENT_SHELL")" || true
+
+    # Point npm at the malware-blocking proxy before anything is installed:
+    # the `npm:` tools and the postinstall hooks that call `npx` all resolve
+    # through it. Tasks need no tools, so this runs before `mise install`.
+    echo "📦 Configuring npm registry..."
+    mise run setup:npm-registry || echo "⚠ Failed to configure npm registry (continuing)"
 
     # Install all tools via mise
     echo "📦 Installing all tools via mise..."
