@@ -59,6 +59,7 @@ mise tasks       # 個別のタスク一覧
 | [`mise.lock`](mise.lock) | 実際に入るバージョンとチェックサム |
 | [`.agents/skills`](.agents/skills) | このリポジトリ専用のスキル。汎用のものは [bmthd/skills](https://github.com/bmthd/skills) に分離 |
 | [`renovate.json`](renovate.json) | GitHub Actions の更新 PR の方針 |
+| [`.githooks`](.githooks) | `[tools]` を守る pre-commit フック。初回だけ実行するリンクのコマンドは [`.githooks/pre-commit`](.githooks/pre-commit) の冒頭に書いてある |
 
 ツールのバージョンは `mise upgrade` ではなく、毎日走る [`bump-tools.yml`](.github/workflows/bump-tools.yml) が `mise.lock` を進めることで上がります。
 手元で先に進めたい場合は `mise lock --bump --minimum-release-age 2d --global`。

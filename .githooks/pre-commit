@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# Runs the [tools] guards before .mise.toml or mise.lock can reach a commit.
+#
+# Not enabled by cloning. Link it into this repository's hooks directory once:
+#
+#   ln -sf "$(git rev-parse --show-toplevel)/.githooks/pre-commit" \
+#          "$(git rev-parse --git-common-dir)/hooks/pre-commit"
+#
+# Do NOT set core.hooksPath to .githooks instead. This machine's global
+# core.hooksPath points at the dispatcher in .dotfiles/git-hooks, and a
+# repository-level setting replaces it rather than adding to it — the worktree
+# trust step would stop running here. The dispatcher forwards to
+# <git-common-dir>/hooks/pre-commit, which is what the symlink above provides.
+#
+# The same script runs in CI (.github/workflows/quality.yml), so this hook only
+# moves the failure earlier; it is not the only thing enforcing it.
+
+set -euo pipefail
+
+repo="$(git rev-parse --show-toplevel)"
+
+# Nothing staged that these tests cover.
+if ! git diff --cached --name-only | grep -qE '^(\.mise\.toml|mise\.lock)$'; then
+    exit 0
+fi
+
+# Test what is being committed, not what happens to be in the working tree —
+# otherwise an unstaged edit either masks a broken commit or fails a fine one.
+staged="$(mktemp -d)"
+trap 'rm -rf "$staged"' EXIT
+git show :.mise.toml > "$staged/.mise.toml"
+git show :mise.lock > "$staged/mise.lock"
+
+bash "$repo/tests/mise-pins-test.sh" "$staged"

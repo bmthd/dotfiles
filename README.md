@@ -58,6 +58,7 @@ All of the setup logic lives in mise.
 | [`mise.lock`](mise.lock) | The versions and checksums that actually get installed |
 | [`.agents/skills`](.agents/skills) | Skills specific to this repository; the general-purpose ones live in [bmthd/skills](https://github.com/bmthd/skills) |
 | [`renovate.json`](renovate.json) | Update policy for GitHub Actions PRs |
+| [`.githooks`](.githooks) | A pre-commit hook guarding the `[tools]` block; see the header of [`.githooks/pre-commit`](.githooks/pre-commit) for the one-time link command |
 
 Tool versions move when the daily [`bump-tools.yml`](.github/workflows/bump-tools.yml) advances `mise.lock`, not through `mise upgrade`.
 To get ahead locally: `mise lock --bump --minimum-release-age 2d --global`.
