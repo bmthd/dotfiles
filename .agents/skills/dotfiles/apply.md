@@ -185,8 +185,30 @@ nothing** (`No project skills to update.`). This skill deals with global skills,
 npx skills update -g -y   # -g, if you run it at all
 ```
 
-Warnings about skills deleted upstream can appear. Nothing is deleted in
-non-interactive mode — just confirm there are no duplicate installs and move on.
+**`setup:skills` reports success even when a source failed.** Every line in the task
+runs through `install_skills`, which swallows the error and prints
+`⚠ <label> skills installation failed (continuing)`. The task then exits 0, so a source
+that installed nothing looks identical to one that worked. Read the task's output for
+those warnings, and confirm each source actually landed:
+
+```bash
+npx skills list -g
+```
+
+Re-run a failed source by hand — the failures are usually transient:
+
+```bash
+npx skills add <source> -y -g -a claude-code -a opencode -a cursor
+```
+
+**Skills removed or renamed upstream stay installed.** `npx skills` refuses to delete
+them in non-interactive mode and only prints a warning, so a rename leaves the old name
+sitting next to the new one — two skills claiming the same job, which is worse than
+either alone. Check the warnings against `npx skills list -g` and remove the leftovers:
+
+```bash
+npx skills remove <old-name> -g -y
+```
 
 ### 7. Record the revision and report
 
@@ -229,6 +251,7 @@ the judgment calls you made on their behalf lives.
 | Installed a file with conflict markers | mise cannot parse the config and every tool drops |
 | Verified with `mise ls`'s exit code alone | Wholesale-disabled tools sail straight through |
 | Ran `setup:codex` without `--skip-deps` | `settings.json` gets overwritten via `setup:claude` |
+| Took `setup:skills` exiting 0 as proof the skills installed | A source that installed nothing looks exactly like one that worked |
 | Replaced `permissions.allow` with the remote array | Every command this machine had allowed goes back to prompting |
 | Reverted a local pin to `latest` because it "looked old" | Pins have reasons. Do not remove one without confirming |
 | Dropped local divergence without asking or reporting | Nobody can work out why the machine broke |
