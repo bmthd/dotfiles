@@ -29,6 +29,7 @@ node = { version = "latest" }
 bun = { version = "latest" }
 ghq = { version = "latest" }
 jq = { version = "latest" }
+pinact = { version = "latest" }
 uv = { version = "latest" }
 "cargo:similarity-ts" = { version = "latest" }
 "npm:@antfu/ni" = { version = "latest" }

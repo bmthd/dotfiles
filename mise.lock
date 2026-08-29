@@ -348,6 +348,45 @@ checksum = "sha256:373cf36673836f2ce8847295a0bb2cd2447d03c769b44d84185916bd471b4
 url = "https://github.com/anomalyco/opencode/releases/download/v1.18.23/opencode-darwin-arm64.zip"
 url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/528740576"
 
+[[tools.pinact]]
+version = "4.1.1"
+backend = "aqua:suzuki-shunsuke/pinact"
+
+[tools.pinact."platforms.linux-arm64"]
+checksum = "sha256:dd1f29908319ed3e59f9fe6b39196efbb76936357f3bd741cd759a96306ae8d8"
+url = "https://github.com/suzuki-shunsuke/pinact/releases/download/v4.1.1/pinact_linux_arm64.tar.gz"
+provenance = "github-attestations"
+
+[tools.pinact."platforms.linux-arm64-musl"]
+checksum = "sha256:dd1f29908319ed3e59f9fe6b39196efbb76936357f3bd741cd759a96306ae8d8"
+url = "https://github.com/suzuki-shunsuke/pinact/releases/download/v4.1.1/pinact_linux_arm64.tar.gz"
+provenance = "github-attestations"
+
+[tools.pinact."platforms.linux-x64"]
+checksum = "sha256:d1cffebe5704b74e2e5f8a864efb9f7e54768972dc686188c008033fb1797841"
+url = "https://github.com/suzuki-shunsuke/pinact/releases/download/v4.1.1/pinact_linux_amd64.tar.gz"
+provenance = "github-attestations"
+
+[tools.pinact."platforms.linux-x64-baseline"]
+checksum = "sha256:d1cffebe5704b74e2e5f8a864efb9f7e54768972dc686188c008033fb1797841"
+url = "https://github.com/suzuki-shunsuke/pinact/releases/download/v4.1.1/pinact_linux_amd64.tar.gz"
+provenance = "github-attestations"
+
+[tools.pinact."platforms.linux-x64-musl"]
+checksum = "sha256:d1cffebe5704b74e2e5f8a864efb9f7e54768972dc686188c008033fb1797841"
+url = "https://github.com/suzuki-shunsuke/pinact/releases/download/v4.1.1/pinact_linux_amd64.tar.gz"
+provenance = "github-attestations"
+
+[tools.pinact."platforms.linux-x64-musl-baseline"]
+checksum = "sha256:d1cffebe5704b74e2e5f8a864efb9f7e54768972dc686188c008033fb1797841"
+url = "https://github.com/suzuki-shunsuke/pinact/releases/download/v4.1.1/pinact_linux_amd64.tar.gz"
+provenance = "github-attestations"
+
+[tools.pinact."platforms.macos-arm64"]
+checksum = "sha256:c13998c9f0dd09d8973700938aa5f6ac52a1db4e94d4f578d8cc976cda478614"
+url = "https://github.com/suzuki-shunsuke/pinact/releases/download/v4.1.1/pinact_darwin_arm64.tar.gz"
+provenance = "github-attestations"
+
 [[tools.uv]]
 version = "0.12.6"
 backend = "aqua:astral-sh/uv"

@@ -26,7 +26,7 @@ Afterwards, restart the shell or run `source ~/.zshrc` (`source ~/.bashrc` for b
 - **Agent skills** — the same set installed for Claude Code, OpenCode, and Cursor
 - **Plugins** — Codex, plus the official plugins (TypeScript LSP)
 - **npm registry** — routed through [Takumi Guard](https://npm.flatt.tech/), a proxy that refuses known-malicious packages
-- **Global git hooks** — a new worktree gets its mise config trusted as it is created, so shells started there don't fail with "Config files ... are not trusted" ([`.dotfiles/git-hooks`](.dotfiles/git-hooks))
+- **Global git hooks** — trust mise configs in new worktrees and pin staged GitHub Actions references before commit, while preserving repository hooks and partial staging ([`.dotfiles/git-hooks`](.dotfiles/git-hooks))
 
 The setup can be re-run at any time as a mise task.
 
@@ -60,7 +60,7 @@ All of the setup logic lives in mise.
 | [`mise.lock`](mise.lock) | The versions and checksums that actually get installed |
 | [`.agents/skills`](.agents/skills) | Skills specific to this repository; the general-purpose ones live in [bmthd/skills](https://github.com/bmthd/skills) |
 | [`renovate.json`](renovate.json) | Update policy for GitHub Actions PRs |
-| [`.githooks`](.githooks) | A pre-commit hook guarding the `[tools]` block; see the header of [`.githooks/pre-commit`](.githooks/pre-commit) for the one-time link command |
+| [`.githooks`](.githooks) | A repository pre-commit hook guarding the `[tools]` block; the global dispatcher runs pinact first and then forwards here |
 
 Tool versions move when the daily [`bump-tools.yml`](.github/workflows/bump-tools.yml) advances `mise.lock`, not through `mise upgrade`.
 To get ahead locally: `mise lock --bump --minimum-release-age 2d --global`.
