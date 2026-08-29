@@ -1,0 +1,78 @@
+name: Bump tools
+
+# Advances mise.lock — the file that decides which version of each tool is
+# actually installed — and pushes it straight to main. There is no PR to review:
+# the safety property is not human approval but `--minimum-release-age`, which
+# refuses to lock anything published less than two days ago.
+#
+# main is covered by the `main-guardrails` ruleset, whose `pull_request` rule
+# blocks direct pushes, so this needs an actor on the ruleset's bypass list. The
+# default GITHUB_TOKEN cannot be one: GitHub Actions can only be registered as a
+# bypass actor on organization-owned repositories, and this repository belongs to
+# a user. A GitHub App can, which is why this workflow mints an App token.
+# One-time setup is documented in README.md.
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bump-tools
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    name: Bump locked versions
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mint a token for the bypass-listed App
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.BUMP_APP_CLIENT_ID }}
+          private-key: ${{ secrets.BUMP_APP_PRIVATE_KEY }}
+
+      - uses: actions/checkout@v7
+        with:
+          # Keep the App token as the push credential; the default GITHUB_TOKEN
+          # would be rejected by the ruleset.
+          token: ${{ steps.app-token.outputs.token }}
+
+      # Resolving the `npm:` tools reaches the npm registry, so send that
+      # traffic through the same malware-blocking proxy the installed machines
+      # use. Anonymous mode needs no bot-id and no extra permissions.
+      - uses: flatt-security/setup-takumi-guard-npm@v1
+      - uses: jdx/mise-action@v4
+        with:
+          install: false
+
+      - name: Re-resolve every tool, ignoring releases younger than two days
+        # --bump re-resolves the `latest` selectors in .mise.toml against the
+        # newest *eligible* release and rewrites mise.lock. It never installs,
+        # so no postinstall hook runs here.
+        run: mise lock --bump --minimum-release-age 2d
+
+      - name: Test tool pins and lockfile
+        # Runs before the commit, so a bad resolution leaves main untouched
+        # rather than being pushed and reverted.
+        run: bash tests/mise-pins-test.sh
+
+      - name: Commit if anything moved
+        env:
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+        run: |
+          if git diff --quiet -- mise.lock; then
+            echo "No tool updates eligible today."
+            exit 0
+          fi
+          git config user.name "$APP_SLUG[bot]"
+          git config user.email "$APP_SLUG[bot]@users.noreply.github.com"
+          git add mise.lock
+          git commit -m "chore(deps): bump locked tool versions" \
+                     -m "Resolved by mise lock --bump --minimum-release-age 2d."
+          git push
+          echo "### Tool updates" >> "$GITHUB_STEP_SUMMARY"
+          git show --stat --oneline HEAD >> "$GITHUB_STEP_SUMMARY"
