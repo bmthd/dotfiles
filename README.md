@@ -2,8 +2,23 @@
 
 English | [日本語](README.ja.md)
 
-Dotfiles for setting up a development machine.
+Dotfiles for setting up development machines and keeping them that way.
 One command installs the CLI toolchain and configures Claude Code, Codex, OpenCode, and Cursor.
+
+## Why
+
+Setting up a new machine is the easy half.
+The harder half is keeping several of them — work, personal, a host, a VPS, a throwaway sandbox — in a state worth trusting months later, without a human holding in their head what is installed where, what has gone stale, and where the environments have drifted apart.
+Updating is rarely difficult; remembering that something is due is what gets skipped.
+
+So the goals are:
+
+- **Continuous maintenance, not just first-time setup.** Automating the initial install is the smaller half of the problem; the environments that already exist have to stay maintainable for years.
+- **Updates that do not depend on memory.** Whether an update exists is detected, not recalled. The machine says so; the human decides when to act on it.
+- **Reproducibility across machines.** No machine chases upstream on its own. Versions are resolved once, centrally, and each machine follows that resolved state through Git and a lockfile — so two machines updated a week apart still land on the same thing.
+- **Frequent updates without blind trust.** Raising the update frequency must not amount to trusting every new upstream release on sight. Staying current and staying deliberate is one tradeoff, not two independent goals.
+
+The mechanisms below — a lockfile, checksums, a release-age delay, immutable references, a registry proxy — are the current answer to those goals, not the goals themselves.
 
 ## Install
 
@@ -70,8 +85,7 @@ All of the setup logic lives in mise.
 Tool versions move when the daily [`bump-tools.yml`](.github/workflows/bump-tools.yml) advances `mise.lock`, not through `mise upgrade`.
 To get ahead locally: `mise lock --bump --minimum-release-age 2d --global`.
 
-This version management, together with the npm registry proxy, doubles as the supply-chain defense.
-How it works, and the one-time setup for `bump-tools.yml`, are in [docs/supply-chain.md](docs/supply-chain.md).
+How that resolve-centrally-and-follow structure doubles as the supply-chain defense, and the one-time setup for `bump-tools.yml`, are in [docs/supply-chain.md](docs/supply-chain.md).
 
 ## License
 
