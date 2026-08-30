@@ -9,6 +9,38 @@ trap 'rm -rf "$test_dir"' EXIT
 repo="$test_dir/repo"
 home="$test_dir/home"
 mise_config="$home/custom/mise.toml"
+managed_targets=(
+  "$mise_config"
+  "$(dirname "$mise_config")/mise.lock"
+  "$home/.claude/settings.json"
+  "$home/.claude/statusline.sh"
+  "$home/.config/dotfiles/update-notice.sh"
+)
+
+snapshot_managed_targets() {
+  local target
+  for target in "${managed_targets[@]}"; do
+    if [ -e "$target" ]; then
+      printf 'present %s %s\n' "$target" "$(git hash-object "$target")"
+    else
+      printf 'absent %s\n' "$target"
+    fi
+  done
+}
+
+assert_no_base_apply_does_not_write() {
+  local before after
+  before="$(snapshot_managed_targets)"
+  if bash "$script" apply --home "$home" --repo "$repo" --remote-ref HEAD --mise-config "$mise_config" --json >/dev/null 2>&1; then
+    echo 'apply accepted no-base inventory' >&2
+    exit 1
+  fi
+  after="$(snapshot_managed_targets)"
+  [ "$after" = "$before" ] || {
+    printf 'no-base apply changed managed targets:\nbefore:\n%s\nafter:\n%s\n' "$before" "$after" >&2
+    exit 1
+  }
+}
 
 mkdir -p "$repo" "$home/custom" "$home/.claude" "$home/.config/dotfiles"
 git -C "$repo" init -q
@@ -57,12 +89,14 @@ printf '%s' "$no_base" | jq -e \
   '.mode == "no-base"
    and .baseRevision == "dddddddddddddddddddddddddddddddddddddddd"
    and ([.files[].state] | all(. == "needs-decision"))' >/dev/null
+assert_no_base_apply_does_not_write
 
-before="$(cat "$mise_config")"
-if bash "$script" apply --home "$home" --repo "$repo" --remote-ref HEAD --mise-config "$mise_config" --json >/dev/null 2>&1; then
-  echo 'apply accepted no-base inventory' >&2
-  exit 1
-fi
-[ "$(cat "$mise_config")" = "$before" ]
+rm "$home/.config/dotfiles/revision" "$home/.config/dotfiles/update-notice.sh"
+missing_revision="$(bash "$script" plan --home "$home" --repo "$repo" --remote-ref HEAD --mise-config "$mise_config" --json)"
+printf '%s' "$missing_revision" | jq -e \
+  '.mode == "no-base"
+   and .baseRevision == ""
+   and ([.files[].state] | all(. == "needs-decision"))' >/dev/null
+assert_no_base_apply_does_not_write
 
 echo "apply tests passed"
