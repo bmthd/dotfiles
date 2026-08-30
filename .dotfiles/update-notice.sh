@@ -5,12 +5,12 @@
 # from. It only notifies; installing updates remains an explicit user action.
 
 DOTFILES_CONFIG_DIR="${DOTFILES_CONFIG_DIR:-$HOME/.config/dotfiles}"
-DOTFILES_GIT_HOST="${DOTFILES_GIT_HOST:-https://github.com}"
-DOTFILES_GIT_BIN="${DOTFILES_GIT_BIN:-git}"
 DOTFILES_UPDATE_CHECK_INTERVAL="${DOTFILES_UPDATE_CHECK_INTERVAL:-86400}"
 
-# Used only to list what changed, via the compare API. Kept separate from
-# DOTFILES_GIT_HOST because that one serves git URLs, not an API.
+# Both the remote head and the list of what changed come from the GitHub API,
+# so that every network call this file makes goes through curl and can be given
+# the same timeout. This runs at the start of every interactive shell: the one
+# thing it must never do is make opening a terminal wait on the network.
 DOTFILES_API="${DOTFILES_API:-https://api.github.com/repos}"
 DOTFILES_CURL_BIN="${DOTFILES_CURL_BIN:-curl}"
 DOTFILES_JQ_BIN="${DOTFILES_JQ_BIN:-jq}"
@@ -39,21 +39,48 @@ dotfiles_update_notice_watchlist() {
         "skills|bmthd/skills|$DOTFILES_CONFIG_DIR/revisions/bmthd-skills|seed"
 }
 
+# The head of main, as a bare SHA.
+#
+# This was `git ls-remote`, which takes no timeout: git's own connect and read
+# timeouts are unset by default, so behind a captive portal or on a dying Wi-Fi
+# link the fetch hangs, and with it the shell that sourced this file. The
+# commits API with `Accept: application/vnd.github.sha` answers with the same
+# SHA in plain text, needs no jq, and takes --max-time like the compare call.
 dotfiles_update_notice_remote_revision() {
-    command -v "$DOTFILES_GIT_BIN" >/dev/null 2>&1 || return 1
+    command -v "$DOTFILES_CURL_BIN" >/dev/null 2>&1 || return 1
 
     local revision
-    revision="$("$DOTFILES_GIT_BIN" ls-remote "$DOTFILES_GIT_HOST/$1.git" refs/heads/main 2>/dev/null)" || return 1
+    revision="$("$DOTFILES_CURL_BIN" -fsSL --max-time 5 \
+        -H 'Accept: application/vnd.github.sha' \
+        "$DOTFILES_API/$1/commits/main" 2>/dev/null)" || return 1
     revision="${revision%%[[:space:]]*}"
-    [ -n "$revision" ] || return 1
+    # An error body would otherwise be written to a revision file as if it were
+    # a commit, and every later comparison against it would report an update.
+    case "$revision" in
+        ''|*[!0-9a-f]*) return 1 ;;
+    esac
     printf '%s\n' "$revision"
 }
 
-# Record the remote head as what this machine has installed, for one watched
-# repository or (with no argument) all of them. Call it right after installing
-# from that repository: neither install.sh nor the skills CLI can pin a revision
-# — both take whatever main pointed at — so "the head at install time" is the
-# most honest answer available.
+# What install.sh recorded as the revision it installed from, for the watched
+# repository named here. install.sh resolves bmthd/dotfiles to one commit and
+# fetches every file from it, so that SHA — not whatever main points at by the
+# time this runs — is what this machine actually carries, and it is what
+# `/dotfiles apply` needs as its merge base. Empty when this is not running as
+# part of an installation, in which case the head is the best answer available.
+dotfiles_update_notice_pinned_revision() {
+    case "$1" in
+        dotfiles) printf '%s' "${DOTFILES_REVISION:-}" ;;
+    esac
+}
+
+# Record what this machine has installed, for one watched repository or (with
+# no argument) all of them. Call it right after installing from that repository.
+#
+# install.sh passes the commit it pinned the installation to, and that is what
+# gets recorded. The skills CLI has no such thing — `skills add` takes no ref —
+# so for bmthd/skills "the head at install time" remains the most honest answer
+# available, and the remote head is used.
 #
 # Networking failures are deliberately not fatal. This runs as the tail of a
 # setup task, and an offline machine should still finish setting itself up.
@@ -64,7 +91,9 @@ dotfiles_update_notice_record() {
         [ -n "$name" ] || continue
         [ -z "$want" ] || [ "$want" = "$name" ] || continue
         matched="yes"
-        revision="$(dotfiles_update_notice_remote_revision "$slug")" || continue
+        revision="$(dotfiles_update_notice_pinned_revision "$name")"
+        [ -n "$revision" ] ||
+            revision="$(dotfiles_update_notice_remote_revision "$slug")" || continue
         mkdir -p "${revision_file%/*}"
         printf '%s\n' "$revision" > "$revision_file"
     done <<EOF
