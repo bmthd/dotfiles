@@ -85,7 +85,8 @@ All of the setup logic lives in mise.
 Tool versions move when the daily [`bump-tools.yml`](.github/workflows/bump-tools.yml) advances `mise.lock`, not through `mise upgrade`.
 To get ahead locally: `mise lock --bump --minimum-release-age 2d --global`.
 
-How that resolve-centrally-and-follow structure doubles as the supply-chain defense, and the one-time setup for `bump-tools.yml`, are in [docs/supply-chain.md](docs/supply-chain.md).
+Resolving versions centrally and having every machine follow that result doubles as the supply-chain defense.
+How it works, and the one-time setup for `bump-tools.yml`, are in [docs/supply-chain.md](docs/supply-chain.md).
 
 ## License
 
