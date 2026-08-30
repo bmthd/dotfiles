@@ -159,6 +159,7 @@ else
   mode='no-base'
 fi
 
+emit_inventory() {
 if "$json"; then
   jq -n \
     --arg mode "$mode" \
@@ -171,56 +172,199 @@ else
     "$mode" "${base_revision:-<none>}" "$remote_revision"
   jq -r '.[] | "\(.state): \(.repositoryPath) -> \(.localPath)"' <<<"$files"
 fi
+}
 
-if [ "$command_name" = apply ]; then
-  if [ "$has_base" != true ]; then
-    printf 'cannot apply without a readable base revision\n' >&2
-    exit 1
+emit_apply_result() {
+  local result="$1"
+  local backup_path="$2"
+  local error="$3"
+
+  if "$json"; then
+    jq -n \
+      --arg mode "$mode" \
+      --arg base_revision "$base_revision" \
+      --arg remote_revision "$remote_revision" \
+      --arg result "$result" \
+      --arg backup_path "$backup_path" \
+      --arg error "$error" \
+      --argjson files "$files" \
+      '{mode: $mode, baseRevision: $base_revision, remoteRevision: $remote_revision,
+        files: $files, result: $result, backupPath: $backup_path, error: $error}'
+  else
+    printf 'result: %s\nbackup: %s\n' "$result" "${backup_path:-<none>}"
+    if [ -n "$error" ]; then
+      printf 'error: %s\n' "$error"
+    fi
   fi
+}
 
-  if jq -e 'any(.[]; .state == "conflict" or .state == "needs-decision")' <<<"$files" >/dev/null; then
-    printf 'cannot apply while merge conflicts need a decision\n' >&2
-    exit 1
-  fi
+if [ "$command_name" = plan ]; then
+  emit_inventory
+  exit 0
+fi
 
-  stage_dir="$work_dir/stage"
-  mkdir -p "$stage_dir"
-  for index in "${!repository_paths[@]}"; do
-    repository_path="${repository_paths[$index]}"
-    local_path="${local_paths[$index]}"
-    state="$(jq -r ".[$index].state" <<<"$files")"
-    stage_path="$stage_dir/$index"
-
-    case "$state" in
-      identical|unchanged-remote)
-        if [ -e "$local_path" ]; then
-          cp "$local_path" "$stage_path"
-        fi
-        ;;
-      unchanged-local|missing-local)
-        git -C "$repo" show "${remote_revision}:${repository_path}" > "$stage_path"
-        ;;
-      auto-merge)
-        if [ "$repository_path" = '.claude/settings.json' ]; then
-          remote_path="$work_dir/remote-settings.json"
-          git -C "$repo" show "${remote_revision}:${repository_path}" > "$remote_path"
-          jq --arg prefer local -f "$repo/.dotfiles/merge-settings.jq" \
-            "$local_path" "$remote_path" > "$stage_path"
-        else
-          base_path="$work_dir/base-stage-$index"
-          remote_path="$work_dir/remote-stage-$index"
-          git -C "$repo" show "${base_revision}:${repository_path}" > "$base_path"
-          git -C "$repo" show "${remote_revision}:${repository_path}" > "$remote_path"
-          git merge-file -p "$local_path" "$base_path" "$remote_path" > "$stage_path"
-        fi
-        ;;
-      *)
-        printf 'cannot stage %s in state %s\n' "$repository_path" "$state" >&2
-        exit 1
-        ;;
-    esac
-  done
-
-  printf 'apply staging is complete; transaction is not implemented yet\n' >&2
+if [ "$has_base" != true ]; then
+  printf 'cannot apply without a readable base revision\n' >&2
+  emit_apply_result 'failed' '' 'cannot apply without a readable base revision'
   exit 1
 fi
+
+if jq -e 'any(.[]; .state == "conflict" or .state == "needs-decision")' <<<"$files" >/dev/null; then
+  printf 'cannot apply while merge conflicts need a decision\n' >&2
+  emit_apply_result 'failed' '' 'cannot apply while merge conflicts need a decision'
+  exit 1
+fi
+
+stage_dir="$work_dir/stage"
+stage_paths=(
+  "$stage_dir/mise/config.toml"
+  "$stage_dir/mise/mise.lock"
+  "$stage_dir/.claude/settings.json"
+  "$stage_dir/.claude/statusline.sh"
+  "$stage_dir/.config/dotfiles/update-notice.sh"
+)
+mkdir -p "$stage_dir"
+for index in "${!repository_paths[@]}"; do
+  repository_path="${repository_paths[$index]}"
+  local_path="${local_paths[$index]}"
+  state="$(jq -r ".[$index].state" <<<"$files")"
+  stage_path="${stage_paths[$index]}"
+  mkdir -p "$(dirname "$stage_path")"
+
+  case "$state" in
+    identical|unchanged-remote)
+      if [ -e "$local_path" ]; then
+        cp "$local_path" "$stage_path"
+      fi
+      ;;
+    unchanged-local|missing-local)
+      git -C "$repo" show "${remote_revision}:${repository_path}" > "$stage_path"
+      ;;
+    auto-merge)
+      if [ "$repository_path" = '.claude/settings.json' ]; then
+        remote_path="$work_dir/remote-settings.json"
+        git -C "$repo" show "${remote_revision}:${repository_path}" > "$remote_path"
+        jq --arg prefer local -f "$repo/.dotfiles/merge-settings.jq" \
+          "$local_path" "$remote_path" > "$stage_path"
+      else
+        base_path="$work_dir/base-stage-$index"
+        remote_path="$work_dir/remote-stage-$index"
+        git -C "$repo" show "${base_revision}:${repository_path}" > "$base_path"
+        git -C "$repo" show "${remote_revision}:${repository_path}" > "$remote_path"
+        git merge-file -p "$local_path" "$base_path" "$remote_path" > "$stage_path"
+      fi
+      ;;
+    *)
+      printf 'cannot stage %s in state %s\n' "$repository_path" "$state" >&2
+      emit_apply_result 'failed' '' "cannot stage $repository_path in state $state"
+      exit 1
+      ;;
+  esac
+done
+
+mise_bin="${DOTFILES_APPLY_MISE_BIN:-mise}"
+
+validate_paths() {
+  local config_path="$1"
+  local settings_path="$2"
+  local statusline_path="$3"
+  local notice_path="$4"
+
+  jq empty "$settings_path" >/dev/null &&
+    bash -n "$statusline_path" &&
+    bash -n "$notice_path" &&
+    MISE_CONFIG_FILE="$config_path" "$mise_bin" tasks ls >/dev/null &&
+    MISE_CONFIG_FILE="$config_path" "$mise_bin" ls >/dev/null
+}
+
+if ! validate_paths "${stage_paths[0]}" "${stage_paths[2]}" "${stage_paths[3]}" "${stage_paths[4]}"; then
+  printf 'staged configuration validation failed\n' >&2
+  emit_apply_result 'failed' '' 'staged configuration validation failed'
+  exit 1
+fi
+
+backup_root="$home/.config/dotfiles/backups"
+mkdir -p "$backup_root"
+backup_path="$backup_root/$(date +%Y%m%d%H%M%S)-$$"
+mkdir "$backup_path"
+manifest_file="$backup_path/manifest.jsonl"
+for index in "${!local_paths[@]}"; do
+  local_path="${local_paths[$index]}"
+  backup_file="$backup_path/$index"
+  if [ -e "$local_path" ]; then
+    cp -p "$local_path" "$backup_file"
+    jq -n --arg local_path "$local_path" --arg backup_path "$backup_file" \
+      '{localPath: $local_path, present: true, backupPath: $backup_path}' >> "$manifest_file"
+  else
+    jq -n --arg local_path "$local_path" \
+      '{localPath: $local_path, present: false, backupPath: ""}' >> "$manifest_file"
+  fi
+done
+jq -s '.' "$manifest_file" > "$backup_path/manifest.json"
+rm "$manifest_file"
+
+rollback() {
+  local index local_path backup_file
+  for index in "${!local_paths[@]}"; do
+    local_path="${local_paths[$index]}"
+    backup_file="$backup_path/$index"
+    if jq -e ".[$index].present" "$backup_path/manifest.json" >/dev/null; then
+      mkdir -p "$(dirname "$local_path")" || return 1
+      cp -p "$backup_file" "$local_path" || return 1
+    else
+      rm -f -- "$local_path" || return 1
+    fi
+  done
+}
+
+apply_stage() {
+  local index local_path stage_path
+  for index in "${!local_paths[@]}"; do
+    local_path="${local_paths[$index]}"
+    stage_path="${stage_paths[$index]}"
+    mkdir -p "$(dirname "$local_path")" || return 1
+    cp "$stage_path" "$local_path" || return 1
+  done
+}
+
+rollback_with_error() {
+  local error="$1"
+  if ! rollback; then
+    error="$error; rollback failed"
+  fi
+  printf '%s\n' "$error" >&2
+  emit_apply_result 'rolled-back' "$backup_path" "$error"
+  exit 1
+}
+
+if ! apply_stage; then
+  rollback_with_error 'failed to apply staged configuration'
+fi
+
+if ! validate_paths "$mise_config" "${local_paths[2]}" "${local_paths[3]}" "${local_paths[4]}"; then
+  rollback_with_error 'post-apply configuration validation failed'
+fi
+
+run_mise() {
+  MISE_CONFIG_FILE="$mise_config" "$mise_bin" "$@" >&2
+}
+
+if ! run_mise run --skip-tools setup:oci-plugin; then
+  rollback_with_error 'mise run --skip-tools setup:oci-plugin failed; external side effects may remain'
+fi
+if ! run_mise install; then
+  rollback_with_error 'mise install failed; external side effects may remain'
+fi
+if ! run_mise run setup:skills; then
+  rollback_with_error 'mise run setup:skills failed; external side effects may remain'
+fi
+if ! run_mise run --skip-deps setup:codex; then
+  rollback_with_error 'mise run --skip-deps setup:codex failed; external side effects may remain'
+fi
+if ! run_mise run --skip-deps setup:claude-plugins; then
+  rollback_with_error 'mise run --skip-deps setup:claude-plugins failed; external side effects may remain'
+fi
+
+mkdir -p "$(dirname "$revision_file")"
+printf '%s\n' "$remote_revision" > "$revision_file"
+emit_apply_result 'applied' "$backup_path" ''
