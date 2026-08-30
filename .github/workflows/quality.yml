@@ -62,6 +62,7 @@ jobs:
           bash -n .dotfiles/update-notice.sh
           bash -n .dotfiles/git-hooks/dispatch
           bash -n .dotfiles/git-hooks/install.sh
+          bash -n .dotfiles/apply.sh
       - name: zsh -n
         # install.sh is documented to run under zsh too (see README), so
         # verify it parses cleanly there in addition to bash.
@@ -80,3 +81,7 @@ jobs:
         run: bash tests/oci-plugin-test.sh
       - name: Test global git hooks
         run: bash tests/git-hooks-test.sh
+      # apply.sh drives `mise run` through the DOTFILES_APPLY_MISE_BIN seam, so
+      # the suite stubs it out and needs no mise on this runner.
+      - name: Test dotfiles apply
+        run: bash tests/apply-test.sh
