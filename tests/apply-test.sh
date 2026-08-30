@@ -156,16 +156,25 @@ transaction_home="$transaction_dir/home"
 transaction_mise_config="$transaction_home/custom/selected-mise.toml"
 fake_mise="$transaction_dir/fake-mise"
 mise_log="$transaction_dir/mise.log"
+fake_bin="$transaction_dir/bin"
+restore_log="$transaction_dir/restore.log"
 
-mkdir -p "$transaction_dir"
+mkdir -p "$transaction_dir" "$fake_bin"
 cat > "$fake_mise" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 
-printf '%s\n' "$*" >> "$MISE_LOG"
+printf 'HOME=%s CONFIG=%s ARGS=%s\n' "$HOME" "$MISE_CONFIG_FILE" "$*" >> "$MISE_LOG"
 [ -n "${MISE_CONFIG_FILE:-}" ] && [ -f "$MISE_CONFIG_FILE" ]
 if grep -q 'invalid-toml' "$MISE_CONFIG_FILE"; then
   exit 2
+fi
+if [ "${MISE_FAIL_POST_VALIDATE:-}" = true ] && [ "$*" = 'tasks ls' ] \
+  && [ "$MISE_CONFIG_FILE" = "${MISE_POST_CONFIG:-}" ]; then
+  exit 33
+fi
+if [ "${MISE_SIGNAL_AT:-}" = "$*" ]; then
+  kill -TERM "$PPID"
 fi
 if [ "${MISE_FAIL_AT:-}" = "$*" ]; then
   exit 42
@@ -173,8 +182,41 @@ fi
 EOF
 chmod +x "$fake_mise"
 
+cat > "$fake_bin/cp" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+source_path=''
+for argument in "$@"; do
+  case "$argument" in
+    -*) ;;
+    *) source_path="$argument"; break ;;
+  esac
+done
+destination_path="${!#}"
+if [[ "$source_path" == */backups/* ]] && [ -n "${DOTFILES_RESTORE_LOG:-}" ]; then
+  printf '%s\n' "$destination_path" >> "$DOTFILES_RESTORE_LOG"
+fi
+if [ "${DOTFILES_FAIL_RESTORE_INDEX:-}" = "${source_path##*/}" ] && [[ "$source_path" == */backups/* ]]; then
+  exit 43
+fi
+exec /bin/cp "$@"
+EOF
+chmod +x "$fake_bin/cp"
+
+cat > "$fake_bin/mv" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ "${DOTFILES_FAIL_REVISION_MOVE:-}" = true ]; then
+  exit 44
+fi
+exec /bin/mv "$@"
+EOF
+chmod +x "$fake_bin/mv"
+
 setup_transaction_fixture() {
-  rm -rf "$transaction_repo" "$transaction_home" "$mise_log"
+  rm -rf "$transaction_repo" "$transaction_home" "$mise_log" "$restore_log"
   mkdir -p "$transaction_repo/.claude" "$transaction_repo/.dotfiles" \
     "$transaction_home/custom" "$transaction_home/.claude" \
     "$transaction_home/.config/dotfiles"
@@ -256,6 +298,133 @@ after_rollback="$(snapshot_transaction_targets)"
   exit 1
 }
 
+# This fails if one restore error stops rollback before every remaining target
+# has been attempted.  Target 0 is deliberately left unrestored; 1-4 must
+# still be restored and the structured error must name the failed path.
+setup_transaction_fixture
+before_partial_rollback="$(snapshot_transaction_targets)"
+if partial_rollback_result="$(PATH="$fake_bin:$PATH" DOTFILES_RESTORE_LOG="$restore_log" DOTFILES_FAIL_RESTORE_INDEX=0 \
+  DOTFILES_APPLY_MISE_BIN="$fake_mise" MISE_LOG="$mise_log" MISE_FAIL_AT='install' \
+  bash "$script" apply --home "$transaction_home" --repo "$transaction_repo" --remote-ref HEAD \
+  --mise-config "$transaction_mise_config" --json 2>"$transaction_dir/partial-rollback.err")"; then
+  echo 'apply accepted a failing mise install with restore failure' >&2
+  exit 1
+fi
+printf '%s' "$partial_rollback_result" | jq -e --arg path "$transaction_mise_config" \
+  '.result == "rolled-back" and (.error | contains($path))' >/dev/null
+expected_restore_log=$(printf '%s\n' \
+  "$transaction_mise_config" \
+  "$transaction_home/custom/mise.lock" \
+  "$transaction_home/.claude/settings.json" \
+  "$transaction_home/.claude/statusline.sh" \
+  "$transaction_home/.config/dotfiles/update-notice.sh")
+[ "$(<"$restore_log")" = "$expected_restore_log" ] || {
+  printf 'rollback did not attempt every target:\n%s\n' "$(<"$restore_log")" >&2
+  exit 1
+}
+[ "$(<"$transaction_mise_config")" = $'[tools]\nnode = "22"' ] || {
+  echo 'injected restore failure did not leave target 0 applied' >&2
+  exit 1
+}
+for target in \
+  "$transaction_home/custom/mise.lock" \
+  "$transaction_home/.claude/settings.json" \
+  "$transaction_home/.claude/statusline.sh" \
+  "$transaction_home/.config/dotfiles/update-notice.sh"; do
+  printf '%s' "$before_partial_rollback" | grep -F "present $target $(git hash-object "$target")" >/dev/null || {
+    echo "rollback did not restore $target after an earlier error" >&2
+    exit 1
+  }
+done
+
+# This fails if post-apply validation is not a transaction boundary.  The fake
+# parser accepts the staged config but rejects the selected config after it is
+# copied into HOME, so all target bytes and the initially absent target must be
+# restored.
+setup_transaction_fixture
+rm "$transaction_home/.config/dotfiles/update-notice.sh"
+before_post_validation="$(snapshot_transaction_targets)"
+if post_validation_result="$(DOTFILES_APPLY_MISE_BIN="$fake_mise" MISE_LOG="$mise_log" \
+  MISE_FAIL_POST_VALIDATE=true MISE_POST_CONFIG="$transaction_mise_config" \
+  bash "$script" apply --home "$transaction_home" --repo "$transaction_repo" --remote-ref HEAD \
+  --mise-config "$transaction_mise_config" --json 2>"$transaction_dir/post-validation.err")"; then
+  echo 'apply accepted malformed post-apply TOML' >&2
+  exit 1
+fi
+printf '%s' "$post_validation_result" | jq -e \
+  '.result == "rolled-back" and (.error | contains("post-apply configuration validation failed"))' >/dev/null
+[ "$(snapshot_transaction_targets)" = "$before_post_validation" ] || {
+  echo 'post-apply validation did not restore all managed targets' >&2
+  exit 1
+}
+[ "$(<"$transaction_home/.config/dotfiles/revision")" = "$transaction_base_revision" ] || {
+  echo 'post-apply validation advanced revision' >&2
+  exit 1
+}
+
+# This fails if an interrupt during a long-running setup task bypasses the
+# transaction cleanup and leaves managed files applied with the old revision.
+setup_transaction_fixture
+rm "$transaction_home/.config/dotfiles/update-notice.sh"
+before_interrupt="$(snapshot_transaction_targets)"
+if interrupt_result="$(DOTFILES_APPLY_MISE_BIN="$fake_mise" MISE_LOG="$mise_log" MISE_SIGNAL_AT='install' \
+  bash "$script" apply --home "$transaction_home" --repo "$transaction_repo" --remote-ref HEAD \
+  --mise-config "$transaction_mise_config" --json 2>"$transaction_dir/interrupt.err")"; then
+  echo 'apply accepted an interrupt during mise install' >&2
+  exit 1
+fi
+printf '%s' "$interrupt_result" | jq -e \
+  '.result == "rolled-back" and (.error | contains("interrupted"))' >/dev/null
+[ "$(snapshot_transaction_targets)" = "$before_interrupt" ] || {
+  echo 'interrupt did not rollback all managed targets' >&2
+  exit 1
+}
+[ "$(<"$transaction_home/.config/dotfiles/revision")" = "$transaction_base_revision" ] || {
+  echo 'interrupt advanced revision' >&2
+  exit 1
+}
+
+# This fails if an atomic revision replacement error leaves applied targets or
+# truncates the old revision.  The test intercepts only mv after all tasks.
+setup_transaction_fixture
+before_revision_failure="$(snapshot_transaction_targets)"
+revision_before="$(<"$transaction_home/.config/dotfiles/revision")"
+if revision_failure_result="$(PATH="$fake_bin:$PATH" DOTFILES_FAIL_REVISION_MOVE=true \
+  DOTFILES_APPLY_MISE_BIN="$fake_mise" MISE_LOG="$mise_log" \
+  bash "$script" apply --home "$transaction_home" --repo "$transaction_repo" --remote-ref HEAD \
+  --mise-config "$transaction_mise_config" --json 2>"$transaction_dir/revision.err")"; then
+  echo 'apply accepted a failing atomic revision replacement' >&2
+  exit 1
+fi
+printf '%s' "$revision_failure_result" | jq -e \
+  '.result == "rolled-back" and (.error | contains("failed to update revision"))' >/dev/null
+[ "$(snapshot_transaction_targets)" = "$before_revision_failure" ] || {
+  echo 'revision update failure did not rollback all managed targets' >&2
+  exit 1
+}
+[ "$(<"$transaction_home/.config/dotfiles/revision")" = "$revision_before" ] || {
+  echo 'revision update failure damaged the previous revision' >&2
+  exit 1
+}
+
+# This fails if dangling symlinks are treated as absent and followed while
+# applying staged output.  A safe implementation rejects the target before it
+# can create the dangling referent or a backup transaction.
+setup_transaction_fixture
+dangling_target="$transaction_home/dangling-mise-target"
+rm "$transaction_mise_config"
+ln -s "$dangling_target" "$transaction_mise_config"
+if DOTFILES_APPLY_MISE_BIN="$fake_mise" MISE_LOG="$mise_log" \
+  bash "$script" apply --home "$transaction_home" --repo "$transaction_repo" --remote-ref HEAD \
+  --mise-config "$transaction_mise_config" --json >/dev/null 2>"$transaction_dir/dangling.err"; then
+  echo 'apply accepted a dangling managed symlink' >&2
+  exit 1
+fi
+[ -L "$transaction_mise_config" ] && [ ! -e "$dangling_target" ] && [ ! -e "$transaction_home/.config/dotfiles/backups" ] || {
+  echo 'dangling managed symlink was mutated before rejection' >&2
+  exit 1
+}
+
 # This fails if malformed staged TOML is allowed to reach HOME or create a
 # backup.  The fake parser only accepts the config file passed through the
 # configurable MISE_CONFIG_FILE seam.
@@ -298,9 +467,18 @@ printf '%s' "$success_result" | jq -e \
   echo '--mise-config did not receive the staged config' >&2
   exit 1
 }
-expected_mise_log=$'tasks ls\nls\ntasks ls\nls\nrun --skip-tools setup:oci-plugin\ninstall\nrun setup:skills\nrun --skip-deps setup:codex\nrun --skip-deps setup:claude-plugins'
-[ "$(<"$mise_log")" = "$expected_mise_log" ] || {
-  printf 'unexpected mise invocation order:\n%s\n' "$(<"$mise_log")" >&2
+grep -vF "HOME=$transaction_home " "$mise_log" >/dev/null && {
+  printf 'mise inherited a HOME other than --home:\n%s\n' "$(<"$mise_log")" >&2
+  exit 1
+}
+expected_mise_args=$'tasks ls\nls\ntasks ls\nls\nrun --skip-tools setup:oci-plugin\ninstall\nrun setup:skills\nrun --skip-deps setup:codex\nrun --skip-deps setup:claude-plugins'
+[ "$(sed 's/^.* ARGS=//' "$mise_log")" = "$expected_mise_args" ] || {
+  printf 'mise did not receive the selected HOME/config or expected task order:\n%s\n' "$(<"$mise_log")" >&2
+  exit 1
+}
+expected_post_mise_args=$'tasks ls\nls\nrun --skip-tools setup:oci-plugin\ninstall\nrun setup:skills\nrun --skip-deps setup:codex\nrun --skip-deps setup:claude-plugins'
+[ "$(grep -F "CONFIG=$transaction_mise_config " "$mise_log" | sed 's/^.* ARGS=//')" = "$expected_post_mise_args" ] || {
+  printf 'post-apply mise calls ignored --mise-config:\n%s\n' "$(<"$mise_log")" >&2
   exit 1
 }
 

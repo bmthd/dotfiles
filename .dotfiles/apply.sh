@@ -86,8 +86,33 @@ local_paths=(
   "$home/.config/dotfiles/update-notice.sh"
 )
 
+for local_path in "${local_paths[@]}"; do
+  if [ -L "$local_path" ] || { [ -e "$local_path" ] && [ ! -f "$local_path" ]; }; then
+    printf 'managed target is not a regular file: %s\n' "$local_path" >&2
+    exit 1
+  fi
+done
+
 work_dir="$(mktemp -d)"
-trap 'rm -rf "$work_dir"' EXIT
+transaction_active=false
+transaction_committed=false
+
+cleanup_transaction() {
+  local exit_code="$1"
+
+  trap - EXIT INT TERM
+  if [ "$transaction_active" = true ] && [ "$transaction_committed" != true ]; then
+    if ! rollback; then
+      printf 'rollback after unexpected exit failed for: %s\n' "$rollback_error_summary" >&2
+    fi
+  fi
+  rm -rf "$work_dir"
+  exit "$exit_code"
+}
+
+trap 'exit_code=$?; cleanup_transaction "$exit_code"' EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 files_file="$work_dir/files.jsonl"
 
 blob_for() {
@@ -273,8 +298,8 @@ validate_paths() {
   jq empty "$settings_path" >/dev/null &&
     bash -n "$statusline_path" &&
     bash -n "$notice_path" &&
-    MISE_CONFIG_FILE="$config_path" "$mise_bin" tasks ls >/dev/null &&
-    MISE_CONFIG_FILE="$config_path" "$mise_bin" ls >/dev/null
+    HOME="$home" MISE_CONFIG_FILE="$config_path" "$mise_bin" tasks ls >/dev/null &&
+    HOME="$home" MISE_CONFIG_FILE="$config_path" "$mise_bin" ls >/dev/null
 }
 
 if ! validate_paths "${stage_paths[0]}" "${stage_paths[2]}" "${stage_paths[3]}" "${stage_paths[4]}"; then
@@ -302,19 +327,29 @@ for index in "${!local_paths[@]}"; do
 done
 jq -s '.' "$manifest_file" > "$backup_path/manifest.json"
 rm "$manifest_file"
+transaction_active=true
 
 rollback() {
-  local index local_path backup_file
+  local index local_path backup_file present
+  rollback_error_summary=''
   for index in "${!local_paths[@]}"; do
     local_path="${local_paths[$index]}"
     backup_file="$backup_path/$index"
-    if jq -e ".[$index].present" "$backup_path/manifest.json" >/dev/null; then
-      mkdir -p "$(dirname "$local_path")" || return 1
-      cp -p "$backup_file" "$local_path" || return 1
+    if ! present="$(jq -r ".[$index].present" "$backup_path/manifest.json")"; then
+      rollback_error_summary="${rollback_error_summary}${rollback_error_summary:+, }$local_path"
+      continue
+    fi
+    if [ "$present" = true ]; then
+      if ! mkdir -p "$(dirname "$local_path")" || ! cp -p "$backup_file" "$local_path"; then
+        rollback_error_summary="${rollback_error_summary}${rollback_error_summary:+, }$local_path"
+      fi
     else
-      rm -f -- "$local_path" || return 1
+      if ! rm -f -- "$local_path"; then
+        rollback_error_summary="${rollback_error_summary}${rollback_error_summary:+, }$local_path"
+      fi
     fi
   done
+  [ -z "$rollback_error_summary" ]
 }
 
 apply_stage() {
@@ -329,13 +364,33 @@ apply_stage() {
 
 rollback_with_error() {
   local error="$1"
+  transaction_active=false
   if ! rollback; then
-    error="$error; rollback failed"
+    error="$error; rollback failed for: $rollback_error_summary"
   fi
   printf '%s\n' "$error" >&2
   emit_apply_result 'rolled-back' "$backup_path" "$error"
   exit 1
 }
+
+handle_signal() {
+  local exit_code="$1"
+  local error='transaction interrupted; external side effects may remain'
+
+  trap - INT TERM
+  if [ "$transaction_active" = true ] && [ "$transaction_committed" != true ]; then
+    transaction_active=false
+    if ! rollback; then
+      error="$error; rollback failed for: $rollback_error_summary"
+    fi
+    printf '%s\n' "$error" >&2
+    emit_apply_result 'rolled-back' "$backup_path" "$error"
+  fi
+  exit "$exit_code"
+}
+
+trap 'handle_signal 130' INT
+trap 'handle_signal 143' TERM
 
 if ! apply_stage; then
   rollback_with_error 'failed to apply staged configuration'
@@ -346,7 +401,7 @@ if ! validate_paths "$mise_config" "${local_paths[2]}" "${local_paths[3]}" "${lo
 fi
 
 run_mise() {
-  MISE_CONFIG_FILE="$mise_config" "$mise_bin" "$@" >&2
+  HOME="$home" MISE_CONFIG_FILE="$mise_config" "$mise_bin" "$@" >&2
 }
 
 if ! run_mise run --skip-tools setup:oci-plugin; then
@@ -365,6 +420,24 @@ if ! run_mise run --skip-deps setup:claude-plugins; then
   rollback_with_error 'mise run --skip-deps setup:claude-plugins failed; external side effects may remain'
 fi
 
-mkdir -p "$(dirname "$revision_file")"
-printf '%s\n' "$remote_revision" > "$revision_file"
+write_revision() {
+  local revision_dir revision_temp
+
+  revision_dir="$(dirname "$revision_file")"
+  mkdir -p "$revision_dir" || return 1
+  revision_temp="$(mktemp "$revision_dir/.revision.XXXXXX")" || return 1
+  if ! printf '%s\n' "$remote_revision" > "$revision_temp"; then
+    rm -f "$revision_temp"
+    return 1
+  fi
+  if ! mv -f "$revision_temp" "$revision_file"; then
+    rm -f "$revision_temp"
+    return 1
+  fi
+}
+
+if ! write_revision; then
+  rollback_with_error 'failed to update revision; external side effects may remain'
+fi
+transaction_committed=true
 emit_apply_result 'applied' "$backup_path" ''
