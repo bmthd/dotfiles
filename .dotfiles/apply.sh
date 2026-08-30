@@ -97,7 +97,6 @@ work_dir="$(mktemp -d)"
 transaction_active=false
 transaction_committed=false
 transaction_phase='inactive'
-pending_signal=''
 
 cleanup_transaction() {
   local exit_code="$1"
@@ -335,6 +334,11 @@ transaction_phase='active'
 
 rollback() {
   local index local_path backup_file present
+  # A half-applied rollback is worse than either end state, and the signal that
+  # would interrupt it has already been accounted for by the caller. Drop INT
+  # and TERM for the duration; every caller exits afterwards, so nothing needs
+  # them restored.
+  trap '' INT TERM
   rollback_error_summary=''
   for index in "${!local_paths[@]}"; do
     local_path="${local_paths[$index]}"
@@ -376,31 +380,56 @@ rollback_with_error() {
   transaction_phase='rolled-back'
   printf '%s\n' "$error" >&2
   emit_apply_result 'rolled-back' "$backup_path" "$error"
-  if [ -n "$pending_signal" ]; then
-    exit "$pending_signal"
-  fi
   exit 1
 }
 
-handle_signal() {
+# True once the revision file holds the revision this run is installing. Read
+# from disk on purpose: the replacement is a single `mv`, and a signal arriving
+# the instant it returns is delivered before any variable could record it.
+revision_is_committed() {
+  [ -f "$revision_file" ] || return 1
+  [ "$(cat "$revision_file" 2>/dev/null)" = "$remote_revision" ]
+}
+
+# Tear down an interrupted transaction that never committed, then exit. Shared
+# by the two phases that can be interrupted with work already applied.
+interrupt_rollback() {
   local exit_code="$1"
   local error='transaction interrupted; external side effects may remain'
 
+  transaction_phase='rolling-back'
+  if ! rollback; then
+    error="$error; rollback failed for: $rollback_error_summary"
+  fi
+  transaction_active=false
+  transaction_phase='rolled-back'
+  printf '%s\n' "$error" >&2
+  emit_apply_result 'rolled-back' "$backup_path" "$error"
+  exit "$exit_code"
+}
+
+# Signals are never deferred and resumed. A handler that records a flag and
+# returns depends on bash resuming the function the signal interrupted, which
+# it does not do reliably once the interruption lands inside a function call —
+# the commit was silently lost on Linux while the same code worked on macOS.
+# Every branch below settles the transaction and exits from the handler.
+handle_signal() {
+  local exit_code="$1"
+
   case "$transaction_phase" in
-    committing|rolling-back)
-      pending_signal="$exit_code"
-      return
+    committing)
+      if revision_is_committed; then
+        # The replacement landed. Finish the commit rather than tearing down a
+        # transaction that is, on disk, already complete.
+        transaction_committed=true
+        transaction_phase='committed'
+        emit_apply_result 'applied' "$backup_path" ''
+        exit "$exit_code"
+      fi
+      interrupt_rollback "$exit_code"
       ;;
     active)
-      transaction_phase='rolling-back'
-      if ! rollback; then
-        error="$error; rollback failed for: $rollback_error_summary"
-      fi
-      transaction_active=false
-      transaction_phase='rolled-back'
-      printf '%s\n' "$error" >&2
-      emit_apply_result 'rolled-back' "$backup_path" "$error"
-      exit "$exit_code"
+      interrupt_rollback "$exit_code"
       ;;
     *)
       exit "$exit_code"
@@ -463,6 +492,3 @@ fi
 transaction_committed=true
 transaction_phase='committed'
 emit_apply_result 'applied' "$backup_path" ''
-if [ -n "$pending_signal" ]; then
-  exit "$pending_signal"
-fi
