@@ -29,6 +29,7 @@ node = { version = "latest" }
 bun = { version = "latest" }
 ghq = { version = "latest" }
 jq = { version = "latest" }
+pinact = { version = "latest" }
 uv = { version = "latest" }
 "cargo:similarity-ts" = { version = "latest" }
 "npm:@antfu/ni" = { version = "latest" }
@@ -94,6 +95,30 @@ depends = [
   "setup:git-hooks",
   "setup:update-notice",
 ]
+
+[tasks."setup:oci-plugin"]
+description = "Migrate the OCI plugin from the legacy asdf backend to vfox"
+shell = "bash -c"
+run = '''
+vfox_url="https://github.com/jdx/vfox-oci.git"
+plugin_url="$(mise plugins ls --urls | awk '$1 == "oci" { print $2; exit }')"
+case "$plugin_url" in
+    https://github.com/jdx/vfox-oci|https://github.com/jdx/vfox-oci.git|git@github.com:jdx/vfox-oci.git)
+        echo "✓ OCI vfox plugin is already installed"
+        ;;
+    "")
+        echo "📦 Installing the OCI vfox plugin..."
+        mise plugins install oci "$vfox_url"
+        ;;
+    *)
+        echo "📦 Replacing the non-vfox OCI plugin ($plugin_url)..."
+        # `mise plugins install oci` manages asdf plugins and therefore picks
+        # the registry's asdf fallback even though vfox is listed first. The
+        # explicit URL is what changes the checkout's implementation.
+        mise plugins install --force oci "$vfox_url"
+        ;;
+esac
+'''
 
 [tasks."setup:npm-registry"]
 description = "Route npm installs through the Takumi Guard malware-blocking proxy"

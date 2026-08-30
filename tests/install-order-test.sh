@@ -38,4 +38,24 @@ if (( ${registry_line%%:*} >= ${install_line%%:*} )); then
   exit 1
 fi
 
+# Existing machines may still have the old asdf OCI plugin checked out under
+# mise's `oci` plugin name. Current mise resolves that name through vfox, so the
+# stale checkout must be replaced before tool installation starts.
+oci_plugin_line="$(grep -n 'mise run .*setup:oci-plugin' "$install_sh" | head -1 || true)"
+if [[ -z "$oci_plugin_line" ]]; then
+  echo "✗ install.sh never refreshes the OCI plugin" >&2
+  exit 1
+fi
+
+if [[ "$oci_plugin_line" != *"--skip-tools"* ]]; then
+  echo "✗ setup:oci-plugin is run without --skip-tools, so the stale plugin" >&2
+  echo "  breaks tool installation before the migration task can run" >&2
+  exit 1
+fi
+
+if (( ${oci_plugin_line%%:*} >= ${install_line%%:*} )); then
+  echo "✗ setup:oci-plugin runs at or after mise install" >&2
+  exit 1
+fi
+
 echo "install order tests passed"

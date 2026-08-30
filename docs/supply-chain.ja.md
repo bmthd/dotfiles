@@ -10,6 +10,7 @@
 | 成果物の完全性 | `mise.lock` のチェックサム | ロックした成果物と異なるバイト列 |
 | 成果物の provenance | backend の検証 + `locked_verify_provenance` | 対応する成果物で、記録済み provenance を検証できなくなった場合 |
 | パッケージ | `~/.npmrc` の [Takumi Guard](https://npm.flatt.tech/) プロキシ | npm 経由すべて。特にロックできない実行時の `npx ctx7@latest` / `npx skills add` |
+| Action のソース | `pinact` が検証する完全な commit SHA | GitHub Actions の release tag の移動や侵害 |
 
 ## バージョン: `latest` 宣言 + ロックファイル
 
@@ -63,6 +64,19 @@ checksum が保証するのは、`mise.lock` の値を基準とした完全性�
 `.mise.toml` の `locked_verify_provenance = true` により、install 時には lockfile の過去の検証結果を信頼するだけでなく、provenance の暗号学的検証を再実行します。
 この保証は mise と upstream release の双方が provenance を提供する成果物に限られます。
 checksum しかない tool や、明示した version-only の例外に provenance を追加する設定ではありません。
+## Action のソース: 不変な commit SHA
+
+[`.github/workflows`](../.github/workflows) 以下の `uses:` は、すべて 40 文字の完全な commit SHA に固定します。
+行末には release tag をコメントとして残すため、実行時に可変な tag を信頼せず、レビューでは元のバージョンを読めます。
+
+二つの経路で `pinact` がこの状態を維持します。
+CI の `pinact run -check -verify-comment` は、未固定の参照に加えて、SHA とバージョンコメントの不整合も拒否します。
+global pre-commit dispatcher は staged workflow に pinact を実行してから、従来どおり repository 固有の pre-commit hook へ処理を渡します。
+pinact は index の一時コピーを修正し、生成した blob だけを index に戻すため、未 stage の編集や部分 stage の内容が commit に混ざりません。
+同じ修正を working tree へ安全に適用できる場合は反映し、競合する未 stage 編集は変更せずに残します。
+
+pinact 自体も mise の管理対象であり、`mise.lock` が checksum とバージョンを固定します。
+その lock entry は、ほかのツールと同じ日次の `--minimum-release-age 2d` gate を通って更新されます。
 
 ## パッケージ: npm レジストリのプロキシ
 

@@ -30,12 +30,12 @@ jobs:
     steps:
       - name: Mint a token for the bypass-listed App
         id: app-token
-        uses: actions/create-github-app-token@v3
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
           client-id: ${{ secrets.BUMP_APP_CLIENT_ID }}
           private-key: ${{ secrets.BUMP_APP_PRIVATE_KEY }}
 
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Keep the App token as the push credential; the default GITHUB_TOKEN
           # would be rejected by the ruleset.
@@ -44,18 +44,18 @@ jobs:
       # Resolving the `npm:` tools reaches the npm registry, so send that
       # traffic through the same malware-blocking proxy the installed machines
       # use. Anonymous mode needs no bot-id and no extra permissions.
-      - uses: flatt-security/setup-takumi-guard-npm@v1
-      - uses: jdx/mise-action@v4
+      - uses: flatt-security/setup-takumi-guard-npm@6d4182745c1e474c35a023573c2612c085be45a4 # v1.2.0
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         with:
           install: false
 
       # `oci` is the one tool that resolves through a plugin rather than a
-      # registry, and mise clones that plugin lazily. Doing it here rather than
-      # inside the lock step keeps the clone off the resolution path: when the
-      # two race, `mise lock` gives up on the version list and writes the
-      # literal string `latest` into mise.lock.
+      # registry. Use the same task as installed machines so this cannot drift
+      # back to mise's legacy asdf fallback. Installing it before the lock step
+      # also keeps the lazy clone off the resolution path: when the two race,
+      # `mise lock` gives up and writes the literal `latest` into mise.lock.
       - name: Install the plugin oci resolves through
-        run: mise plugins install oci
+        run: mise run --skip-tools setup:oci-plugin
 
       - name: Re-resolve every tool, ignoring releases younger than two days
         # --bump re-resolves the `latest` selectors in .mise.toml against the

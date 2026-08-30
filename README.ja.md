@@ -26,7 +26,7 @@ curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/install.sh | ba
 - **エージェントスキル** — Claude Code / OpenCode / Cursor の 3 つに同じものを導入
 - **プラグイン** — Codex、および公式プラグイン (TypeScript LSP)
 - **npm レジストリ** — マルウェアを遮断する [Takumi Guard](https://npm.flatt.tech/) プロキシ経由に変更
-- **グローバル git フック** — worktree を切った時点でその mise config を trust するので、そこで開いたシェルが "Config files ... are not trusted" で落ちない ([`.dotfiles/git-hooks`](.dotfiles/git-hooks))
+- **グローバル git フック** — 新しい worktree の mise config を trust し、repository hook と部分 stage を維持したまま、commit 前に staged GitHub Actions 参照を pin する ([`.dotfiles/git-hooks`](.dotfiles/git-hooks))
 
 セットアップはいつでも mise タスクとして再実行できます。
 
@@ -66,7 +66,7 @@ mise tasks       # 個別のタスク一覧
 | [`mise.lock`](mise.lock) | 実際に入るバージョンとチェックサム |
 | [`.agents/skills`](.agents/skills) | このリポジトリ専用のスキル。汎用のものは [bmthd/skills](https://github.com/bmthd/skills) に分離 |
 | [`renovate.json`](renovate.json) | GitHub Actions の更新 PR の方針 |
-| [`.githooks`](.githooks) | `[tools]` を守る pre-commit フック。初回だけ実行するリンクのコマンドは [`.githooks/pre-commit`](.githooks/pre-commit) の冒頭に書いてある |
+| [`.githooks`](.githooks) | `[tools]` を守る repository 固有の pre-commit フック。global dispatcher は先に pinact を実行してからここへ処理を渡す |
 
 ツールのバージョンは `mise upgrade` ではなく、毎日走る [`bump-tools.yml`](.github/workflows/bump-tools.yml) が `mise.lock` を進めることで上がります。
 手元で先に進めたい場合は `mise lock --bump --minimum-release-age 2d --global`。
