@@ -74,6 +74,8 @@ jobs:
         run: bash tests/statusline-test.sh
       - name: Test install ordering
         run: bash tests/install-order-test.sh
+      - name: Test revision pinning
+        run: bash tests/revision-pinning-test.sh
       - name: Test OCI plugin migration
         run: bash tests/oci-plugin-test.sh
       - name: Test global git hooks

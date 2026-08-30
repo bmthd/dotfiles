@@ -77,12 +77,25 @@ auto_install = true
 # whose backend provides it, even when mise.lock already records verification.
 locked_verify_provenance = true
 
-# Use latest stable versions
+# Keep mise experimental features disabled
 experimental = false
 
 # --- Setup tasks ------------------------------------------------------------
 # Everything below used to live in install.sh. Re-run the whole setup any
 # time with `mise run setup`, or a single piece (e.g. `mise run setup:skills`).
+#
+# Tasks that download from this repository take their base URL from
+# DOTFILES_RAW_BASE, which install.sh exports after resolving the repository to
+# a single commit SHA. That is what keeps one installation from mixing files
+# from either side of a merge that lands while it runs.
+#
+# Run on its own — `mise run setup:claude` on a machine set up months ago —
+# there is no such variable, and the tasks fall back to `main`. Resolving a SHA
+# per task would buy nothing: tasks invoked separately are separate events, so
+# there is no run for them to be consistent within, and the fallback would spend
+# an unauthenticated API call (60/hour, shared per IP) on every task to answer a
+# question nobody asked. Atomicity is a property of a bootstrap run, and
+# install.sh is where a bootstrap run exists.
 
 [tasks.setup]
 description = "Run the full dotfiles setup (Claude Code, skills, plugins)"
@@ -100,6 +113,7 @@ depends = [
 description = "Migrate the OCI plugin from the legacy asdf backend to vfox"
 shell = "bash -c"
 run = '''
+set -eo pipefail
 vfox_url="https://github.com/jdx/vfox-oci.git"
 plugin_url="$(mise plugins ls --urls | awk '$1 == "oci" { print $2; exit }')"
 case "$plugin_url" in
@@ -124,6 +138,7 @@ esac
 description = "Route npm installs through the Takumi Guard malware-blocking proxy"
 shell = "bash -c"
 run = '''
+set -e
 # Point npm at Takumi Guard (https://npm.flatt.tech/), a proxy that refuses to
 # serve packages it knows to be malicious. Anonymous mode ("Tier A") needs no
 # account: blocking only, no audit log.
@@ -157,6 +172,7 @@ case "$current" in
     *)
         # Somebody pointed ~/.npmrc at a registry of their own; leave it alone.
         echo "⚠ ~/.npmrc already uses a custom registry ($current); leaving it unchanged"
+        exit 1
         ;;
 esac
 '''
@@ -165,11 +181,17 @@ esac
 description = "Install the global git hooks that trust mise configs in new worktrees"
 shell = "bash -c"
 run = '''
+RAW_BASE="${DOTFILES_RAW_BASE:-https://raw.githubusercontent.com/bmthd/dotfiles/${DOTFILES_REF:-main}}"
 INSTALLER="$(mktemp)"
-if curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/.dotfiles/git-hooks/install.sh -o "$INSTALLER"; then
+# The installer downloads dispatch and pinact-staged itself, so hand it the
+# same base rather than letting it fall back to main on its own.
+export DOTFILES_RAW_BASE="$RAW_BASE"
+if curl -fsSL "$RAW_BASE/.dotfiles/git-hooks/install.sh" -o "$INSTALLER"; then
     bash "$INSTALLER"
 else
     echo "⚠ Failed to download the git hook installer"
+    rm -f "$INSTALLER"
+    exit 1
 fi
 rm -f "$INSTALLER"
 '''
@@ -178,14 +200,16 @@ rm -f "$INSTALLER"
 description = "Install the shell-startup dotfiles update notification"
 shell = "bash -c"
 run = '''
+RAW_BASE="${DOTFILES_RAW_BASE:-https://raw.githubusercontent.com/bmthd/dotfiles/${DOTFILES_REF:-main}}"
 DOTFILES_CONFIG_DIR="$HOME/.config/dotfiles"
 UPDATE_NOTICE="$DOTFILES_CONFIG_DIR/update-notice.sh"
 mkdir -p "$DOTFILES_CONFIG_DIR"
-if curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/.dotfiles/update-notice.sh -o "$UPDATE_NOTICE"; then
+if curl -fsSL "$RAW_BASE/.dotfiles/update-notice.sh" -o "$UPDATE_NOTICE"; then
     bash "$UPDATE_NOTICE" install
     echo "✓ Dotfiles update notification installed"
 else
     echo "⚠ Failed to install dotfiles update notification"
+    exit 1
 fi
 '''
 
@@ -207,14 +231,29 @@ else
 fi
 
 echo "📦 Setting up Claude Code configuration..."
+RAW_BASE="${DOTFILES_RAW_BASE:-https://raw.githubusercontent.com/bmthd/dotfiles/${DOTFILES_REF:-main}}"
 mkdir -p "$HOME/.claude/skills"
 CLAUDE_SETTINGS="$HOME/.claude/settings.json"
 REMOTE_SETTINGS="$(mktemp)"
-if curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/.claude/settings.json -o "$REMOTE_SETTINGS"; then
+if curl -fsSL "$RAW_BASE/.claude/settings.json" -o "$REMOTE_SETTINGS"; then
     if [ -f "$CLAUDE_SETTINGS" ] && command -v jq &> /dev/null; then
-        # Deep-merge remote settings into existing ones (remote wins on conflicts)
+        # Deep-merge settings, preserving array order (remote wins on scalars)
         MERGED_SETTINGS="$(mktemp)"
-        if jq -s '.[0] * .[1]' "$CLAUDE_SETTINGS" "$REMOTE_SETTINGS" > "$MERGED_SETTINGS" 2>/dev/null; then
+        if jq -s --arg prefer remote '
+          def m($a; $b; $has_a; $has_b):
+            if ($a | type) == "object" and ($b | type) == "object" then
+              reduce ($b | keys_unsorted[]) as $k
+                ($a; .[$k] = m($a[$k]; $b[$k]; $a | has($k); true))
+            elif ($a | type) == "array" and ($b | type) == "array" then
+              reduce (($a + $b)[]) as $item
+                ([]; if index($item) == null then . + [$item] else . end)
+            elif $prefer == "local" and $has_a then $a
+            elif $prefer == "remote" and $has_b then $b
+            elif $has_a then $a
+            else $b
+            end;
+          m(.[0]; .[1]; true; true)
+        ' "$CLAUDE_SETTINGS" "$REMOTE_SETTINGS" > "$MERGED_SETTINGS" 2>/dev/null; then
             mv "$MERGED_SETTINGS" "$CLAUDE_SETTINGS"
             echo "✓ Merged Claude Code settings into existing $CLAUDE_SETTINGS"
         else
@@ -227,14 +266,17 @@ if curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/.claude/sett
     fi
 else
     echo "⚠ Failed to download Claude Code settings"
+    rm -f "$REMOTE_SETTINGS"
+    exit 1
 fi
 rm -f "$REMOTE_SETTINGS"
 
-if curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/.claude/statusline.sh -o "$HOME/.claude/statusline.sh"; then
+if curl -fsSL "$RAW_BASE/.claude/statusline.sh" -o "$HOME/.claude/statusline.sh"; then
     chmod +x "$HOME/.claude/statusline.sh"
     echo "✓ Claude Code status line installed"
 else
     echo "⚠ Failed to download Claude Code status line"
+    exit 1
 fi
 '''
 
