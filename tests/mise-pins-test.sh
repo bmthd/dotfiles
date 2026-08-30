@@ -15,6 +15,9 @@
 #   5. tracked backends have checksums for macOS arm64 and Linux x64
 #   6. known provenance-capable artifacts cannot lose recorded provenance
 #   7. every version-only or partial backend is explicitly allowlisted
+#   8. the coverage lists in docs/supply-chain.md(.ja.md) still match the
+#      lockfile — checksum protection is a property of the backend, so the
+#      documented split is only true until a backend changes
 #
 # Run it from a git hook via .githooks/pre-commit, or by hand:
 #   bash tests/mise-pins-test.sh
@@ -131,8 +134,14 @@ VERSION_ONLY_ALLOWLIST = {
 PROVENANCE_REQUIRED = {
     "github-cli": ("aqua:cli/cli", "github-attestations"),
     "jq": ("aqua:jqlang/jq", "github-attestations"),
+    "pinact": ("aqua:suzuki-shunsuke/pinact", "github-attestations"),
     "uv": ("aqua:astral-sh/uv", "github-attestations"),
 }
+
+# The pages that describe this policy in prose, and the marker-delimited blocks
+# in them that name backends. Every backtick-quoted identifier inside a block is
+# compared against the set derived from mise.lock below.
+COVERAGE_DOCS = ("docs/supply-chain.md", "docs/supply-chain.ja.md")
 
 
 def fail(message):
@@ -229,11 +238,78 @@ for name, raw_entries in lock.get("tools", {}).items():
                         f"got {actual!r}"
                     )
 
+# 8. the documented coverage still matches the lockfile
+#
+# "Every tool is checksum-verified" would be false here, so the docs spell out
+# which backends record what. That is a claim about mise.lock, and mise.lock
+# moves daily — tie the two together so a backend that gains or loses a checksum
+# fails this test rather than quietly making the documentation wrong.
+checksummed = set()
+version_only = set()
+with_provenance = set()
+for name, raw_entries in lock.get("tools", {}).items():
+    entries = raw_entries if isinstance(raw_entries, list) else [raw_entries]
+    for entry in entries:
+        backend = entry.get("backend", "")
+        platforms = {
+            key.removeprefix("platforms."): value
+            for key, value in entry.items()
+            if key.startswith("platforms.") and isinstance(value, dict)
+        }
+        recorded = {p for p, meta in platforms.items() if meta.get("checksum")}
+        if recorded.issuperset(REQUIRED_PLATFORMS):
+            checksummed.add(backend)
+        elif not recorded:
+            version_only.add(backend)
+        # A partial entry belongs to neither list; the checksum policy above
+        # has already failed on it, so leave it out rather than guessing.
+        if any(meta.get("provenance") for meta in platforms.values()):
+            with_provenance.add(backend)
+
+documented_sets = {
+    "checksum": checksummed,
+    "version-only": version_only,
+    # The allowlist prose names the same backends, one bullet per reason.
+    "no-checksum": version_only,
+    "provenance": with_provenance,
+    # Neither the npm proxy in front nor a checksum behind: the locked version
+    # is the only thing holding these.
+    "unproxied-version-only": {b for b in version_only if not b.startswith("npm:")},
+}
+
+for relative in COVERAGE_DOCS:
+    page = repo / relative
+    if not page.exists():
+        # The pre-commit hook runs against a snapshot of the index; if the page
+        # was not tracked there, CI still covers it.
+        print(f"– {relative} not present, skipping its coverage check")
+        continue
+    text = page.read_text()
+    for block, expected in documented_sets.items():
+        match = re.search(
+            rf"<!-- coverage:{re.escape(block)}:start -->(.*?)"
+            rf"<!-- coverage:{re.escape(block)}:end -->",
+            text,
+            re.DOTALL,
+        )
+        if match is None:
+            fail(f"{relative} has no coverage:{block} block to check")
+            continue
+        listed = set(re.findall(r"`([^`]+)`", match.group(1)))
+        for backend in sorted(expected - listed):
+            fail(f"{relative} coverage:{block} does not list {backend}, which mise.lock puts there")
+        for backend in sorted(listed - expected):
+            fail(f"{relative} coverage:{block} lists {backend}, which mise.lock does not put there")
+
 if failures:
     print(f"\n{failures} failure(s)")
     sys.exit(1)
 
-print(f"✓ {len(declared)} tools declared as inline tables, all locked")
+print(
+    f"✓ {len(declared)} tools declared as inline tables, all locked "
+    f"({len(checksummed)} with checksums, {len(version_only)} version-only, "
+    f"{len(with_provenance)} with provenance)"
+)
 
 if not check_setup:
     sys.exit(0)

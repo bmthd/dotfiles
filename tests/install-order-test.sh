@@ -96,9 +96,14 @@ if grep -qE 'curl[^|]*-o "[^"]*/\.config/mise/' "$install_sh"; then
   exit 1
 fi
 
-for artifact in config.toml mise.lock; do
-  if ! grep -q "mv \"\$MISE_[A-Z_]*_TMP\" \"\$HOME/.config/mise/$artifact\"" "$install_sh"; then
-    echo "✗ $artifact is not moved into place from a temp file after a" >&2
+# The repository's config lands in conf.d/ so that config.toml stays free for
+# the machine; the lockfile still sits directly in ~/.config/mise. Both have to
+# arrive via a temp file, so both destinations are checked by name.
+# shellcheck disable=SC2016  # these are the literal strings grepped for in
+# install.sh, not values to expand here
+for destination in '$DOTFILES_CONF_D/10-dotfiles.toml' '$HOME/.config/mise/mise.lock'; do
+  if ! grep -qF "_TMP\" \"$destination\"" "$install_sh"; then
+    echo "✗ $destination is not moved into place from a temp file after a" >&2
     echo "  successful download" >&2
     exit 1
   fi

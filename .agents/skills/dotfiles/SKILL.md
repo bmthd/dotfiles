@@ -32,8 +32,9 @@ Both subcommands rely on these.
 - **Setup logic lives in `.mise.toml`**, not `install.sh`. `install.sh` is only a
   bootstrapper (install mise → place the config → `mise install` → `mise run setup`).
   Changes to tools, environment, or setup steps belong in `.mise.toml`.
-- **`.mise.toml` is installed to `~/.config/mise/config.toml`** as the global mise
-  config, so its tasks run from any directory.
+- **`.mise.toml` is installed to `~/.config/mise/conf.d/10-dotfiles.toml`**, which mise
+  loads as part of the global config, so its tasks run from any directory.
+  `~/.config/mise/config.toml` is left to the machine and overrides conf.d.
 - **Most skills are no longer in this repository.** The portable ones moved to
   [`bmthd/skills`](https://github.com/bmthd/skills). What remains under
   `.agents/skills/` is this `dotfiles` skill, which only makes sense against this

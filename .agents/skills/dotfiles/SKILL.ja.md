@@ -33,8 +33,9 @@ argument-hint: pr <変更内容> | apply
   `install.sh` はブートストラップのみ (mise を入れる → config を配置する →
   `mise install` → `mise run setup`)。ツール・環境・セットアップ手順の変更は
   `.mise.toml` に入れる
-- **`.mise.toml` は `~/.config/mise/config.toml` にグローバル設定として配置される**ため、
-  タスクはどのディレクトリからでも実行できる
+- **`.mise.toml` は `~/.config/mise/conf.d/10-dotfiles.toml` に配置される**。mise が
+  グローバル設定の一部として読むため、タスクはどのディレクトリからでも実行できる。
+  `~/.config/mise/config.toml` は端末側に開けてあり、conf.d より優先される
 - **ほとんどのスキルはこのリポジトリには無い**。汎用のものは
   [`bmthd/skills`](https://github.com/bmthd/skills) に移した。`.agents/skills/` に残るのは
   このリポジトリに対してしか意味を持たない `dotfiles` スキルだけ。サードパーティのスキルは

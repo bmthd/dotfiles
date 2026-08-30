@@ -45,7 +45,12 @@ It diffs against the installed revision and separates what to pull in from what 
 
 When only the skills moved, `mise run setup:skills` is the entire update: skills hold no per-machine state, so there is nothing to merge.
 
-Re-running `install.sh` also updates the machine, but it overwrites `~/.config/mise/config.toml` and friends with whatever is on the remote — losing pinned versions, machine-local tools, and hand-edited settings.
+Re-running `install.sh` also updates the machine, and still overwrites `~/.claude/settings.json` and `~/.claude/statusline.sh`.
+The mise config is no longer among them: the repository's copy goes to `~/.config/mise/conf.d/10-dotfiles.toml`, and `~/.config/mise/config.toml` is left to the machine — mise loads it after `conf.d/`, so a pin or a machine-only tool written there overrides the repository's copy and survives every re-run.
+
+A machine installed before that split still has the repository's copy in `config.toml`.
+`install.sh` migrates it only when it can prove nothing was added locally — the file is identical either to the copy being installed or to the `.mise.toml` of the revision it was installed from.
+Otherwise it leaves the file exactly where it is, so pins keep working, and says what to do (`/dotfiles apply`, or `DOTFILES_MIGRATE_MISE_CONFIG=1` to migrate anyway).
 
 Third-party skill sources are deliberately not watched: they move on their own schedule, mostly for reasons unrelated to the skills installed from them. Update those with `npx skills update`. The Markdown it fetches goes straight into an agent's context, so review the diff before running it.
 
@@ -56,8 +61,8 @@ All of the setup logic lives in mise.
 | File | Role |
 | --- | --- |
 | [`install.sh`](install.sh) | Bootstrap only: install mise, place the config files, wire up the shell |
-| [`.mise.toml`](.mise.toml) | Tool definitions (`[tools]`) and setup tasks (`[tasks]`), installed as the global config |
-| [`mise.lock`](mise.lock) | The versions and checksums that actually get installed |
+| [`.mise.toml`](.mise.toml) | Tool definitions (`[tools]`) and setup tasks (`[tasks]`), installed to `~/.config/mise/conf.d/10-dotfiles.toml` |
+| [`mise.lock`](mise.lock) | The versions and checksums that actually get installed, installed to `~/.config/mise/mise.lock` |
 | [`.agents/skills`](.agents/skills) | Skills specific to this repository; the general-purpose ones live in [bmthd/skills](https://github.com/bmthd/skills) |
 | [`renovate.json`](renovate.json) | Update policy for GitHub Actions PRs |
 | [`.githooks`](.githooks) | A repository pre-commit hook guarding the `[tools]` block; the global dispatcher runs pinact first and then forwards here |

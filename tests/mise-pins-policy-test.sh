@@ -117,4 +117,45 @@ backend = "cargo:unreviewed"
 EOF
 assert_fails_with "unreviewed version-only backend" "cargo:unreviewed (cargo:unreviewed) has no backend security policy"
 
+# The fixture holds no docs/ directory, so the documented-coverage check has
+# nothing to compare against and must skip rather than fail. Give it a page that
+# disagrees with the fixture lockfile and confirm it speaks up.
+write_config
+write_valid_lock
+mkdir -p "$fixture/docs"
+cat > "$fixture/docs/supply-chain.md" <<'EOF'
+<!-- coverage:checksum:start -->
+`core:node`
+`aqua:cli/cli`
+<!-- coverage:checksum:end -->
+<!-- coverage:version-only:start -->
+`npm:pnpm`
+<!-- coverage:version-only:end -->
+<!-- coverage:no-checksum:start -->
+`npm:pnpm`
+<!-- coverage:no-checksum:end -->
+<!-- coverage:provenance:start -->
+`aqua:cli/cli`
+<!-- coverage:provenance:end -->
+<!-- coverage:unproxied-version-only:start -->
+<!-- coverage:unproxied-version-only:end -->
+EOF
+assert_passes "coverage lists matching the lockfile"
+
+sed -i.bak '/core:node/d' "$fixture/docs/supply-chain.md"
+rm "$fixture/docs/supply-chain.md.bak"
+assert_fails_with "backend missing from the documented coverage" \
+    "coverage:checksum does not list core:node"
+
+write_config
+write_valid_lock
+cat > "$fixture/docs/supply-chain.md" <<'EOF'
+nothing documented here
+EOF
+assert_fails_with "coverage block removed from the page" \
+    "has no coverage:checksum block to check"
+
+rm -rf "$fixture/docs"
+assert_passes "page absent, coverage check skipped"
+
 echo "mise backend policy tests passed"

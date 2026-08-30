@@ -1,4 +1,11 @@
 #!/bin/bash
+#
+# The shebang above never runs. This script is documented to be piped —
+# `curl ... | bash` *and* `curl ... | zsh` — and a piped script is interpreted
+# by the shell on the left of the pipe, which is why the shell it configures is
+# detected below rather than assumed. So the real constraint is that everything
+# here must parse and behave the same under both bash and zsh; CI enforces it
+# with `bash -n install.sh` and `zsh -n install.sh`.
 
 # Thin bootstrapper: installs mise, places the mise config, and hands the
 # rest of the setup over to mise (`mise install` + `mise run setup`).
@@ -112,23 +119,114 @@ else
     echo "✓ mise is already installed"
 fi
 
-# Download mise config (tools + setup tasks)
+# Download mise config (tools + setup tasks).
+#
+# It goes to conf.d/, not config.toml. mise loads every non-hidden .toml under
+# ~/.config/mise/conf.d/ and merges it with ~/.config/mise/config.toml, with
+# config.toml taking precedence. Putting the repository's copy in conf.d leaves
+# config.toml free for whatever this one machine needs — pinned versions,
+# machine-only tools, local `[settings]` — so re-running this script no longer
+# has anything of the user's to overwrite. The global lockfile
+# (~/.config/mise/mise.lock) is keyed to the config directory, not to a single
+# file name, so it still pins the tools declared here.
+DOTFILES_CONF_D="$HOME/.config/mise/conf.d"
 echo "📦 Setting up mise configuration..."
-mkdir -p "$HOME/.config/mise"
+mkdir -p "$DOTFILES_CONF_D"
 # Downloads land in a temp file and are moved into place only once curl has
 # succeeded. `curl -f -o dest` still creates (and partially fills) dest before it
 # gives up on an error response, so writing straight to the destination turns a
 # failed download into a truncated config that later runs would happily read.
 MISE_CONFIG_TMP="$(mktemp)"
 if curl -fsSL "$DOTFILES_RAW_BASE/.mise.toml" -o "$MISE_CONFIG_TMP"; then
-    mv "$MISE_CONFIG_TMP" "$HOME/.config/mise/config.toml"
+    mv "$MISE_CONFIG_TMP" "$DOTFILES_CONF_D/10-dotfiles.toml"
 else
     rm -f "$MISE_CONFIG_TMP"
     echo "⚠ Failed to download mise config"
     record_failure "mise config download"
 fi
 
-# The lockfile that goes with it, and this one is not optional. config.toml
+# Migrate an installation from before that split. Older runs of this script
+# wrote the repository's config straight to ~/.config/mise/config.toml, and
+# leaving that copy in place would be worse than the overwrite it replaces:
+# config.toml outranks conf.d, and `[tasks]` are replaced whole rather than
+# merged, so a stale copy would keep shadowing every task shipped from here.
+#
+# The marker is the raw.githubusercontent.com URL this repository's own setup
+# tasks fetch from. A config.toml written by hand for this machine — the file's
+# job from now on — does not contain it, so it is left alone.
+#
+# Guarded on the new fragment being there: if the download above failed, moving
+# the old copy aside would leave the machine with no dotfiles config at all.
+LEGACY_MISE_CONFIG="$HOME/.config/mise/config.toml"
+if [ -s "$DOTFILES_CONF_D/10-dotfiles.toml" ] && [ -f "$LEGACY_MISE_CONFIG" ] &&
+    grep -q 'raw.githubusercontent.com/bmthd/dotfiles' "$LEGACY_MISE_CONFIG" 2>/dev/null; then
+
+    # Move it only when the old file can be *proved* to carry nothing of the
+    # user's. Backing it up protects the bytes, but not the behaviour: `mise
+    # install` and `mise run setup` run a few lines below, so a config.toml
+    # holding `node = { version = "22.11.0" }` that got moved aside would take
+    # the pin out of effect first and reinstall against the lockfile second.
+    # Losing a pin for the rest of the run is the very thing this whole change
+    # exists to prevent, so an unprovable file is left where it is.
+    MIGRATION_REASON=""
+    if diff -q "$LEGACY_MISE_CONFIG" "$DOTFILES_CONF_D/10-dotfiles.toml" > /dev/null 2>&1; then
+        MIGRATION_REASON="it is identical to the copy being installed"
+    else
+        # Upstream may simply have moved since the install, which says nothing
+        # about local edits. `~/.config/dotfiles/revision` records the commit
+        # this machine installed from, so fetch that exact .mise.toml and
+        # compare against the one thing that would have written the file.
+        INSTALLED_REVISION="$(cat "$HOME/.config/dotfiles/revision" 2> /dev/null)"
+        case "$INSTALLED_REVISION" in
+            "" | *[!0-9a-f]*) INSTALLED_REVISION="" ;;
+        esac
+        if [ -n "$INSTALLED_REVISION" ]; then
+            INSTALLED_CONFIG_TMP="$(mktemp)"
+            if curl -fsSL --max-time 10 \
+                "https://raw.githubusercontent.com/$DOTFILES_REPO/$INSTALLED_REVISION/.mise.toml" \
+                -o "$INSTALLED_CONFIG_TMP" 2> /dev/null &&
+                diff -q "$LEGACY_MISE_CONFIG" "$INSTALLED_CONFIG_TMP" > /dev/null 2>&1; then
+                MIGRATION_REASON="it is unchanged from the revision it was installed from"
+            fi
+            rm -f "$INSTALLED_CONFIG_TMP"
+        fi
+    fi
+    # Escape hatch for someone who has already merged their side by hand, or
+    # who knows the file holds nothing they want.
+    if [ "${DOTFILES_MIGRATE_MISE_CONFIG:-}" = "1" ]; then
+        MIGRATION_REASON="DOTFILES_MIGRATE_MISE_CONFIG=1 was set"
+    fi
+
+    if [ -n "$MIGRATION_REASON" ]; then
+        MISE_CONFIG_BACKUP="$HOME/.config/dotfiles/backup/$(date +%Y%m%d-%H%M%S)"
+        mkdir -p "$MISE_CONFIG_BACKUP"
+        if mv "$LEGACY_MISE_CONFIG" "$MISE_CONFIG_BACKUP/config.toml"; then
+            echo "✓ Migrated ~/.config/mise/config.toml to conf.d ($MIGRATION_REASON)."
+            echo "  A copy is at $MISE_CONFIG_BACKUP/config.toml; config.toml is now free"
+            echo "  for this machine's own pins, tools and settings."
+        else
+            echo "⚠ Failed to move the old ~/.config/mise/config.toml aside;"
+            record_failure "legacy mise config migration"
+            echo "  it will keep shadowing conf.d/10-dotfiles.toml until it is removed"
+        fi
+    else
+        # Not a failure of the installation, but the machine is left half-moved
+        # and only the summary and exit code can say so. record_failure sits
+        # directly under the warning because tests/install-order-test.sh pairs
+        # the two by adjacency.
+        echo "⚠ ~/.config/mise/config.toml holds this repository's old copy with changes on top."
+        record_failure "legacy mise config still shadowing conf.d (needs review; see above)"
+        echo "  Leaving it in place: it outranks conf.d, so this machine keeps behaving"
+        echo "  exactly as it did, pins included. Nothing is moved or overwritten."
+        echo "  The cost is that conf.d/10-dotfiles.toml stays shadowed, so updates to the"
+        echo "  tools and setup tasks will not reach this machine until it is migrated."
+        echo "  Migrate with \`/dotfiles apply\`, which separates the two sides properly, or"
+        echo "  review it yourself and keep only the machine-local part in config.toml:"
+        echo "    diff \"$LEGACY_MISE_CONFIG\" \"$DOTFILES_CONF_D/10-dotfiles.toml\""
+    fi
+fi
+
+# The lockfile that goes with it, and this one is not optional. The config
 # declares every tool as `latest`; the lockfile is what turns that into an exact
 # version and checksum. Without it `mise install` would resolve `latest` at run
 # time and install whatever was published minutes ago, skipping the two-day
