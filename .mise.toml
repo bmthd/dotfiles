@@ -77,7 +77,7 @@ auto_install = true
 # whose backend provides it, even when mise.lock already records verification.
 locked_verify_provenance = true
 
-# Use latest stable versions
+# Keep mise experimental features disabled
 experimental = false
 
 # --- Setup tasks ------------------------------------------------------------
@@ -100,6 +100,7 @@ depends = [
 description = "Migrate the OCI plugin from the legacy asdf backend to vfox"
 shell = "bash -c"
 run = '''
+set -eo pipefail
 vfox_url="https://github.com/jdx/vfox-oci.git"
 plugin_url="$(mise plugins ls --urls | awk '$1 == "oci" { print $2; exit }')"
 case "$plugin_url" in
@@ -124,6 +125,7 @@ esac
 description = "Route npm installs through the Takumi Guard malware-blocking proxy"
 shell = "bash -c"
 run = '''
+set -e
 # Point npm at Takumi Guard (https://npm.flatt.tech/), a proxy that refuses to
 # serve packages it knows to be malicious. Anonymous mode ("Tier A") needs no
 # account: blocking only, no audit log.
@@ -157,6 +159,7 @@ case "$current" in
     *)
         # Somebody pointed ~/.npmrc at a registry of their own; leave it alone.
         echo "⚠ ~/.npmrc already uses a custom registry ($current); leaving it unchanged"
+        exit 1
         ;;
 esac
 '''
@@ -170,6 +173,8 @@ if curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/.dotfiles/gi
     bash "$INSTALLER"
 else
     echo "⚠ Failed to download the git hook installer"
+    rm -f "$INSTALLER"
+    exit 1
 fi
 rm -f "$INSTALLER"
 '''
@@ -186,6 +191,7 @@ if curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/.dotfiles/up
     echo "✓ Dotfiles update notification installed"
 else
     echo "⚠ Failed to install dotfiles update notification"
+    exit 1
 fi
 '''
 
@@ -212,9 +218,23 @@ CLAUDE_SETTINGS="$HOME/.claude/settings.json"
 REMOTE_SETTINGS="$(mktemp)"
 if curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/.claude/settings.json -o "$REMOTE_SETTINGS"; then
     if [ -f "$CLAUDE_SETTINGS" ] && command -v jq &> /dev/null; then
-        # Deep-merge remote settings into existing ones (remote wins on conflicts)
+        # Deep-merge settings, preserving array order (remote wins on scalars)
         MERGED_SETTINGS="$(mktemp)"
-        if jq -s '.[0] * .[1]' "$CLAUDE_SETTINGS" "$REMOTE_SETTINGS" > "$MERGED_SETTINGS" 2>/dev/null; then
+        if jq -s --arg prefer remote '
+          def m($a; $b; $has_a; $has_b):
+            if ($a | type) == "object" and ($b | type) == "object" then
+              reduce ($b | keys_unsorted[]) as $k
+                ($a; .[$k] = m($a[$k]; $b[$k]; $a | has($k); true))
+            elif ($a | type) == "array" and ($b | type) == "array" then
+              reduce (($a + $b)[]) as $item
+                ([]; if index($item) == null then . + [$item] else . end)
+            elif $prefer == "local" and $has_a then $a
+            elif $prefer == "remote" and $has_b then $b
+            elif $has_a then $a
+            else $b
+            end;
+          m(.[0]; .[1]; true; true)
+        ' "$CLAUDE_SETTINGS" "$REMOTE_SETTINGS" > "$MERGED_SETTINGS" 2>/dev/null; then
             mv "$MERGED_SETTINGS" "$CLAUDE_SETTINGS"
             echo "✓ Merged Claude Code settings into existing $CLAUDE_SETTINGS"
         else
@@ -227,6 +247,8 @@ if curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/.claude/sett
     fi
 else
     echo "⚠ Failed to download Claude Code settings"
+    rm -f "$REMOTE_SETTINGS"
+    exit 1
 fi
 rm -f "$REMOTE_SETTINGS"
 
@@ -235,6 +257,7 @@ if curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/.claude/stat
     echo "✓ Claude Code status line installed"
 else
     echo "⚠ Failed to download Claude Code status line"
+    exit 1
 fi
 '''
 
