@@ -23,6 +23,10 @@ set -euo pipefail
 
 # Defaults to the repo this script lives in; .githooks/pre-commit passes a
 # temp dir holding the *staged* .mise.toml and mise.lock instead.
+check_setup=true
+if [ "$#" -gt 0 ]; then
+    check_setup=false
+fi
 repo="${1:-$(cd "$(dirname "$0")/.." && pwd)}"
 
 # tomllib landed in Python 3.11 and macOS still ships 3.9, so fall back to uv —
@@ -84,13 +88,16 @@ if [ "$style_failures" -gt 0 ]; then
 fi
 
 # --- 2-4. lockfile ----------------------------------------------------------
-"${py[@]}" - "$repo" <<'PY'
+"${py[@]}" - "$repo" "$check_setup" <<'PY'
 import re
+import json
+import subprocess
 import sys
 import tomllib
 from pathlib import Path
 
 repo = Path(sys.argv[1])
+check_setup = sys.argv[2] == "true"
 config = tomllib.loads((repo / ".mise.toml").read_text())
 lock = tomllib.loads((repo / "mise.lock").read_text())
 
@@ -227,4 +234,87 @@ if failures:
     sys.exit(1)
 
 print(f"✓ {len(declared)} tools declared as inline tables, all locked")
+
+if not check_setup:
+    sys.exit(0)
+
+# 8. setup:claude must preserve both array order and scalar priority. Extract
+# the real jq program from the task so this exercises the expression mise runs.
+claude_setup = config["tasks"]["setup:claude"]["run"]
+jq_match = re.search(
+    r"jq -s --arg prefer remote '(.+?)' \"\$CLAUDE_SETTINGS\" \"\$REMOTE_SETTINGS\"",
+    claude_setup,
+    re.DOTALL,
+)
+if jq_match is None:
+    fail("setup:claude must pass prefer=remote to its embedded jq merge")
+else:
+    local_settings = {
+        "permissions": {"allow": ["Bash(local:*)", "Read"], "defaultMode": "ask"},
+        "hooks": {"PreToolUse": [{"matcher": "local"}]},
+        "nullable": None,
+    }
+    remote_settings = {
+        "permissions": {"allow": ["Read", "Bash(remote:*)"], "defaultMode": "auto"},
+        "hooks": {"PreToolUse": [{"matcher": "remote"}]},
+        "statusLine": {"type": "command"},
+        "nullable": 1,
+    }
+    jq_program = jq_match.group(1)
+    for preference, expected_mode in (("remote", "auto"), ("local", "ask")):
+        result = subprocess.run(
+            ["jq", "-s", "--arg", "prefer", preference, jq_program],
+            input=json.dumps(local_settings) + "\n" + json.dumps(remote_settings) + "\n",
+            text=True,
+            capture_output=True,
+            check=True,
+        )
+        merged = json.loads(result.stdout)
+        if merged["permissions"]["allow"] != [
+            "Bash(local:*)",
+            "Read",
+            "Bash(remote:*)",
+        ]:
+            fail(f"settings merge with prefer={preference} must union arrays without reordering")
+        if merged["hooks"]["PreToolUse"] != [
+            {"matcher": "local"},
+            {"matcher": "remote"},
+        ]:
+            fail(f"settings merge with prefer={preference} must preserve hook order")
+        if merged["permissions"]["defaultMode"] != expected_mode:
+            fail(f"settings merge with prefer={preference} selected the wrong scalar")
+        if merged["statusLine"] != {"type": "command"}:
+            fail(f"settings merge with prefer={preference} lost a remote-only key")
+        expected_nullable = 1 if preference == "remote" else None
+        if merged["nullable"] != expected_nullable:
+            fail(f"settings merge with prefer={preference} mishandled an explicit null")
+
+# 9. Tasks that establish setup's security and correctness preconditions must
+# fail closed. Optional installers remain deliberately outside this policy.
+fatal_task_modes = {
+    "setup:oci-plugin": "set -eo pipefail",
+    "setup:npm-registry": "set -e",
+}
+for task_name, mode in fatal_task_modes.items():
+    if not config["tasks"][task_name]["run"].lstrip().startswith(mode):
+        fail(f"{task_name} must start with {mode!r}")
+
+fatal_messages = (
+    ("setup:npm-registry", "~/.npmrc already uses a custom registry"),
+    ("setup:git-hooks", "Failed to download the git hook installer"),
+    ("setup:update-notice", "Failed to install dotfiles update notification"),
+    ("setup:claude", "Failed to download Claude Code settings"),
+    ("setup:claude", "Failed to download Claude Code status line"),
+)
+for task_name, message in fatal_messages:
+    script = config["tasks"][task_name]["run"]
+    pattern = rf'echo "⚠ {re.escape(message)}[^\n]*\n(?:\s*rm[^\n]*\n)?\s*exit 1'
+    if re.search(pattern, script) is None:
+        fail(f"{task_name} must exit non-zero after reporting {message!r}")
+
+if failures:
+    print(f"\n{failures} failure(s)")
+    sys.exit(1)
+
+print("✓ setup settings merge and fail-close policies verified")
 PY
