@@ -8,8 +8,12 @@
 set -uo pipefail
 
 HOOKS_DIR="${GIT_HOOKS_DIR:-$HOME/.config/git/hooks}"
-DISPATCH_URL="https://raw.githubusercontent.com/bmthd/dotfiles/main/.dotfiles/git-hooks/dispatch"
-PINACT_STAGED_URL="https://raw.githubusercontent.com/bmthd/dotfiles/main/.dotfiles/git-hooks/pinact-staged"
+# Downloaded standalone, this script is itself fetched from a revision that
+# install.sh pinned; the two files below belong to that same revision, so take
+# the base URL it exported rather than resolving main a second time.
+RAW_BASE="${DOTFILES_RAW_BASE:-https://raw.githubusercontent.com/bmthd/dotfiles/${DOTFILES_REF:-main}}"
+DISPATCH_URL="$RAW_BASE/.dotfiles/git-hooks/dispatch"
+PINACT_STAGED_URL="$RAW_BASE/.dotfiles/git-hooks/pinact-staged"
 # Identifies a dispatch this script wrote, so a re-run refreshes its own files
 # and only its own.
 MARKER="bmthd/dotfiles global git hook dispatcher"

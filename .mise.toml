@@ -83,6 +83,19 @@ experimental = false
 # --- Setup tasks ------------------------------------------------------------
 # Everything below used to live in install.sh. Re-run the whole setup any
 # time with `mise run setup`, or a single piece (e.g. `mise run setup:skills`).
+#
+# Tasks that download from this repository take their base URL from
+# DOTFILES_RAW_BASE, which install.sh exports after resolving the repository to
+# a single commit SHA. That is what keeps one installation from mixing files
+# from either side of a merge that lands while it runs.
+#
+# Run on its own — `mise run setup:claude` on a machine set up months ago —
+# there is no such variable, and the tasks fall back to `main`. Resolving a SHA
+# per task would buy nothing: tasks invoked separately are separate events, so
+# there is no run for them to be consistent within, and the fallback would spend
+# an unauthenticated API call (60/hour, shared per IP) on every task to answer a
+# question nobody asked. Atomicity is a property of a bootstrap run, and
+# install.sh is where a bootstrap run exists.
 
 [tasks.setup]
 description = "Run the full dotfiles setup (Claude Code, skills, plugins)"
@@ -165,8 +178,12 @@ esac
 description = "Install the global git hooks that trust mise configs in new worktrees"
 shell = "bash -c"
 run = '''
+RAW_BASE="${DOTFILES_RAW_BASE:-https://raw.githubusercontent.com/bmthd/dotfiles/${DOTFILES_REF:-main}}"
 INSTALLER="$(mktemp)"
-if curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/.dotfiles/git-hooks/install.sh -o "$INSTALLER"; then
+# The installer downloads dispatch and pinact-staged itself, so hand it the
+# same base rather than letting it fall back to main on its own.
+export DOTFILES_RAW_BASE="$RAW_BASE"
+if curl -fsSL "$RAW_BASE/.dotfiles/git-hooks/install.sh" -o "$INSTALLER"; then
     bash "$INSTALLER"
 else
     echo "⚠ Failed to download the git hook installer"
@@ -178,10 +195,11 @@ rm -f "$INSTALLER"
 description = "Install the shell-startup dotfiles update notification"
 shell = "bash -c"
 run = '''
+RAW_BASE="${DOTFILES_RAW_BASE:-https://raw.githubusercontent.com/bmthd/dotfiles/${DOTFILES_REF:-main}}"
 DOTFILES_CONFIG_DIR="$HOME/.config/dotfiles"
 UPDATE_NOTICE="$DOTFILES_CONFIG_DIR/update-notice.sh"
 mkdir -p "$DOTFILES_CONFIG_DIR"
-if curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/.dotfiles/update-notice.sh -o "$UPDATE_NOTICE"; then
+if curl -fsSL "$RAW_BASE/.dotfiles/update-notice.sh" -o "$UPDATE_NOTICE"; then
     bash "$UPDATE_NOTICE" install
     echo "✓ Dotfiles update notification installed"
 else
@@ -207,10 +225,11 @@ else
 fi
 
 echo "📦 Setting up Claude Code configuration..."
+RAW_BASE="${DOTFILES_RAW_BASE:-https://raw.githubusercontent.com/bmthd/dotfiles/${DOTFILES_REF:-main}}"
 mkdir -p "$HOME/.claude/skills"
 CLAUDE_SETTINGS="$HOME/.claude/settings.json"
 REMOTE_SETTINGS="$(mktemp)"
-if curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/.claude/settings.json -o "$REMOTE_SETTINGS"; then
+if curl -fsSL "$RAW_BASE/.claude/settings.json" -o "$REMOTE_SETTINGS"; then
     if [ -f "$CLAUDE_SETTINGS" ] && command -v jq &> /dev/null; then
         # Deep-merge remote settings into existing ones (remote wins on conflicts)
         MERGED_SETTINGS="$(mktemp)"
@@ -230,7 +249,7 @@ else
 fi
 rm -f "$REMOTE_SETTINGS"
 
-if curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/.claude/statusline.sh -o "$HOME/.claude/statusline.sh"; then
+if curl -fsSL "$RAW_BASE/.claude/statusline.sh" -o "$HOME/.claude/statusline.sh"; then
     chmod +x "$HOME/.claude/statusline.sh"
     echo "✓ Claude Code status line installed"
 else

@@ -33,6 +33,66 @@ else
 fi
 echo "🐚 Configuring for $CURRENT_SHELL ($SHELL_CONFIG)"
 
+# Resolve the repository to one commit, once, and install everything from it.
+#
+# Every file below — the mise config, the lockfile that pins its tools, the
+# update notice, and the files the setup tasks in .mise.toml fetch — used to be
+# downloaded from `main` independently. A merge landing mid-installation was
+# therefore enough to produce a machine whose config.toml, mise.lock and
+# statusline came from three different commits, with nothing saying so. Worse,
+# `~/.config/dotfiles/revision` (written at the end of this script) is the
+# common ancestor that `/dotfiles apply` 3-way merges against: if it names a
+# commit no single installed file came from, the merge base is a fiction.
+#
+# Set DOTFILES_REF to install from another branch, tag, or commit — it is
+# resolved to a SHA the same way, so the pin holds for debugging installs too.
+DOTFILES_REPO="${DOTFILES_REPO:-bmthd/dotfiles}"
+DOTFILES_REF="${DOTFILES_REF:-main}"
+
+# `Accept: application/vnd.github.sha` makes the commits API answer with the
+# bare SHA as text, so this needs no jq — mise has not installed one yet at this
+# point. --max-time because the whole installation waits on this one call, and a
+# captive portal or a half-dead link would otherwise hang it indefinitely.
+echo "📌 Resolving $DOTFILES_REPO@$DOTFILES_REF..."
+DOTFILES_REVISION="$(curl -fsSL --max-time 10 \
+    -H 'Accept: application/vnd.github.sha' \
+    "https://api.github.com/repos/$DOTFILES_REPO/commits/$DOTFILES_REF" 2> /dev/null)" \
+    || DOTFILES_REVISION=""
+case "$DOTFILES_REVISION" in
+    "" | *[!0-9a-f]*) DOTFILES_REVISION="" ;;
+esac
+
+# Unresolvable is a warning, not an abort — unlike the missing lockfile below.
+# The lockfile is a security control: without it the two-day release-age gate is
+# silently bypassed, so continuing would install something weaker than promised.
+# Here, falling back to the branch name installs exactly what every release
+# before this one installed; only the atomicity guarantee is lost, and it is
+# lost loudly. The API is also the one unauthenticated GitHub endpoint here with
+# a 60-per-hour limit, so a shared NAT or a busy CI runner can exhaust it — that
+# must not be able to make the installer refuse to run.
+if [ -n "$DOTFILES_REVISION" ]; then
+    echo "✓ Installing from ${DOTFILES_REVISION:0:7}"
+else
+    # Recorded, not fatal. The installation still runs to the end, but an
+    # unpinned install is a degraded one — the summary and the exit code are
+    # the only places that can say so, and staying silent here is exactly the
+    # "half-broken but exit 0" behaviour the tally was added to remove. The
+    # record_failure call sits directly under the warning because
+    # tests/install-order-test.sh pairs the two by adjacency.
+    echo "⚠ Could not resolve $DOTFILES_REF to a commit SHA; falling back to it as a ref."
+    record_failure "revision pinning (fell back to $DOTFILES_REF)"
+    echo "  Files are fetched individually, so a push during this installation"
+    echo "  can leave this machine on a mix of commits."
+fi
+
+# The single source of every download URL below. Exported because the setup
+# tasks in .mise.toml fetch from the repository too and must use this same
+# revision; `mise run` passes the environment through to them.
+DOTFILES_RAW_BASE="https://raw.githubusercontent.com/$DOTFILES_REPO/${DOTFILES_REVISION:-$DOTFILES_REF}"
+export DOTFILES_RAW_BASE
+# Read by update-notice.sh's `install`, which records what this machine carries.
+export DOTFILES_REVISION
+
 # Install mise
 if ! command -v mise &> /dev/null; then
     echo "📦 Installing mise..."
@@ -60,7 +120,7 @@ mkdir -p "$HOME/.config/mise"
 # gives up on an error response, so writing straight to the destination turns a
 # failed download into a truncated config that later runs would happily read.
 MISE_CONFIG_TMP="$(mktemp)"
-if curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/.mise.toml -o "$MISE_CONFIG_TMP"; then
+if curl -fsSL "$DOTFILES_RAW_BASE/.mise.toml" -o "$MISE_CONFIG_TMP"; then
     mv "$MISE_CONFIG_TMP" "$HOME/.config/mise/config.toml"
 else
     rm -f "$MISE_CONFIG_TMP"
@@ -80,7 +140,7 @@ fi
 # all, because a later `mise install` would find a lockfile, pin nothing, and
 # resolve `latest` with neither the release-age gate nor checksum verification.
 MISE_LOCK_TMP="$(mktemp)"
-if curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/mise.lock -o "$MISE_LOCK_TMP"; then
+if curl -fsSL "$DOTFILES_RAW_BASE/mise.lock" -o "$MISE_LOCK_TMP"; then
     mv "$MISE_LOCK_TMP" "$HOME/.config/mise/mise.lock"
 else
     rm -f "$MISE_LOCK_TMP"
@@ -149,7 +209,7 @@ if [ -n "$SHELL_CONFIG" ]; then
 
     UPDATE_NOTICE="$HOME/.config/dotfiles/update-notice.sh"
     mkdir -p "$HOME/.config/dotfiles"
-    if curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/.dotfiles/update-notice.sh -o "$UPDATE_NOTICE"; then
+    if curl -fsSL "$DOTFILES_RAW_BASE/.dotfiles/update-notice.sh" -o "$UPDATE_NOTICE"; then
         if ! grep -q 'dotfiles/update-notice.sh' "$SHELL_CONFIG" 2>/dev/null; then
             {
                 echo ""
