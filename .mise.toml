@@ -1,7 +1,11 @@
-# Global mise configuration — installed to ~/.config/mise/config.toml by
-# install.sh. Tools, environment, and setup tasks all live here; install.sh
+# Global mise configuration — installed to ~/.config/mise/conf.d/10-dotfiles.toml
+# by install.sh. Tools, environment, and setup tasks all live here; install.sh
 # is only a thin bootstrapper (install mise → download this file →
 # `mise install` → `mise run setup`).
+#
+# conf.d rather than ~/.config/mise/config.toml so that re-running install.sh
+# has nothing machine-local to overwrite: mise merges both, and config.toml
+# wins, which leaves it free for this-machine-only tools, pins and settings.
 
 # Tools track `latest` here, but `latest` is not what gets installed: mise.lock
 # pins an exact version and checksum for every one of them, and a locked version

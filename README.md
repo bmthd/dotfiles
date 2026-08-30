@@ -45,7 +45,7 @@ It diffs against the installed revision and separates what to pull in from what 
 
 When only the skills moved, `mise run setup:skills` is the entire update: skills hold no per-machine state, so there is nothing to merge.
 
-Re-running `install.sh` also updates the machine, but it overwrites `~/.config/mise/config.toml` and friends with whatever is on the remote — losing pinned versions, machine-local tools, and hand-edited settings.
+Re-running `install.sh` also updates the machine, and still overwrites `~/.claude/settings.json` and `~/.claude/statusline.sh`.
 
 Third-party skill sources are deliberately not watched: they move on their own schedule, mostly for reasons unrelated to the skills installed from them. Update those with `npx skills update`. The Markdown it fetches goes straight into an agent's context, so review the diff before running it.
 
@@ -56,8 +56,8 @@ All of the setup logic lives in mise.
 | File | Role |
 | --- | --- |
 | [`install.sh`](install.sh) | Bootstrap only: install mise, place the config files, wire up the shell |
-| [`.mise.toml`](.mise.toml) | Tool definitions (`[tools]`) and setup tasks (`[tasks]`), installed as the global config |
-| [`mise.lock`](mise.lock) | The versions and checksums that actually get installed |
+| [`.mise.toml`](.mise.toml) | Tool definitions (`[tools]`) and setup tasks (`[tasks]`), installed to `~/.config/mise/conf.d/10-dotfiles.toml` |
+| [`mise.lock`](mise.lock) | The versions and checksums that actually get installed, installed to `~/.config/mise/mise.lock` |
 | [`.agents/skills`](.agents/skills) | Skills specific to this repository; the general-purpose ones live in [bmthd/skills](https://github.com/bmthd/skills) |
 | [`renovate.json`](renovate.json) | Update policy for GitHub Actions PRs |
 | [`.githooks`](.githooks) | A repository pre-commit hook guarding the `[tools]` block; the global dispatcher runs pinact first and then forwards here |

@@ -48,8 +48,7 @@ mise tasks       # 個別のタスク一覧
 スキルだけが動いていたときは `mise run setup:skills` で終わりです。
 スキルは端末固有の設定を持たないので、マージするものがありません。
 
-`install.sh` の再実行でも更新できますが、こちらは `~/.config/mise/config.toml` などをリモートの内容で上書きします。
-端末ごとに固定したバージョンや、その端末だけのツール・設定がある場合は失われます。
+`install.sh` の再実行でも更新できます。いまも上書きされるのは `~/.claude/settings.json` と `~/.claude/statusline.sh` です。
 
 サードパーティのスキルソースは、あえて監視していません。
 それぞれ独自のペースで動いていて、その多くはここに入れているスキルとは関係のない変更だからです。
@@ -62,8 +61,8 @@ mise tasks       # 個別のタスク一覧
 | ファイル | 役割 |
 | --- | --- |
 | [`install.sh`](install.sh) | ブートストラップのみ。mise の導入、設定ファイルの配置、シェル連携の追記 |
-| [`.mise.toml`](.mise.toml) | ツール定義 (`[tools]`) とセットアップタスク (`[tasks]`)。グローバル設定として配置される |
-| [`mise.lock`](mise.lock) | 実際に入るバージョンとチェックサム |
+| [`.mise.toml`](.mise.toml) | ツール定義 (`[tools]`) とセットアップタスク (`[tasks]`)。`~/.config/mise/conf.d/10-dotfiles.toml` に配置される |
+| [`mise.lock`](mise.lock) | 実際に入るバージョンとチェックサム。`~/.config/mise/mise.lock` に配置される |
 | [`.agents/skills`](.agents/skills) | このリポジトリ専用のスキル。汎用のものは [bmthd/skills](https://github.com/bmthd/skills) に分離 |
 | [`renovate.json`](renovate.json) | GitHub Actions の更新 PR の方針 |
 | [`.githooks`](.githooks) | `[tools]` を守る repository 固有の pre-commit フック。global dispatcher は先に pinact を実行してからここへ処理を渡す |

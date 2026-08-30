@@ -1,9 +1,15 @@
 # /dotfiles apply — apply an available update to this machine
 
 `install.sh` and `mise run setup` are written to **overwrite local state with the
-remote's**. Per-machine circumstances — pinned versions, tools only this box needs,
-hand-added hooks — do not exist in the repository, so a plain re-run deletes them
-silently.
+remote's**. Per-machine circumstances — hand-edited settings, tools only this box
+needs, hand-added hooks — do not exist in the repository, so a plain re-run deletes
+them silently.
+
+The mise config is the exception, and it is an exception by construction rather
+than by care: the repository's copy goes to `~/.config/mise/conf.d/10-dotfiles.toml`
+and `~/.config/mise/config.toml` is left to the machine, so there is nothing of the
+user's in the file that gets replaced. Everything below still applies to the Claude
+Code settings, which are merged rather than owned.
 
 The job here is to **separate "changes to take" from "local divergence to keep"
 before anything is overwritten**. Running `install.sh` without reading a diff first
@@ -15,8 +21,9 @@ What a plain re-run does. This is the whole picture the decisions hang off.
 
 | Target | A plain re-run | Handling |
 |---|---|---|
-| `~/.config/mise/config.toml` | **Wholesale curl overwrite** from the repo's `.mise.toml` | **3-way merge** (step 4). The biggest hazard |
-| `~/.claude/settings.json` | Deep merge via `jq -s '.[0] * .[1]'`, **remote wins on conflicts**; arrays (`permissions.allow` etc.) are **replaced, not concatenated** | **Apply by hand** (step 5). Leave it alone when the repo has no diff |
+| `~/.config/mise/conf.d/10-dotfiles.toml` | **Wholesale curl overwrite** from the repo's `.mise.toml` | **Overwrite it** (step 4). It holds no per-machine state, so there is nothing to merge |
+| `~/.config/mise/config.toml` | **Never written.** Reserved for this machine, and mise loads it after conf.d, so it wins | Leave it alone. A machine installed before the conf.d split still has the repo's copy here — migrate it once (step 4) |
+| `~/.claude/settings.json` | Deep merge via `jq -s '.[0] * .[1]'`, **remote wins on conflicts**; arrays (`permissions.allow` etc.) are **replaced, not concatenated** | **Apply by hand** (step 5). The biggest hazard left. Leave it alone when the repo has no diff |
 | `~/.claude/statusline.sh` | **Wholesale curl overwrite** | Overwrite if unmodified locally; 3-way if not |
 | `~/.config/dotfiles/update-notice.sh` | Wholesale curl overwrite | Safe to overwrite — holds no per-machine state |
 | `~/.bashrc` / `~/.zshrc` | Append guarded by `grep` | Idempotent. Leave alone |
@@ -69,9 +76,13 @@ Establish what is unique to this machine by comparing against the repository con
 local edits, and updates then get discarded as if they were local edits.
 
 ```bash
-git -C "$REPO" show "$INSTALLED:.mise.toml"           | diff - ~/.config/mise/config.toml
+cat ~/.config/mise/config.toml 2>/dev/null            # this machine's own mise config
 git -C "$REPO" show "$INSTALLED:.claude/statusline.sh" | diff - ~/.claude/statusline.sh
 ```
+
+`config.toml` is read, not diffed: nothing in the repository corresponds to it, so
+everything in it is machine-local by definition. On a machine that predates the
+conf.d split it holds the repository's copy instead — step 4 migrates that.
 
 Work through the hunks one at a time and confirm with the user why each exists. Pinned
 versions, machine-only tools, and disabled settings are usually **deliberate, not
@@ -86,41 +97,56 @@ Always, before touching anything. Be ready to hand the user a restore command.
 BK=~/.config/dotfiles/backup/$(date +%Y%m%d-%H%M%S)
 mkdir -p "$BK"
 cp ~/.config/mise/config.toml ~/.claude/settings.json ~/.claude/statusline.sh "$BK/" 2>/dev/null
+cp ~/.config/mise/conf.d/10-dotfiles.toml "$BK/" 2>/dev/null
 ```
 
-### 4. 3-way merge the mise config
+### 4. Replace the mise config fragment
 
-Never curl over it. Put working files in a scratch directory (`$W`).
-
-```bash
-git -C "$REPO" show "$INSTALLED:.mise.toml" > "$W/base"     # common ancestor
-git -C "$REPO" show  "origin/main:.mise.toml" > "$W/theirs" # newer repository side
-cp ~/.config/mise/config.toml                  "$W/ours"    # this machine
-git merge-file -p "$W/ours" "$W/base" "$W/theirs" > "$W/merged"
-```
-
-Conflicts are marked with `<<<<<<<`. **Never install a file with markers left in** —
-mise will fail to read the config. Resolve each one on its meaning:
-
-- Local pins a version, repository says `latest` → confirm why it is pinned; keep the pin if the reason still holds
-- Repository adds a tool or a `depends` entry → take it
-- Local changed `[settings]` (e.g. `experimental = true`) → keep local
-- Repository removed a tool → keep it if this machine uses it; otherwise follow the removal
-
-**Absent markers do not mean nothing was lost.** Diff both ways to confirm the merge did
-what you intended:
-
-```bash
-diff "$W/ours" "$W/merged"    # did the repository's changes land?
-diff "$W/theirs" "$W/merged"  # did the local divergence survive?
-```
-
-Then install it and **verify the content, not just the parse**. `mise ls` exiting 0
-proves very little.
+**No 3-way merge here.** The repository's config is a conf.d fragment that owns
+nothing machine-specific, so take it whole. Machine-local pins, extra tools and
+local `[settings]` belong in `~/.config/mise/config.toml`, which mise loads after
+conf.d and which nothing in this repository writes.
 
 ```bash
 mise ls --installed | awk '{print $1}' | sort > "$W/tools.before"   # capture before installing
-cp "$W/merged" ~/.config/mise/config.toml
+mkdir -p ~/.config/mise/conf.d
+git -C "$REPO" show origin/main:.mise.toml > ~/.config/mise/conf.d/10-dotfiles.toml
+git -C "$REPO" show origin/main:mise.lock  > ~/.config/mise/mise.lock
+```
+
+Take `mise.lock` with it. It is what turns the fragment's `latest` selectors into
+exact versions, and mise keys the global lockfile to the config directory rather
+than to a file name, so the one at `~/.config/mise/mise.lock` covers conf.d too.
+
+**One-time migration for a machine installed before the split.** Its
+`~/.config/mise/config.toml` still holds the repository's copy, and leaving it
+there is worse than the overwrite it replaced: config.toml outranks conf.d, and
+`[tasks]` are replaced whole rather than merged, so the stale copy would shadow
+every task shipped from here.
+
+```bash
+grep -q 'raw.githubusercontent.com/bmthd/dotfiles' ~/.config/mise/config.toml 2>/dev/null &&
+    mv ~/.config/mise/config.toml "$BK/config.toml.pre-conf.d"
+```
+
+Then diff what was moved against the fresh fragment and **carry only the
+machine-local part into a new, otherwise empty `config.toml`**. The difference is
+a mix of upstream change and local edit, so settle it hunk by hunk against step 2's
+inventory, exactly as the old 3-way merge did — the difference is that this
+happens once per machine rather than on every update.
+
+```bash
+diff "$BK/config.toml.pre-conf.d" ~/.config/mise/conf.d/10-dotfiles.toml
+```
+
+`install.sh` performs the same migration, minus the reconstruction: it moves the
+file to `~/.config/dotfiles/backup/<timestamp>/` and leaves the diff to a human.
+
+Then **verify the content, not just the parse**. `mise ls` exiting 0 proves very
+little.
+
+```bash
+mise cfg   # conf.d/10-dotfiles.toml listed, config.toml after it if present
 mise tasks ls >/dev/null || echo "!! config is broken — restore from the backup"
 mise ls --installed | awk '{print $1}' | sort | diff "$W/tools.before" -
 mise run --skip-tools setup:oci-plugin
@@ -137,8 +163,8 @@ tools written in the config actually appear in `mise ls`.** A `[tools.xxx]` sub-
 heading absorbs every plain key that follows it as its own child, which can disable all
 the later tools at once. The symptoms: `mise install` answers "all tools are installed"
 instantly, yet `command -v` finds nothing and `No version is set for shim: <tool>`
-appears at runtime. **This is often a pre-existing repository bug rather than something
-the merge caused** — do not patch it locally; report it upstream with `/dotfiles pr`.
+appears at runtime. **This is a repository bug rather than something this machine
+caused** — do not patch it locally; report it upstream with `/dotfiles pr`.
 
 ### 5. Apply only the repository's diff to the Claude Code settings
 
@@ -166,7 +192,7 @@ chmod +x ~/.claude/statusline.sh
 bash -n ~/.claude/statusline.sh && bash "$REPO/tests/statusline-test.sh"
 ```
 
-If it was modified locally, 3-way merge it exactly like the mise config.
+If it was modified locally, 3-way merge it against `$INSTALLED` as the base.
 
 ### 6. Run the remaining tasks
 
@@ -259,11 +285,13 @@ the judgment calls you made on their behalf lives.
 
 | Sign | What it means |
 |---|---|
-| Ran `install.sh` before reading a diff | The local mise config is already gone. Restore from backup and start over |
+| Ran `install.sh` before reading a diff | `~/.claude/settings.json` is already merged remote-first. Restore from backup and start over |
 | Ignored a failing `ghq get` / `fetch` | You are judging against a stale `origin/main` |
-| Kept 3-way merging without a base | `bad object`. Suspect a force-push and switch to no-base mode |
+| Kept 3-way merging `statusline.sh` without a base | `bad object`. Suspect a force-push and switch to no-base mode |
+| Left a repo-derived `~/.config/mise/config.toml` in place | It outranks conf.d and replaces `[tasks]` whole, so every task stays frozen at the old copy |
 | Judged local divergence against current `main` | Repository updates get discarded as local edits |
 | Installed a file with conflict markers | mise cannot parse the config and every tool drops |
+| Hand-edited `conf.d/10-dotfiles.toml` instead of `config.toml` | The next update overwrites it. Machine-local changes go in `config.toml` |
 | Verified with `mise ls`'s exit code alone | Wholesale-disabled tools sail straight through |
 | Ran `setup:codex` without `--skip-deps` | `settings.json` gets overwritten via `setup:claude` |
 | Took `setup:skills` exiting 0 as proof the skills installed | A source that installed nothing looks exactly like one that worked |

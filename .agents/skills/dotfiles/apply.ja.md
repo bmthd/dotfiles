@@ -1,8 +1,13 @@
 # /dotfiles apply — この端末に更新を適用する
 
 `install.sh` と `mise run setup` は **リモートの内容でローカルを上書きする**前提で
-書かれている。端末ごとの事情 (ピン留めしたバージョン、その端末だけのツール、手で足した
+書かれている。端末ごとの事情 (手で編集した設定、その端末だけのツール、手で足した
 フック) はリポジトリ側に存在しないので、素直に再実行すると黙って消える。
+
+mise の設定だけは例外で、それは注意深さではなく構造によるもの。リポジトリ側のコピーは
+`~/.config/mise/conf.d/10-dotfiles.toml` に置かれ、`~/.config/mise/config.toml` は端末側に
+開けてあるため、上書きされるファイルの中にユーザーのものが最初から入っていない。
+以下の話は、所有ではなくマージで作られる Claude Code の設定にはそのまま当てはまる。
 
 ここでやるべきは、**上書きする前に「取り込む変更」と「守るローカル差分」を分離すること**。
 差分を見ずに `install.sh` を流したら意味がない。
@@ -13,8 +18,9 @@
 
 | 対象 | 素直に再実行すると | 扱い |
 |---|---|---|
-| `~/.config/mise/config.toml` | リポジトリの `.mise.toml` で **curl 全上書き** | **要 3-way マージ** (ステップ 4)。最大の危険地帯 |
-| `~/.claude/settings.json` | `jq -s '.[0] * .[1]'` で deep merge、**衝突時はリモート優先**。配列 (`permissions.allow` 等) は連結ではなく**置換** | **要手動適用** (ステップ 5)。リポジトリ側に差分が無ければ触らない |
+| `~/.config/mise/conf.d/10-dotfiles.toml` | リポジトリの `.mise.toml` で **curl 全上書き** | **上書きしてよい** (ステップ 4)。端末固有の状態を持たないのでマージするものが無い |
+| `~/.config/mise/config.toml` | **書き込まれない。** 端末専用で、mise は conf.d の後に読むのでこちらが勝つ | 触らない。conf.d 分離より前に入れた端末にはリポジトリのコピーが残っている。一度だけ移行する (ステップ 4) |
+| `~/.claude/settings.json` | `jq -s '.[0] * .[1]'` で deep merge、**衝突時はリモート優先**。配列 (`permissions.allow` 等) は連結ではなく**置換** | **要手動適用** (ステップ 5)。残る最大の危険地帯。リポジトリ側に差分が無ければ触らない |
 | `~/.claude/statusline.sh` | **curl 全上書き** | ローカル改変が無ければ上書きで可。あれば 3-way |
 | `~/.config/dotfiles/update-notice.sh` | curl 全上書き | 端末固有の設定を持たないので上書きで可 |
 | `~/.bashrc` / `~/.zshrc` | `grep` ガード付き追記 | 冪等。放置で可 |
@@ -63,9 +69,13 @@ git -C "$REPO" diff --stat "$INSTALLED" origin/main
 現在の `main` と比べるとリポジトリの更新とローカル改変が混ざり、更新を改変と誤認して捨てる。
 
 ```bash
-git -C "$REPO" show "$INSTALLED:.mise.toml"           | diff - ~/.config/mise/config.toml
+cat ~/.config/mise/config.toml 2>/dev/null            # この端末専用の mise 設定
 git -C "$REPO" show "$INSTALLED:.claude/statusline.sh" | diff - ~/.claude/statusline.sh
 ```
+
+`config.toml` は diff ではなく通読する。対応するものがリポジトリ側に無く、書いてある内容は
+定義上すべて端末固有だから。conf.d 分離より前に入れた端末では、ここにリポジトリのコピーが
+入っている。その移行はステップ 4 で行う。
 
 出てきた差分は一つずつ「なぜそうなっているか」をユーザーに確認する。ピン留めされた
 バージョン、その端末専用のツール、無効化された設定は **事故ではなく意図**であることが多い。
@@ -79,39 +89,53 @@ git -C "$REPO" show "$INSTALLED:.claude/statusline.sh" | diff - ~/.claude/status
 BK=~/.config/dotfiles/backup/$(date +%Y%m%d-%H%M%S)
 mkdir -p "$BK"
 cp ~/.config/mise/config.toml ~/.claude/settings.json ~/.claude/statusline.sh "$BK/" 2>/dev/null
+cp ~/.config/mise/conf.d/10-dotfiles.toml "$BK/" 2>/dev/null
 ```
 
-### 4. mise config を 3-way マージする
+### 4. mise config の fragment を置き換える
 
-curl での上書きは**しない**。作業ファイルはスクラッチ領域に置く (`$W`)。
-
-```bash
-git -C "$REPO" show "$INSTALLED:.mise.toml" > "$W/base"     # 共通の祖先
-git -C "$REPO" show  "origin/main:.mise.toml" > "$W/theirs" # 新しいリポジトリ側
-cp ~/.config/mise/config.toml                  "$W/ours"    # この端末
-git merge-file -p "$W/ours" "$W/base" "$W/theirs" > "$W/merged"
-```
-
-衝突箇所には `<<<<<<<` マーカーが残る。**マーカーを残したまま配置しない** (mise が config を
-読めなくなる)。衝突は一つずつ意味を見て解決する。
-
-- ローカルがバージョンをピン留め、リポジトリが `latest` → ピン留めの理由を確認。理由が生きていれば残す
-- リポジトリが新ツール / `depends` などを追加 → 取り込む
-- ローカルが `[settings]` を変更 (例: `experimental = true`) → ローカルを残す
-- リポジトリがツールを削除 → その端末で使っているなら残す。使っていなければ削除に従う
-
-**マーカーが無くても取りこぼしは起こる。** 双方向に diff して、意図した通りか確認する。
-
-```bash
-diff "$W/ours" "$W/merged"    # リポジトリの更新が入ったか
-diff "$W/theirs" "$W/merged"  # ローカル差分が残ったか
-```
-
-配置したら、**パースだけでなく中身を検証する**。`mise ls` の exit 0 は当てにならない。
+**ここに 3-way マージは無い。** リポジトリの設定は端末固有のものを何も持たない conf.d
+fragment なので、まるごと取る。端末固有のピン留め・追加ツール・ローカルの `[settings]` は
+`~/.config/mise/config.toml` に置く。mise は conf.d の後にこのファイルを読み、
+このリポジトリはそこに一切書き込まない。
 
 ```bash
 mise ls --installed | awk '{print $1}' | sort > "$W/tools.before"   # 配置前に取っておく
-cp "$W/merged" ~/.config/mise/config.toml
+mkdir -p ~/.config/mise/conf.d
+git -C "$REPO" show origin/main:.mise.toml > ~/.config/mise/conf.d/10-dotfiles.toml
+git -C "$REPO" show origin/main:mise.lock  > ~/.config/mise/mise.lock
+```
+
+`mise.lock` も一緒に取る。fragment の `latest` を実際のバージョンに変えているのはこれで、
+mise はグローバルの lockfile をファイル名ではなく config ディレクトリに紐付けるため、
+`~/.config/mise/mise.lock` の 1 本が conf.d 側にも効く。
+
+**conf.d 分離より前に入れた端末は、ここで一度だけ移行する。** その端末の
+`~/.config/mise/config.toml` にはまだリポジトリのコピーが入っている。これを放置すると、
+置き換わったはずの上書きより悪い。config.toml は conf.d より優先され、`[tasks]` は
+マージではなくまるごと置換されるため、古いコピーがこちらのタスクを永久に隠し続ける。
+
+```bash
+grep -q 'raw.githubusercontent.com/bmthd/dotfiles' ~/.config/mise/config.toml 2>/dev/null &&
+    mv ~/.config/mise/config.toml "$BK/config.toml.pre-conf.d"
+```
+
+退避したファイルと新しい fragment を diff し、**端末固有の部分だけを、空になった
+`config.toml` に書き戻す**。差分には upstream の更新とローカルの改変が混ざっているので、
+ステップ 2 の棚卸しと突き合わせて一つずつ判断する。従来の 3-way マージと同じ作業だが、
+更新のたびではなく端末につき一度で終わる点が違う。
+
+```bash
+diff "$BK/config.toml.pre-conf.d" ~/.config/mise/conf.d/10-dotfiles.toml
+```
+
+`install.sh` も同じ移行を行う。ただし書き戻しはしない。
+`~/.config/dotfiles/backup/<timestamp>/` へ退避して、diff は人に委ねる。
+
+その後、**パースだけでなく中身を検証する**。`mise ls` の exit 0 は当てにならない。
+
+```bash
+mise cfg   # conf.d/10-dotfiles.toml が並び、config.toml があればその後に来る
 mise tasks ls >/dev/null || echo "!! config が壊れた。バックアップから戻す"
 mise ls --installed | awk '{print $1}' | sort | diff "$W/tools.before" -
 mise run --skip-tools setup:oci-plugin
@@ -127,8 +151,8 @@ TOML としてパースできることと mise の設定として正しいこと
 `mise ls` に現れているか**を確認する。`[tools.xxx]` のサブテーブル見出しは、それ以降の平坦な
 キーを全部自分の子として吸い込むため、後続のツールが丸ごと無効化されうる。`mise install` が
 「all tools are installed」と即答するのに `command -v` で見つからない、
-`No version is set for shim: <tool>` が出る、といった症状はこれ。**マージのせいではなく
-リポジトリ側の既存バグのことがある。** その場合は端末側で勝手に直さず、`/dotfiles pr` で報告する。
+`No version is set for shim: <tool>` が出る、といった症状はこれ。**端末側の作業ではなく
+リポジトリ側のバグ。** 端末側で勝手に直さず、`/dotfiles pr` で報告する。
 
 ### 5. Claude Code の設定はリポジトリ差分だけを適用する
 
@@ -155,7 +179,7 @@ chmod +x ~/.claude/statusline.sh
 bash -n ~/.claude/statusline.sh && bash "$REPO/tests/statusline-test.sh"
 ```
 
-ローカル改変があれば mise config と同じ 3-way マージで扱う。
+ローカル改変があれば `$INSTALLED` を祖先にした 3-way マージで扱う。
 
 ### 6. 残りのタスクを流す
 
@@ -247,11 +271,13 @@ bash -c 'source ~/.config/dotfiles/update-notice.sh; dotfiles_update_notice_chec
 
 | サイン | 何が起きるか |
 |---|---|
-| 差分を見る前に `install.sh` を流した | ローカルの mise config は既に消えている。バックアップから戻して最初から |
+| 差分を見る前に `install.sh` を流した | `~/.claude/settings.json` が既にリモート優先でマージされている。バックアップから戻して最初から |
 | `ghq get` / `fetch` の失敗を無視した | 古い `origin/main` を新しいと誤認して判断する |
-| 祖先が取れないのに 3-way を続けた | `bad object`。force-push を疑い、祖先なしモードに切り替える |
+| 祖先が取れないのに `statusline.sh` の 3-way を続けた | `bad object`。force-push を疑い、祖先なしモードに切り替える |
+| リポジトリ由来の `~/.config/mise/config.toml` を放置した | conf.d より優先され `[tasks]` をまるごと置換するので、タスクが古いコピーのまま凍る |
 | 現在の `main` とローカルを比べてローカル差分を判定した | リポジトリの更新を「ローカル改変」として捨てる |
 | 衝突マーカーを残して配置した | mise が config をパースできず全ツールが落ちる |
+| `config.toml` ではなく `conf.d/10-dotfiles.toml` を手で編集した | 次の更新で上書きされる。端末固有の変更は `config.toml` に書く |
 | 検証を `mise ls` の exit code で済ませた | ツールが丸ごと無効化されていても素通りする |
 | `--skip-deps` なしで `setup:codex` を実行した | `setup:claude` 経由で `settings.json` が上書きされる |
 | `setup:skills` の exit 0 をスキルが入った証拠にした | 何も入らなかったソースと成功したソースが区別できない |
