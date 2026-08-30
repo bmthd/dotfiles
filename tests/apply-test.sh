@@ -3,6 +3,7 @@
 set -euo pipefail
 
 script="$(cd "$(dirname "$0")/.." && pwd)/.dotfiles/apply.sh"
+merge_settings="$(dirname "$script")/merge-settings.jq"
 test_dir="$(mktemp -d)"
 trap 'rm -rf "$test_dir"' EXIT
 
@@ -43,6 +44,31 @@ assert_no_base_apply_does_not_write() {
 }
 
 mkdir -p "$repo" "$home/custom" "$home/.claude" "$home/.config/dotfiles"
+
+# A wrong scalar preference or non-stable array merge must change this result.
+printf '%s\n' \
+  '{"array":["local","shared"],"nested":{"array":["nested-local"],"scalar":"local"},"scalar":"local"}' \
+  > "$test_dir/local-settings.json"
+printf '%s\n' \
+  '{"array":["shared","remote"],"nested":{"array":["nested-remote"],"scalar":"remote","remoteOnly":true},"scalar":"remote","remoteOnly":true}' \
+  > "$test_dir/remote-settings.json"
+
+local_settings_merge="$(jq --arg prefer local -f "$merge_settings" "$test_dir/local-settings.json" "$test_dir/remote-settings.json")"
+printf '%s' "$local_settings_merge" | jq -e \
+  '.array == ["local", "shared", "remote"]
+   and .nested.array == ["nested-local", "nested-remote"]
+   and .nested.scalar == "local"
+   and .scalar == "local"
+   and .nested.remoteOnly == true
+   and .remoteOnly == true' >/dev/null
+
+remote_settings_merge="$(jq --arg prefer remote -f "$merge_settings" "$test_dir/local-settings.json" "$test_dir/remote-settings.json")"
+printf '%s' "$remote_settings_merge" | jq -e \
+  '.array == ["local", "shared", "remote"]
+   and .nested.array == ["nested-local", "nested-remote"]
+   and .nested.scalar == "remote"
+   and .scalar == "remote"' >/dev/null
+
 git -C "$repo" init -q
 git -C "$repo" config user.email test@example.com
 git -C "$repo" config user.name test
@@ -98,5 +124,30 @@ printf '%s' "$missing_revision" | jq -e \
    and .baseRevision == ""
    and ([.files[].state] | all(. == "needs-decision"))' >/dev/null
 assert_no_base_apply_does_not_write
+
+printf '%s\n' "$base_revision" > "$home/.config/dotfiles/revision"
+printf '%s\n' '#!/usr/bin/env bash' 'echo remote-statusline' > "$repo/.claude/statusline.sh"
+git -C "$repo" add .claude/statusline.sh
+git -C "$repo" commit -qm remote-statusline
+printf '%s\n' '#!/usr/bin/env bash' 'echo local-statusline' > "$home/.claude/statusline.sh"
+
+conflict_inventory="$(bash "$script" plan --home "$home" --repo "$repo" --remote-ref HEAD --mise-config "$mise_config" --json)"
+printf '%s' "$conflict_inventory" | jq -e \
+  'any(.files[]; .repositoryPath == ".claude/statusline.sh" and .state == "conflict")' >/dev/null
+
+before_conflict_apply="$(snapshot_managed_targets)"
+if bash "$script" apply --home "$home" --repo "$repo" --remote-ref HEAD --mise-config "$mise_config" --json >/dev/null 2>&1; then
+  echo 'apply accepted a text merge conflict' >&2
+  exit 1
+fi
+after_conflict_apply="$(snapshot_managed_targets)"
+[ "$after_conflict_apply" = "$before_conflict_apply" ] || {
+  printf 'conflicted apply changed managed targets:\nbefore:\n%s\nafter:\n%s\n' "$before_conflict_apply" "$after_conflict_apply" >&2
+  exit 1
+}
+[ "$(tail -n 1 "$home/.claude/statusline.sh")" = 'echo local-statusline' ] || {
+  echo 'apply overwrote local text at a merge conflict' >&2
+  exit 1
+}
 
 echo "apply tests passed"
