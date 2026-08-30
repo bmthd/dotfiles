@@ -23,6 +23,10 @@ set -euo pipefail
 
 # Defaults to the repo this script lives in; .githooks/pre-commit passes a
 # temp dir holding the *staged* .mise.toml and mise.lock instead.
+check_setup=true
+if [ "$#" -gt 0 ]; then
+    check_setup=false
+fi
 repo="${1:-$(cd "$(dirname "$0")/.." && pwd)}"
 
 # tomllib landed in Python 3.11 and macOS still ships 3.9, so fall back to uv —
@@ -84,7 +88,7 @@ if [ "$style_failures" -gt 0 ]; then
 fi
 
 # --- 2-4. lockfile ----------------------------------------------------------
-"${py[@]}" - "$repo" <<'PY'
+"${py[@]}" - "$repo" "$check_setup" <<'PY'
 import re
 import json
 import subprocess
@@ -93,6 +97,7 @@ import tomllib
 from pathlib import Path
 
 repo = Path(sys.argv[1])
+check_setup = sys.argv[2] == "true"
 config = tomllib.loads((repo / ".mise.toml").read_text())
 lock = tomllib.loads((repo / "mise.lock").read_text())
 
@@ -229,6 +234,9 @@ if failures:
     sys.exit(1)
 
 print(f"✓ {len(declared)} tools declared as inline tables, all locked")
+
+if not check_setup:
+    sys.exit(0)
 
 # 8. setup:claude must preserve both array order and scalar priority. Extract
 # the real jq program from the task so this exercises the expression mise runs.
