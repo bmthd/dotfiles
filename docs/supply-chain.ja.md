@@ -7,7 +7,8 @@
 | 層 | 手段 | 守る範囲 |
 | --- | --- | --- |
 | バージョン | `mise.lock` + `--minimum-release-age 2d` | publish 直後の 2 日間 |
-| 成果物 | `mise.lock` のチェックサム | 検証済みバージョンの差し替え・再 publish |
+| 成果物の完全性 | `mise.lock` のチェックサム | ロックした成果物と異なるバイト列 |
+| 成果物の provenance | backend の検証 + `locked_verify_provenance` | 対応する成果物で、記録済み provenance を検証できなくなった場合 |
 | パッケージ | `~/.npmrc` の [Takumi Guard](https://npm.flatt.tech/) プロキシ | npm 経由すべて。特にロックできない実行時の `npx ctx7@latest` / `npx skills add` |
 | Action のソース | `pinact` が検証する完全な commit SHA | GitHub Actions の release tag の移動や侵害 |
 
@@ -34,6 +35,35 @@ mise lock --bump --minimum-release-age 2d
 後者はツールが黙って消えるのを防ぐためのものです。`[tools.<name>]` のサブテーブルは `[tools]` を終わらせるため、それ以降の平坦なキーは新しいツールではなくそのツールのキーになります。
 このテストは CI と、リンクすれば [`.githooks`](../.githooks) の pre-commit フックの両方から走ります。
 
+## 成果物: ロックファイルの backend policy
+
+[`tests/mise-pins-test.sh`](../tests/mise-pins-test.sh) は、ロックされたすべての backend に明示的な policy を適用します。
+CI は作業ツリーに対して検査し、pre-commit hook は stage 済みの `.mise.toml` と `mise.lock` に対して同じ検査を実行します。
+回帰テストは正常系に加え、checksum の欠落または形式不正、provenance または backend の後退、未審査の version-only backend を検証します。
+
+現在利用している `core:`、`aqua:`、`github:` backend には、`linux-x64` と `macos-arm64` の checksum を必須とします。
+GitHub Actions の Linux x64 とローカル環境の macOS arm64 を検査対象とし、lockfile に含まれるほかの platform variation は変更も制限もしません。
+mise の公式仕様では aqua と github が full asset tracking に対応し、core は一部の tool で checksum に対応します。
+このリポジトリが現在選択している core tool は、どれも対象 platform の checksum を提供します。
+
+例外は backend 全体の wildcard ではなく、理由を添えた tool と backend の組として定義します。
+
+- `cargo:similarity-ts`：cargo の lock entry は version-only です。
+- `npm:@antfu/ni`、`npm:@openai/codex`、`npm:@playwright/cli`、`npm:ctx7`、`npm:difit`、`npm:pnpm`、`npm:wrangler`：npm の lock entry は version-only です。
+- `vfox:oci`：この vfox backend plugin は現在 version だけを記録します。
+
+新しい version-only または partial backend は、checksum policy を割り当てるか、理由付きの例外を追加するまで失敗します。
+
+checksum が保証するのは、`mise.lock` の値を基準とした完全性です。
+そのバイト列を誰が build または publish したかという真正性までは保証しません。
+真正性については、backend と upstream release が対応する場合に mise が検証済み provenance を記録します。
+現在は、すでにその provenance を提供している `github-cli`、`jq`、`uv` について、記録されたすべての platform 成果物に `github-attestations` を必須とします。
+各期待値は現在の正確な aqua backend にも結び付けるため、upstream identity の変更には policy の再審査が必要です。
+これらの記録が消えるか別の値へ変わると、後退として検出します。
+
+`.mise.toml` の `locked_verify_provenance = true` により、install 時には lockfile の過去の検証結果を信頼するだけでなく、provenance の暗号学的検証を再実行します。
+この保証は mise と upstream release の双方が provenance を提供する成果物に限られます。
+checksum しかない tool や、明示した version-only の例外に provenance を追加する設定ではありません。
 ## Action のソース: 不変な commit SHA
 
 [`.github/workflows`](../.github/workflows) 以下の `uses:` は、すべて 40 文字の完全な commit SHA に固定します。

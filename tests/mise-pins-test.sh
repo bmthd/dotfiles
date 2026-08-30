@@ -12,6 +12,9 @@
 #      whatever was published minutes ago, skipping the release-age gate
 #   3. no unknown option key on a tool entry
 #   4. nothing is locked that is no longer declared
+#   5. tracked backends have checksums for macOS arm64 and Linux x64
+#   6. known provenance-capable artifacts cannot lose recorded provenance
+#   7. every version-only or partial backend is explicitly allowlisted
 #
 # Run it from a git hook via .githooks/pre-commit, or by hand:
 #   bash tests/mise-pins-test.sh
@@ -82,6 +85,7 @@ fi
 
 # --- 2-4. lockfile ----------------------------------------------------------
 "${py[@]}" - "$repo" <<'PY'
+import re
 import sys
 import tomllib
 from pathlib import Path
@@ -91,6 +95,37 @@ config = tomllib.loads((repo / ".mise.toml").read_text())
 lock = tomllib.loads((repo / "mise.lock").read_text())
 
 failures = 0
+
+# mise documents full asset tracking for aqua/github and checksum support for
+# some core tools. Every currently used tool in these backend families resolves
+# assets for both platforms below, so a missing entry is a policy failure.
+CHECKSUM_BACKEND_PREFIXES = ("aqua:", "core:", "github:")
+REQUIRED_PLATFORMS = ("linux-x64", "macos-arm64")
+
+# These backends cannot currently give this repository a checksum for the
+# installed artifact. Keep the exception tied to both tool and backend: a new
+# version-only tool or a backend change must be reviewed instead of passing by
+# prefix. Reasons are kept beside the exception for maintainers and docs.
+VERSION_ONLY_ALLOWLIST = {
+    "cargo:similarity-ts": ("cargo:similarity-ts", "cargo lock entries record versions only"),
+    "npm:@antfu/ni": ("npm:@antfu/ni", "npm lock entries record versions only"),
+    "npm:@openai/codex": ("npm:@openai/codex", "npm lock entries record versions only"),
+    "npm:@playwright/cli": ("npm:@playwright/cli", "npm lock entries record versions only"),
+    "npm:ctx7": ("npm:ctx7", "npm lock entries record versions only"),
+    "npm:difit": ("npm:difit", "npm lock entries record versions only"),
+    "npm:pnpm": ("npm:pnpm", "npm lock entries record versions only"),
+    "oci": ("vfox:oci", "this vfox backend plugin records versions only"),
+    "wrangler": ("npm:wrangler", "npm lock entries record versions only"),
+}
+
+# These tools currently publish GitHub attestations and mise records successful
+# verification for every resolved asset. Requiring the recorded value prevents
+# a release/backend change from silently reducing the established guarantee.
+PROVENANCE_REQUIRED = {
+    "github-cli": ("aqua:cli/cli", "github-attestations"),
+    "jq": ("aqua:jqlang/jq", "github-attestations"),
+    "uv": ("aqua:astral-sh/uv", "github-attestations"),
+}
 
 
 def fail(message):
@@ -104,6 +139,9 @@ def fail(message):
 declared = {}
 for name, value in config["tools"].items():
     declared[name] = value if isinstance(value, str) else value.get("version")
+
+if config.get("settings", {}).get("locked_verify_provenance") is not True:
+    fail(".mise.toml [settings].locked_verify_provenance must be true")
 
 # 2. every declared tool is locked to a concrete version
 for name in declared:
@@ -132,6 +170,57 @@ for name, value in config["tools"].items():
 for name in lock.get("tools", {}):
     if name not in declared:
         fail(f"{name} is locked but no longer declared in .mise.toml")
+
+# 5-7. backend security policy
+for name, raw_entries in lock.get("tools", {}).items():
+    entries = raw_entries if isinstance(raw_entries, list) else [raw_entries]
+    for entry in entries:
+        backend = entry.get("backend", "")
+        tracked = backend.startswith(CHECKSUM_BACKEND_PREFIXES)
+        if tracked:
+            for platform in REQUIRED_PLATFORMS:
+                metadata = entry.get(f"platforms.{platform}")
+                if not isinstance(metadata, dict) or not metadata.get("checksum"):
+                    fail(
+                        f"{name} ({backend}) platform {platform} violates "
+                        "checksum-required policy: checksum is missing"
+                    )
+                elif not re.fullmatch(
+                    r"(?:sha256|blake3):[0-9a-f]{64}", metadata["checksum"]
+                ):
+                    fail(
+                        f"{name} ({backend}) platform {platform} violates "
+                        f"checksum-required policy: malformed checksum {metadata['checksum']!r}"
+                    )
+        else:
+            allowed = VERSION_ONLY_ALLOWLIST.get(name)
+            if allowed is None or allowed[0] != backend:
+                fail(
+                    f"{name} ({backend}) has no backend security policy; "
+                    "add checksum enforcement or a reviewed reason-specific allowlist entry"
+                )
+
+        provenance_policy = PROVENANCE_REQUIRED.get(name)
+        if provenance_policy:
+            expected_backend, expected_provenance = provenance_policy
+            if backend != expected_backend:
+                fail(
+                    f"{name} ({backend}) violates provenance-required policy: "
+                    f"expected backend {expected_backend}"
+                )
+            platform_entries = {
+                key.removeprefix("platforms."): value
+                for key, value in entry.items()
+                if key.startswith("platforms.") and isinstance(value, dict)
+            }
+            for platform, metadata in platform_entries.items():
+                actual = metadata.get("provenance")
+                if actual != expected_provenance:
+                    fail(
+                        f"{name} ({backend}) platform {platform} violates "
+                        f"provenance-required policy: expected {expected_provenance}, "
+                        f"got {actual!r}"
+                    )
 
 if failures:
     print(f"\n{failures} failure(s)")
