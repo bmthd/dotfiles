@@ -6,6 +6,19 @@
 
 echo "🚀 Bootstrapping dotfiles..."
 
+# Every step below keeps going on failure so that one broken piece does not
+# leave the rest of the machine unconfigured. That is only honest if the script
+# says so at the end, hence the tally: each recovered failure is recorded here
+# and reported, with a non-zero exit, once everything else has run.
+FAILURES=0
+FAILED_ITEMS=""
+
+record_failure() {
+    FAILURES=$((FAILURES + 1))
+    FAILED_ITEMS="${FAILED_ITEMS}  - $1
+"
+}
+
 # Detect which shell this script is running under (bash or zsh).
 # Run with `| bash` or `| zsh` to choose which shell to configure.
 if [ -n "$ZSH_VERSION" ]; then
@@ -23,8 +36,14 @@ echo "🐚 Configuring for $CURRENT_SHELL ($SHELL_CONFIG)"
 # Install mise
 if ! command -v mise &> /dev/null; then
     echo "📦 Installing mise..."
-    if ! curl https://mise.run | sh; then
+    # pipefail is set inside a subshell rather than globally: the exit status of
+    # `curl | sh` is `sh`'s, so without it a 404 page piped into a shell that
+    # happily does nothing would read as success. Scoping it to this pipeline
+    # keeps the rest of the script's behaviour untouched, and both bash and zsh
+    # accept `set -o pipefail`.
+    if ! (set -o pipefail; curl -fsSL https://mise.run | sh); then
         echo "⚠ mise installation failed; skipping"
+        record_failure "mise installation"
     fi
 
     # Add mise to PATH for this session
@@ -36,8 +55,18 @@ fi
 # Download mise config (tools + setup tasks)
 echo "📦 Setting up mise configuration..."
 mkdir -p "$HOME/.config/mise"
-curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/.mise.toml -o "$HOME/.config/mise/config.toml" \
-  || echo "⚠ Failed to download mise config"
+# Downloads land in a temp file and are moved into place only once curl has
+# succeeded. `curl -f -o dest` still creates (and partially fills) dest before it
+# gives up on an error response, so writing straight to the destination turns a
+# failed download into a truncated config that later runs would happily read.
+MISE_CONFIG_TMP="$(mktemp)"
+if curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/.mise.toml -o "$MISE_CONFIG_TMP"; then
+    mv "$MISE_CONFIG_TMP" "$HOME/.config/mise/config.toml"
+else
+    rm -f "$MISE_CONFIG_TMP"
+    echo "⚠ Failed to download mise config"
+    record_failure "mise config download"
+fi
 
 # The lockfile that goes with it, and this one is not optional. config.toml
 # declares every tool as `latest`; the lockfile is what turns that into an exact
@@ -46,7 +75,15 @@ curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/.mise.toml -o "
 # release-age gate entirely — so a missing lockfile is a failure, not a warning.
 # mise never creates a global lockfile on its own (only `mise lock --global`
 # does), which is why it ships with the repo.
-if ! curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/mise.lock -o "$HOME/.config/mise/mise.lock"; then
+# Same temp-file dance, and here it is the whole point: an empty
+# ~/.config/mise/mise.lock left behind by a failed download is worse than none at
+# all, because a later `mise install` would find a lockfile, pin nothing, and
+# resolve `latest` with neither the release-age gate nor checksum verification.
+MISE_LOCK_TMP="$(mktemp)"
+if curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/mise.lock -o "$MISE_LOCK_TMP"; then
+    mv "$MISE_LOCK_TMP" "$HOME/.config/mise/mise.lock"
+else
+    rm -f "$MISE_LOCK_TMP"
     echo "✗ Failed to download mise lockfile."
     echo "  Aborting: installing without it would bypass the release-age gate"
     echo "  and pull unverified latest versions."
@@ -67,22 +104,34 @@ if command -v mise &> /dev/null; then
     # registry and only then writes ~/.npmrc — exactly backwards. The task body
     # is plain shell (touch/sed/grep), so skipping the tools costs it nothing.
     echo "📦 Configuring npm registry..."
-    mise run --skip-tools setup:npm-registry || echo "⚠ Failed to configure npm registry (continuing)"
+    mise run --skip-tools setup:npm-registry || {
+        echo "⚠ Failed to configure npm registry (continuing)"
+        record_failure "npm registry configuration"
+    }
 
     # Current mise resolves OCI through vfox. Replace the legacy asdf plugin
     # that older dotfiles installations left under the same plugin name before
     # mise tries to load it as Lua.
     echo "📦 Configuring OCI plugin..."
-    mise run --skip-tools setup:oci-plugin || echo "⚠ Failed to configure OCI plugin (continuing)"
+    mise run --skip-tools setup:oci-plugin || {
+        echo "⚠ Failed to configure OCI plugin (continuing)"
+        record_failure "OCI plugin configuration"
+    }
 
     # Install all tools via mise
     echo "📦 Installing all tools via mise..."
-    mise install || echo "⚠ Some mise tools failed to install (continuing)"
+    mise install || {
+        echo "⚠ Some mise tools failed to install (continuing)"
+        record_failure "mise install"
+    }
 
     # Run the setup tasks defined in .mise.toml
     # (Claude Code + settings, agent skills, Codex plugin)
     echo "📦 Running setup tasks via mise..."
-    mise run setup || echo "⚠ Some setup tasks failed (continuing)"
+    mise run setup || {
+        echo "⚠ Some setup tasks failed (continuing)"
+        record_failure "mise run setup"
+    }
 fi
 
 # Setup shell integration for the detected shell
@@ -112,11 +161,17 @@ if [ -n "$SHELL_CONFIG" ]; then
         bash "$UPDATE_NOTICE" install
     else
         echo "⚠ Failed to install dotfiles update notification"
+        record_failure "dotfiles update notification"
     fi
 fi
 
 echo ""
-echo "✨ Installation complete!"
+if [ "$FAILURES" -eq 0 ]; then
+    echo "✨ Installation complete!"
+else
+    echo "✗ Installation finished with $FAILURES failed step(s):"
+    printf '%s' "$FAILED_ITEMS"
+fi
 echo ""
 echo "Installed versions:"
 if command -v mise &> /dev/null; then
@@ -124,3 +179,9 @@ if command -v mise &> /dev/null; then
 fi
 echo ""
 echo "Please restart your shell or run: source $SHELL_CONFIG"
+
+# Exit last so that a partial install still prints everything above, but never
+# reports success: CI and humans alike only have the exit code to go on.
+if [ "$FAILURES" -ne 0 ]; then
+    exit 1
+fi
