@@ -211,7 +211,12 @@ set -euo pipefail
 if [ "${DOTFILES_FAIL_REVISION_MOVE:-}" = true ]; then
   exit 44
 fi
-exec /bin/mv "$@"
+/bin/mv "$@"
+move_status=$?
+if [ "${DOTFILES_SIGNAL_AFTER_REVISION_MOVE:-}" = true ] && [ "$move_status" -eq 0 ]; then
+  kill -TERM "$PPID"
+fi
+exit "$move_status"
 EOF
 chmod +x "$fake_bin/mv"
 
@@ -406,6 +411,45 @@ printf '%s' "$revision_failure_result" | jq -e \
   echo 'revision update failure damaged the previous revision' >&2
   exit 1
 }
+
+# This fails if TERM is handled between a successful revision replacement and
+# the transaction commit marker.  The wrapper replaces revision first, signals
+# the parent before returning, and the outcome must still be internally
+# consistent.  This implementation chooses a fully committed outcome.
+setup_transaction_fixture
+if revision_signal_result="$(PATH="$fake_bin:$PATH" DOTFILES_SIGNAL_AFTER_REVISION_MOVE=true \
+  DOTFILES_APPLY_MISE_BIN="$fake_mise" MISE_LOG="$mise_log" \
+  bash "$script" apply --home "$transaction_home" --repo "$transaction_repo" --remote-ref HEAD \
+  --mise-config "$transaction_mise_config" --json 2>"$transaction_dir/revision-signal.err")"; then
+  echo 'apply accepted TERM immediately after revision replacement' >&2
+  exit 1
+fi
+printf '%s' "$revision_signal_result" | jq -e \
+  '.result == "applied" and .error == ""' >/dev/null
+[ "$(<"$transaction_home/.config/dotfiles/revision")" = "$transaction_remote_revision" ] || {
+  echo 'revision signal did not leave the new revision committed' >&2
+  exit 1
+}
+transaction_repository_paths=(
+  '.mise.toml'
+  'mise.lock'
+  '.claude/settings.json'
+  '.claude/statusline.sh'
+  '.dotfiles/update-notice.sh'
+)
+transaction_target_paths=(
+  "$transaction_mise_config"
+  "$transaction_home/custom/mise.lock"
+  "$transaction_home/.claude/settings.json"
+  "$transaction_home/.claude/statusline.sh"
+  "$transaction_home/.config/dotfiles/update-notice.sh"
+)
+for index in 0 1 2 3 4; do
+  [ "$(git hash-object "${transaction_target_paths[$index]}")" = "$(git -C "$transaction_repo" rev-parse "${transaction_remote_revision}:${transaction_repository_paths[$index]}")" ] || {
+    echo "revision signal left target $index inconsistent with revision" >&2
+    exit 1
+  }
+done
 
 # This fails if dangling symlinks are treated as absent and followed while
 # applying staged output.  A safe implementation rejects the target before it

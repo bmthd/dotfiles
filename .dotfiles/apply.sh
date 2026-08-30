@@ -96,12 +96,15 @@ done
 work_dir="$(mktemp -d)"
 transaction_active=false
 transaction_committed=false
+transaction_phase='inactive'
+pending_signal=''
 
 cleanup_transaction() {
   local exit_code="$1"
 
   trap - EXIT INT TERM
-  if [ "$transaction_active" = true ] && [ "$transaction_committed" != true ]; then
+  if [ "$transaction_active" = true ] && [ "$transaction_committed" != true ] \
+    && [ "$transaction_phase" != 'committing' ] && [ "$transaction_phase" != 'rolling-back' ]; then
     if ! rollback; then
       printf 'rollback after unexpected exit failed for: %s\n' "$rollback_error_summary" >&2
     fi
@@ -328,6 +331,7 @@ done
 jq -s '.' "$manifest_file" > "$backup_path/manifest.json"
 rm "$manifest_file"
 transaction_active=true
+transaction_phase='active'
 
 rollback() {
   local index local_path backup_file present
@@ -364,12 +368,17 @@ apply_stage() {
 
 rollback_with_error() {
   local error="$1"
-  transaction_active=false
+  transaction_phase='rolling-back'
   if ! rollback; then
     error="$error; rollback failed for: $rollback_error_summary"
   fi
+  transaction_active=false
+  transaction_phase='rolled-back'
   printf '%s\n' "$error" >&2
   emit_apply_result 'rolled-back' "$backup_path" "$error"
+  if [ -n "$pending_signal" ]; then
+    exit "$pending_signal"
+  fi
   exit 1
 }
 
@@ -377,16 +386,26 @@ handle_signal() {
   local exit_code="$1"
   local error='transaction interrupted; external side effects may remain'
 
-  trap - INT TERM
-  if [ "$transaction_active" = true ] && [ "$transaction_committed" != true ]; then
-    transaction_active=false
-    if ! rollback; then
-      error="$error; rollback failed for: $rollback_error_summary"
-    fi
-    printf '%s\n' "$error" >&2
-    emit_apply_result 'rolled-back' "$backup_path" "$error"
-  fi
-  exit "$exit_code"
+  case "$transaction_phase" in
+    committing|rolling-back)
+      pending_signal="$exit_code"
+      return
+      ;;
+    active)
+      transaction_phase='rolling-back'
+      if ! rollback; then
+        error="$error; rollback failed for: $rollback_error_summary"
+      fi
+      transaction_active=false
+      transaction_phase='rolled-back'
+      printf '%s\n' "$error" >&2
+      emit_apply_result 'rolled-back' "$backup_path" "$error"
+      exit "$exit_code"
+      ;;
+    *)
+      exit "$exit_code"
+      ;;
+  esac
 }
 
 trap 'handle_signal 130' INT
@@ -436,8 +455,14 @@ write_revision() {
   fi
 }
 
+transaction_phase='committing'
 if ! write_revision; then
+  transaction_phase='active'
   rollback_with_error 'failed to update revision; external side effects may remain'
 fi
 transaction_committed=true
+transaction_phase='committed'
 emit_apply_result 'applied' "$backup_path" ''
+if [ -n "$pending_signal" ]; then
+  exit "$pending_signal"
+fi
