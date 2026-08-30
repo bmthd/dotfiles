@@ -7,7 +7,7 @@ The defense is four layers, each covering a different range.
 | Layer | Mechanism | Covers |
 | --- | --- | --- |
 | Version | `mise.lock` + `--minimum-release-age 2d` | the first two days after publish |
-| Artifact integrity | checksums in `mise.lock` | bytes that differ from the locked artifact |
+| Artifact integrity | checksums in `mise.lock` | bytes that differ from the locked artifact, **on the backends that record one** — see [coverage](#coverage-which-tools-get-what) |
 | Artifact provenance | backend verification + `locked_verify_provenance` | supported artifacts whose recorded provenance no longer verifies |
 | Package | the [Takumi Guard](https://npm.flatt.tech/) proxy in `~/.npmrc` | everything through npm, especially the run-time `npx ctx7@latest` / `npx skills add` that cannot be locked |
 | Action source | full commit SHAs verified by `pinact` | movement or compromise of a GitHub Actions release tag |
@@ -31,6 +31,7 @@ The flag only applies to fuzzy selectors like `latest`. That is exactly why the 
 
 The lockfile is mandatory: `install.sh` aborts if it cannot be fetched.
 Running `mise install` against bare `latest` would bypass the waiting period and pull the newest release.
+It is installed to `~/.config/mise/mise.lock` while the config it locks sits in `~/.config/mise/conf.d/10-dotfiles.toml`: mise keys a global lockfile to the config directory rather than to one file name, so the single lockfile still pins every tool the fragment declares.
 [`tests/mise-pins-test.sh`](../tests/mise-pins-test.sh) catches any tool that slips in unlocked, and any `[tools]` entry not written as a single-line inline table.
 That second check is what keeps a tool from being silently dropped: a `[tools.<name>]` sub-table ends the `[tools]` table, so every plain key after one becomes a key of that tool instead of a new tool.
 It runs both in CI and, once linked, as the pre-commit hook in [`.githooks`](../.githooks).
@@ -39,7 +40,7 @@ It runs both in CI and, once linked, as the pre-commit hook in [`.githooks`](../
 
 [`tests/mise-pins-test.sh`](../tests/mise-pins-test.sh) applies an explicit policy to every locked backend.
 The same policy function runs against the working tree in CI and against staged `.mise.toml` and `mise.lock` files in the pre-commit hook.
-Its regression suite covers the valid policy and failures for a missing or malformed checksum, provenance or backend regression, and an unreviewed version-only backend.
+Its regression suite covers the valid policy and failures for a missing or malformed checksum, provenance or backend regression, an unreviewed version-only backend, and a coverage list on this page that has drifted from the lockfile.
 
 The policy requires `linux-x64` and `macos-arm64` checksums for every currently used `core:`, `aqua:`, and `github:` backend.
 It leaves additional platform variants intact and checks the two platforms this repository installs on: GitHub Actions Linux x64 and local macOS arm64.
@@ -47,20 +48,47 @@ mise documents full asset tracking for aqua and github, and checksum support for
 
 The following exceptions are exact tool/backend pairs with reasons, rather than backend-wide wildcards:
 
+<!-- coverage:no-checksum:start -->
 - `cargo:similarity-ts`: cargo lock entries are version-only.
 - `npm:@antfu/ni`, `npm:@openai/codex`, `npm:@playwright/cli`, `npm:ctx7`, `npm:difit`, `npm:pnpm`, and `npm:wrangler`: npm lock entries are version-only.
 - `vfox:oci`: this vfox backend plugin currently records only the version.
+<!-- coverage:no-checksum:end -->
 
 A newly added version-only or partial backend fails until a maintainer assigns it a checksum policy or adds a reason-specific exception.
 
+### Coverage: which tools get what
+
+Checksum protection is a property of the backend, not of mise. Saying "every tool this repository installs is checksum-verified" would be wrong for nearly half of them, so here is the split as `mise.lock` actually records it.
+
+These record a checksum for every platform, `linux-x64` and `macos-arm64` among them:
+
+<!-- coverage:checksum:start -->
+`aqua:anomalyco/opencode`, `aqua:astral-sh/uv`, `aqua:cli/cli`, `aqua:cloudflare/cloudflared`, `aqua:jqlang/jq`, `aqua:modem-dev/hunk`, `aqua:suzuki-shunsuke/pinact`, `aqua:x-motemen/ghq`, `core:bun`, `core:node`, `github:rtk-ai/rtk`
+<!-- coverage:checksum:end -->
+
+These record nothing but a version and a backend — the list above's complement, and the same set as the allowlisted exceptions:
+
+<!-- coverage:version-only:start -->
+`cargo:similarity-ts`, `npm:@antfu/ni`, `npm:@openai/codex`, `npm:@playwright/cli`, `npm:ctx7`, `npm:difit`, `npm:pnpm`, `npm:wrangler`, `vfox:oci`
+<!-- coverage:version-only:end -->
+
+And these additionally carry verified provenance in the lockfile:
+
+<!-- coverage:provenance:start -->
+`aqua:astral-sh/uv`, `aqua:cli/cli`, `aqua:jqlang/jq`, `aqua:suzuki-shunsuke/pinact`
+<!-- coverage:provenance:end -->
+
+[`tests/mise-pins-test.sh`](../tests/mise-pins-test.sh) checks these four lists against `mise.lock` on every CI run, so a backend that gains or loses a checksum fails here rather than quietly making this page a lie.
+
 A checksum establishes integrity relative to the value in `mise.lock`; it does not establish who built or published those bytes.
 For authenticity, mise records verified provenance when a backend and release provide it.
-The policy currently requires `github-attestations` on every recorded platform asset for `github-cli`, `jq`, and `uv`, because those tools already provide that provenance.
+The policy currently requires `github-attestations` on every recorded platform asset for `github-cli`, `jq`, `pinact`, and `uv`, because those tools already provide that provenance.
 Each expectation is also bound to its current exact aqua backend, so switching the upstream identity requires policy review.
 Removing or changing one of those entries is treated as a regression.
 
 `.mise.toml` sets `locked_verify_provenance = true`, so installation re-runs cryptographic provenance verification instead of trusting the lockfile's prior verification result.
 This guarantee applies only to artifacts for which mise and the upstream release provide provenance; it does not add provenance to the checksum-only tools or the explicit version-only exceptions.
+
 ## Action source: immutable commit SHAs
 
 Every `uses:` reference under [`.github/workflows`](../.github/workflows) is pinned to a full 40-character commit SHA.
@@ -83,6 +111,18 @@ The packages still install fine, so the failure never surfaces ([`tests/install-
 
 The registry goes into `~/.npmrc` rather than an environment variable, so a project on a private registry can still override it with its own `.npmrc`.
 If a custom registry is already configured, the setup leaves it alone.
+
+### What the proxy does not reach
+
+`~/.npmrc` is read by npm, pnpm and bun (1.0.28 and later), which covers every `npm:` tool and the run-time `npx` calls that cannot be locked.
+It has no effect on the backends that never talk to the npm registry: `cargo:` resolves crates.io through cargo's own config, and `github:`, `aqua:` and `core:` download release assets straight from the upstream host.
+
+For most of those the checksum layer stands in for it — the bytes are pinned in `mise.lock`.
+Two tools fall through both, having neither a proxy in front of them nor a checksum behind them, and are held by the locked version alone:
+
+<!-- coverage:unproxied-version-only:start -->
+`cargo:similarity-ts`, `vfox:oci`
+<!-- coverage:unproxied-version-only:end -->
 
 ## Not covered: skills
 

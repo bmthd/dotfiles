@@ -7,7 +7,7 @@
 | 層 | 手段 | 守る範囲 |
 | --- | --- | --- |
 | バージョン | `mise.lock` + `--minimum-release-age 2d` | publish 直後の 2 日間 |
-| 成果物の完全性 | `mise.lock` のチェックサム | ロックした成果物と異なるバイト列 |
+| 成果物の完全性 | `mise.lock` のチェックサム | ロックした成果物と異なるバイト列。ただし **checksum を記録する backend に限る** ([カバー範囲](#カバー範囲-どのツールに何が効くか)) |
 | 成果物の provenance | backend の検証 + `locked_verify_provenance` | 対応する成果物で、記録済み provenance を検証できなくなった場合 |
 | パッケージ | `~/.npmrc` の [Takumi Guard](https://npm.flatt.tech/) プロキシ | npm 経由すべて。特にロックできない実行時の `npx ctx7@latest` / `npx skills add` |
 | Action のソース | `pinact` が検証する完全な commit SHA | GitHub Actions の release tag の移動や侵害 |
@@ -31,6 +31,8 @@ mise lock --bump --minimum-release-age 2d
 
 ロックファイルは必須です。取得に失敗した場合 `install.sh` は中断します。
 `latest` のまま `mise install` すると待機期間を迂回して最新版が入ってしまうためです。
+配置先は `~/.config/mise/mise.lock` で、ロック対象の設定は `~/.config/mise/conf.d/10-dotfiles.toml` にあります。
+mise はグローバルの lockfile を単一のファイル名ではなく config ディレクトリに紐付けるため、この 1 本で fragment が宣言するツールすべてが固定されます。
 ロックされていないツールの混入と、`[tools]` が 1 行のインラインテーブルで書かれていない行は [`tests/mise-pins-test.sh`](../tests/mise-pins-test.sh) が検出します。
 後者はツールが黙って消えるのを防ぐためのものです。`[tools.<name>]` のサブテーブルは `[tools]` を終わらせるため、それ以降の平坦なキーは新しいツールではなくそのツールのキーになります。
 このテストは CI と、リンクすれば [`.githooks`](../.githooks) の pre-commit フックの両方から走ります。
@@ -39,7 +41,7 @@ mise lock --bump --minimum-release-age 2d
 
 [`tests/mise-pins-test.sh`](../tests/mise-pins-test.sh) は、ロックされたすべての backend に明示的な policy を適用します。
 CI は作業ツリーに対して検査し、pre-commit hook は stage 済みの `.mise.toml` と `mise.lock` に対して同じ検査を実行します。
-回帰テストは正常系に加え、checksum の欠落または形式不正、provenance または backend の後退、未審査の version-only backend を検証します。
+回帰テストは正常系に加え、checksum の欠落または形式不正、provenance または backend の後退、未審査の version-only backend、そしてこのページのカバー範囲リストが lockfile とずれた場合を検証します。
 
 現在利用している `core:`、`aqua:`、`github:` backend には、`linux-x64` と `macos-arm64` の checksum を必須とします。
 GitHub Actions の Linux x64 とローカル環境の macOS arm64 を検査対象とし、lockfile に含まれるほかの platform variation は変更も制限もしません。
@@ -48,22 +50,52 @@ mise の公式仕様では aqua と github が full asset tracking に対応し�
 
 例外は backend 全体の wildcard ではなく、理由を添えた tool と backend の組として定義します。
 
+<!-- coverage:no-checksum:start -->
 - `cargo:similarity-ts`：cargo の lock entry は version-only です。
 - `npm:@antfu/ni`、`npm:@openai/codex`、`npm:@playwright/cli`、`npm:ctx7`、`npm:difit`、`npm:pnpm`、`npm:wrangler`：npm の lock entry は version-only です。
 - `vfox:oci`：この vfox backend plugin は現在 version だけを記録します。
+<!-- coverage:no-checksum:end -->
 
 新しい version-only または partial backend は、checksum policy を割り当てるか、理由付きの例外を追加するまで失敗します。
+
+### カバー範囲: どのツールに何が効くか
+
+checksum による保護は mise ではなく backend の性質です。
+「このリポジトリが入れるツールはすべて checksum 検証される」と書くと、その半分近くについて嘘になります。
+実際に `mise.lock` が記録している内訳は次の通りです。
+
+`linux-x64` と `macos-arm64` を含む全 platform で checksum を記録しているもの:
+
+<!-- coverage:checksum:start -->
+`aqua:anomalyco/opencode`, `aqua:astral-sh/uv`, `aqua:cli/cli`, `aqua:cloudflare/cloudflared`, `aqua:jqlang/jq`, `aqua:modem-dev/hunk`, `aqua:suzuki-shunsuke/pinact`, `aqua:x-motemen/ghq`, `core:bun`, `core:node`, `github:rtk-ai/rtk`
+<!-- coverage:checksum:end -->
+
+version と backend しか記録していないもの。上の補集合であり、許可リストの例外と同じ集合です:
+
+<!-- coverage:version-only:start -->
+`cargo:similarity-ts`, `npm:@antfu/ni`, `npm:@openai/codex`, `npm:@playwright/cli`, `npm:ctx7`, `npm:difit`, `npm:pnpm`, `npm:wrangler`, `vfox:oci`
+<!-- coverage:version-only:end -->
+
+さらに検証済みの provenance を lockfile に持つもの:
+
+<!-- coverage:provenance:start -->
+`aqua:astral-sh/uv`, `aqua:cli/cli`, `aqua:jqlang/jq`, `aqua:suzuki-shunsuke/pinact`
+<!-- coverage:provenance:end -->
+
+この 4 つのリストは、CI のたびに [`tests/mise-pins-test.sh`](../tests/mise-pins-test.sh) が `mise.lock` と突き合わせます。
+backend が checksum を得たり失ったりしたときに、この文書が黙って嘘になるのではなく、そこで落ちるようにするためです。
 
 checksum が保証するのは、`mise.lock` の値を基準とした完全性です。
 そのバイト列を誰が build または publish したかという真正性までは保証しません。
 真正性については、backend と upstream release が対応する場合に mise が検証済み provenance を記録します。
-現在は、すでにその provenance を提供している `github-cli`、`jq`、`uv` について、記録されたすべての platform 成果物に `github-attestations` を必須とします。
+現在は、すでにその provenance を提供している `github-cli`、`jq`、`pinact`、`uv` について、記録されたすべての platform 成果物に `github-attestations` を必須とします。
 各期待値は現在の正確な aqua backend にも結び付けるため、upstream identity の変更には policy の再審査が必要です。
 これらの記録が消えるか別の値へ変わると、後退として検出します。
 
 `.mise.toml` の `locked_verify_provenance = true` により、install 時には lockfile の過去の検証結果を信頼するだけでなく、provenance の暗号学的検証を再実行します。
 この保証は mise と upstream release の双方が provenance を提供する成果物に限られます。
 checksum しかない tool や、明示した version-only の例外に provenance を追加する設定ではありません。
+
 ## Action のソース: 不変な commit SHA
 
 [`.github/workflows`](../.github/workflows) 以下の `uses:` は、すべて 40 文字の完全な commit SHA に固定します。
@@ -86,6 +118,18 @@ pinact 自体も mise の管理対象であり、`mise.lock` が checksum とバ
 
 レジストリは環境変数ではなく `~/.npmrc` に書くため、プライベートレジストリを使うプロジェクトはリポジトリ側の `.npmrc` で上書きできます。
 既に独自のレジストリが設定されている場合、セットアップはそれを変更しません。
+
+### プロキシが届かない範囲
+
+`~/.npmrc` を読むのは npm、pnpm、bun (1.0.28 以降) です。`npm:` のツール一式と、ロックできない実行時の `npx` はこれでカバーされます。
+npm レジストリと通信しない backend には効きません。`cargo:` は cargo 自身の設定を見て crates.io を解決し、`github:`、`aqua:`、`core:` は upstream のホストからリリース成果物を直接取得します。
+
+その多くは checksum の層が肩代わりします。バイト列が `mise.lock` に固定されているためです。
+前にプロキシが無く、後ろに checksum も無い、ロックされたバージョンだけで支えられているツールが 2 つあります:
+
+<!-- coverage:unproxied-version-only:start -->
+`cargo:similarity-ts`, `vfox:oci`
+<!-- coverage:unproxied-version-only:end -->
 
 ## 対象外: スキル
 

@@ -31,4 +31,12 @@ trap 'rm -rf "$staged"' EXIT
 git show :.mise.toml > "$staged/.mise.toml"
 git show :mise.lock > "$staged/mise.lock"
 
+# The documented-coverage check reads the supply-chain pages, so take those from
+# the index too and judge one consistent snapshot. A page missing from the index
+# leaves no file behind, and the test skips that page rather than failing.
+mkdir -p "$staged/docs"
+for doc in docs/supply-chain.md docs/supply-chain.ja.md; do
+    git show ":$doc" > "$staged/$doc" 2>/dev/null || rm -f "$staged/$doc"
+done
+
 bash "$repo/tests/mise-pins-test.sh" "$staged"
