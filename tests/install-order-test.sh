@@ -101,10 +101,64 @@ fi
 # arrive via a temp file, so both destinations are checked by name.
 # shellcheck disable=SC2016  # these are the literal strings grepped for in
 # install.sh, not values to expand here
-for destination in '$DOTFILES_CONF_D/10-dotfiles.toml' '$HOME/.config/mise/mise.lock'; do
+for destination in '$MISE_CONFIG_DEST' '$MISE_LOCK_DEST'; do
   if ! grep -qF "_TMP\" \"$destination\"" "$install_sh"; then
     echo "✗ $destination is not moved into place from a temp file after a" >&2
     echo "  successful download" >&2
+    exit 1
+  fi
+done
+
+# --- one definition of where the mise files go -------------------------------
+# install.sh and .dotfiles/apply.sh both place these files, and for a while they
+# disagreed: install.sh had moved the repository's config to conf.d/ while
+# apply.sh kept writing it back to config.toml, and apply.sh derived the
+# lockfile path from whichever config path it was given (#71). Both now read
+# .dotfiles/mise-layout.sh, and neither may spell a ~/.config/mise path out
+# again — that duplication is the bug, not its symptom.
+layout_sh="$(dirname "$install_sh")/.dotfiles/mise-layout.sh"
+apply_sh="$(dirname "$install_sh")/.dotfiles/apply.sh"
+
+for placer in "$install_sh" "$apply_sh"; do
+  if ! grep -q 'mise-layout\.sh' "$placer"; then
+    echo "✗ $(basename "$placer") does not read the shared layout rules in" >&2
+    echo "  .dotfiles/mise-layout.sh, so its paths can drift again" >&2
+    exit 1
+  fi
+  if grep -nE '\$\{?(HOME|home)\}?/\.config/mise' "$placer" >&2; then
+    echo "✗ the lines above spell out a ~/.config/mise path instead of asking" >&2
+    echo "  .dotfiles/mise-layout.sh for it" >&2
+    exit 1
+  fi
+done
+
+for rule in dotfiles_mise_config_path dotfiles_mise_lock_path \
+  dotfiles_legacy_mise_config_path dotfiles_is_repository_mise_config \
+  dotfiles_migration_is_forced; do
+  if ! grep -q "^$rule()" "$layout_sh"; then
+    echo "✗ .dotfiles/mise-layout.sh no longer defines $rule" >&2
+    exit 1
+  fi
+done
+
+# The lockfile is keyed by mise to the config directory, so a layout that
+# derives it from the config path puts it inside conf.d/, where mise never
+# looks. That is how --mise-config stopped being a usable workaround.
+if [ "$(bash -c '. "$1"; dotfiles_mise_lock_path /h' _ "$layout_sh")" != '/h/.config/mise/mise.lock' ] ||
+  [ "$(bash -c '. "$1"; dotfiles_mise_config_path /h' _ "$layout_sh")" != '/h/.config/mise/conf.d/10-dotfiles.toml' ]; then
+  echo "✗ the shared layout no longer puts the config in conf.d/ and the" >&2
+  echo "  lockfile beside config.toml" >&2
+  exit 1
+fi
+
+# install.sh is piped into bash *or* zsh, and it sources this file, so the
+# fragment has to behave identically under both.
+for shell in bash zsh; do
+  command -v "$shell" > /dev/null || continue
+  # shellcheck disable=SC2016  # the body is run by $shell, not expanded here
+  if ! "$shell" -c '. "$1"; dotfiles_mise_config_path /h > /dev/null' _ "$layout_sh"; then
+    echo "✗ .dotfiles/mise-layout.sh does not work under $shell, which" >&2
+    echo "  install.sh is documented to be piped into" >&2
     exit 1
   fi
 done

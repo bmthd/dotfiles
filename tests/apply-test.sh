@@ -10,9 +10,10 @@ trap 'rm -rf "$test_dir"' EXIT
 repo="$test_dir/repo"
 home="$test_dir/home"
 mise_config="$home/custom/mise.toml"
+mise_lock="$home/custom/mise.lock"
 managed_targets=(
   "$mise_config"
-  "$(dirname "$mise_config")/mise.lock"
+  "$mise_lock"
   "$home/.claude/settings.json"
   "$home/.claude/statusline.sh"
   "$home/.config/dotfiles/update-notice.sh"
@@ -32,7 +33,7 @@ snapshot_managed_targets() {
 assert_no_base_apply_does_not_write() {
   local before after
   before="$(snapshot_managed_targets)"
-  if bash "$script" apply --home "$home" --repo "$repo" --remote-ref HEAD --mise-config "$mise_config" --json >/dev/null 2>&1; then
+  if bash "$script" apply --home "$home" --repo "$repo" --remote-ref HEAD --mise-config "$mise_config" --mise-lock "$mise_lock" --json >/dev/null 2>&1; then
     echo 'apply accepted no-base inventory' >&2
     exit 1
   fi
@@ -96,7 +97,7 @@ mkdir -p "$home/.config/dotfiles"
 cp "$repo/.dotfiles/update-notice.sh" "$home/.config/dotfiles/update-notice.sh"
 printf '%s\n' "$base_revision" > "$home/.config/dotfiles/revision"
 
-inventory="$(bash "$script" plan --home "$home" --repo "$repo" --remote-ref HEAD --mise-config "$mise_config" --json)"
+inventory="$(bash "$script" plan --home "$home" --repo "$repo" --remote-ref HEAD --mise-config "$mise_config" --mise-lock "$mise_lock" --json)"
 printf '%s' "$inventory" | jq -e \
   --arg base "$base_revision" \
   --arg remote "$remote_revision" \
@@ -110,7 +111,7 @@ printf '%s' "$inventory" | jq -e \
                                  and .state == "unchanged-local"))' >/dev/null
 
 printf '%s\n' 'dddddddddddddddddddddddddddddddddddddddd' > "$home/.config/dotfiles/revision"
-no_base="$(bash "$script" plan --home "$home" --repo "$repo" --remote-ref HEAD --mise-config "$mise_config" --json)"
+no_base="$(bash "$script" plan --home "$home" --repo "$repo" --remote-ref HEAD --mise-config "$mise_config" --mise-lock "$mise_lock" --json)"
 printf '%s' "$no_base" | jq -e \
   '.mode == "no-base"
    and .baseRevision == "dddddddddddddddddddddddddddddddddddddddd"
@@ -118,7 +119,7 @@ printf '%s' "$no_base" | jq -e \
 assert_no_base_apply_does_not_write
 
 rm "$home/.config/dotfiles/revision" "$home/.config/dotfiles/update-notice.sh"
-missing_revision="$(bash "$script" plan --home "$home" --repo "$repo" --remote-ref HEAD --mise-config "$mise_config" --json)"
+missing_revision="$(bash "$script" plan --home "$home" --repo "$repo" --remote-ref HEAD --mise-config "$mise_config" --mise-lock "$mise_lock" --json)"
 printf '%s' "$missing_revision" | jq -e \
   '.mode == "no-base"
    and .baseRevision == ""
@@ -131,12 +132,12 @@ git -C "$repo" add .claude/statusline.sh
 git -C "$repo" commit -qm remote-statusline
 printf '%s\n' '#!/usr/bin/env bash' 'echo local-statusline' > "$home/.claude/statusline.sh"
 
-conflict_inventory="$(bash "$script" plan --home "$home" --repo "$repo" --remote-ref HEAD --mise-config "$mise_config" --json)"
+conflict_inventory="$(bash "$script" plan --home "$home" --repo "$repo" --remote-ref HEAD --mise-config "$mise_config" --mise-lock "$mise_lock" --json)"
 printf '%s' "$conflict_inventory" | jq -e \
   'any(.files[]; .repositoryPath == ".claude/statusline.sh" and .state == "conflict")' >/dev/null
 
 before_conflict_apply="$(snapshot_managed_targets)"
-if bash "$script" apply --home "$home" --repo "$repo" --remote-ref HEAD --mise-config "$mise_config" --json >/dev/null 2>&1; then
+if bash "$script" apply --home "$home" --repo "$repo" --remote-ref HEAD --mise-config "$mise_config" --mise-lock "$mise_lock" --json >/dev/null 2>&1; then
   echo 'apply accepted a text merge conflict' >&2
   exit 1
 fi
@@ -154,23 +155,31 @@ transaction_dir="$test_dir/transaction"
 transaction_repo="$transaction_dir/repo"
 transaction_home="$transaction_dir/home"
 transaction_mise_config="$transaction_home/custom/selected-mise.toml"
+transaction_mise_lock="$transaction_home/custom/mise.lock"
 fake_mise="$transaction_dir/fake-mise"
 mise_log="$transaction_dir/mise.log"
 fake_bin="$transaction_dir/bin"
 restore_log="$transaction_dir/restore.log"
 
 mkdir -p "$transaction_dir" "$fake_bin"
+# MISE_GLOBAL_CONFIG_FILE names one file and replaces the whole global config
+# with it, so it is set only while a staged fragment is being parse-checked in
+# isolation. Every other call reads the machine's real global config, which
+# here means whatever apply wrote to the selected --mise-config;
+# MISE_EFFECTIVE_CONFIG is how this double is told where that is.
 cat > "$fake_mise" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 
-printf 'HOME=%s CONFIG=%s ARGS=%s\n' "$HOME" "$MISE_CONFIG_FILE" "$*" >> "$MISE_LOG"
-[ -n "${MISE_CONFIG_FILE:-}" ] && [ -f "$MISE_CONFIG_FILE" ]
-if grep -q 'invalid-toml' "$MISE_CONFIG_FILE"; then
+printf 'HOME=%s XDG=%s CONFIG=%s ARGS=%s\n' \
+  "$HOME" "${XDG_CONFIG_HOME:-<none>}" "${MISE_GLOBAL_CONFIG_FILE:-<none>}" "$*" >> "$MISE_LOG"
+config="${MISE_GLOBAL_CONFIG_FILE:-${MISE_EFFECTIVE_CONFIG:-}}"
+[ -n "$config" ] && [ -f "$config" ]
+if grep -q 'invalid-toml' "$config"; then
   exit 2
 fi
 if [ "${MISE_FAIL_POST_VALIDATE:-}" = true ] && [ "$*" = 'tasks ls' ] \
-  && [ "$MISE_CONFIG_FILE" = "${MISE_POST_CONFIG:-}" ]; then
+  && [ -z "${MISE_GLOBAL_CONFIG_FILE:-}" ]; then
   exit 33
 fi
 if [ "${MISE_SIGNAL_AT:-}" = "$*" ]; then
@@ -220,6 +229,24 @@ exit "$move_status"
 EOF
 chmod +x "$fake_bin/mv"
 
+# The repository's own copy carries the raw.githubusercontent.com URL its setup
+# tasks fetch from, and that is the marker the shared layout rules use to tell a
+# copy of this repository from a config.toml written for one machine.
+transaction_base_mise=$'# from https://raw.githubusercontent.com/bmthd/dotfiles\n[tools]\nnode = "20"'
+transaction_remote_mise=$'# from https://raw.githubusercontent.com/bmthd/dotfiles\n[tools]\nnode = "22"'
+transaction_legacy_config="$transaction_home/.config/mise/config.toml"
+
+write_legacy_mise_config() {
+  mkdir -p "$(dirname "$transaction_legacy_config")"
+  printf '%s\n' "$1" > "$transaction_legacy_config"
+}
+
+legacy_state_of() {
+  bash "$script" plan --home "$transaction_home" --repo "$transaction_repo" --remote-ref HEAD \
+    --mise-config "$transaction_mise_config" --mise-lock "$transaction_mise_lock" --json |
+    jq -r '.legacyMiseConfig.state'
+}
+
 setup_transaction_fixture() {
   rm -rf "$transaction_repo" "$transaction_home" "$mise_log" "$restore_log"
   mkdir -p "$transaction_repo/.claude" "$transaction_repo/.dotfiles" \
@@ -229,7 +256,7 @@ setup_transaction_fixture() {
   git -C "$transaction_repo" config user.email test@example.com
   git -C "$transaction_repo" config user.name test
 
-  printf '%s\n' '[tools]' 'node = "20"' > "$transaction_repo/.mise.toml"
+  printf '%s\n' "$transaction_base_mise" > "$transaction_repo/.mise.toml"
   printf '%s\n' 'base-lock' > "$transaction_repo/mise.lock"
   printf '%s\n' '{"base":true}' > "$transaction_repo/.claude/settings.json"
   printf '%s\n' '#!/usr/bin/env bash' 'echo base-statusline' > "$transaction_repo/.claude/statusline.sh"
@@ -238,7 +265,7 @@ setup_transaction_fixture() {
   git -C "$transaction_repo" commit -qm base
   transaction_base_revision="$(git -C "$transaction_repo" rev-parse HEAD)"
 
-  printf '%s\n' '[tools]' 'node = "22"' > "$transaction_repo/.mise.toml"
+  printf '%s\n' "$transaction_remote_mise" > "$transaction_repo/.mise.toml"
   printf '%s\n' 'remote-lock' > "$transaction_repo/mise.lock"
   printf '%s\n' '{"base":true,"remote":true}' > "$transaction_repo/.claude/settings.json"
   printf '%s\n' '#!/usr/bin/env bash' 'echo remote-statusline' > "$transaction_repo/.claude/statusline.sh"
@@ -248,7 +275,7 @@ setup_transaction_fixture() {
   transaction_remote_revision="$(git -C "$transaction_repo" rev-parse HEAD)"
 
   cp "$transaction_repo/.mise.toml" "$transaction_mise_config"
-  git -C "$transaction_repo" show "${transaction_base_revision}:mise.lock" > "$transaction_home/custom/mise.lock"
+  git -C "$transaction_repo" show "${transaction_base_revision}:mise.lock" > "$transaction_mise_lock"
   git -C "$transaction_repo" show "${transaction_base_revision}:.claude/settings.json" > "$transaction_home/.claude/settings.json"
   git -C "$transaction_repo" show "${transaction_base_revision}:.claude/statusline.sh" > "$transaction_home/.claude/statusline.sh"
   git -C "$transaction_repo" show "${transaction_base_revision}:.dotfiles/update-notice.sh" > "$transaction_home/.config/dotfiles/update-notice.sh"
@@ -260,7 +287,7 @@ snapshot_transaction_targets() {
   local target
   for target in \
     "$transaction_mise_config" \
-    "$transaction_home/custom/mise.lock" \
+    "$transaction_mise_lock" \
     "$transaction_home/.claude/settings.json" \
     "$transaction_home/.claude/statusline.sh" \
     "$transaction_home/.config/dotfiles/update-notice.sh"; do
@@ -277,9 +304,9 @@ snapshot_transaction_targets() {
 setup_transaction_fixture
 rm "$transaction_home/.config/dotfiles/update-notice.sh"
 before_rollback="$(snapshot_transaction_targets)"
-if rollback_result="$(DOTFILES_APPLY_MISE_BIN="$fake_mise" MISE_LOG="$mise_log" MISE_FAIL_AT='install' \
+if rollback_result="$(DOTFILES_APPLY_MISE_BIN="$fake_mise" MISE_LOG="$mise_log" MISE_EFFECTIVE_CONFIG="$transaction_mise_config" MISE_FAIL_AT='install' \
   bash "$script" apply --home "$transaction_home" --repo "$transaction_repo" --remote-ref HEAD \
-  --mise-config "$transaction_mise_config" --json 2>"$transaction_dir/rollback.err")"; then
+  --mise-config "$transaction_mise_config" --mise-lock "$transaction_mise_lock" --json 2>"$transaction_dir/rollback.err")"; then
   echo 'apply accepted a failing mise install' >&2
   exit 1
 fi
@@ -309,9 +336,9 @@ after_rollback="$(snapshot_transaction_targets)"
 setup_transaction_fixture
 before_partial_rollback="$(snapshot_transaction_targets)"
 if partial_rollback_result="$(PATH="$fake_bin:$PATH" DOTFILES_RESTORE_LOG="$restore_log" DOTFILES_FAIL_RESTORE_INDEX=0 \
-  DOTFILES_APPLY_MISE_BIN="$fake_mise" MISE_LOG="$mise_log" MISE_FAIL_AT='install' \
+  DOTFILES_APPLY_MISE_BIN="$fake_mise" MISE_LOG="$mise_log" MISE_EFFECTIVE_CONFIG="$transaction_mise_config" MISE_FAIL_AT='install' \
   bash "$script" apply --home "$transaction_home" --repo "$transaction_repo" --remote-ref HEAD \
-  --mise-config "$transaction_mise_config" --json 2>"$transaction_dir/partial-rollback.err")"; then
+  --mise-config "$transaction_mise_config" --mise-lock "$transaction_mise_lock" --json 2>"$transaction_dir/partial-rollback.err")"; then
   echo 'apply accepted a failing mise install with restore failure' >&2
   exit 1
 fi
@@ -319,7 +346,7 @@ printf '%s' "$partial_rollback_result" | jq -e --arg path "$transaction_mise_con
   '.result == "rolled-back" and (.error | contains($path))' >/dev/null
 expected_restore_log=$(printf '%s\n' \
   "$transaction_mise_config" \
-  "$transaction_home/custom/mise.lock" \
+  "$transaction_mise_lock" \
   "$transaction_home/.claude/settings.json" \
   "$transaction_home/.claude/statusline.sh" \
   "$transaction_home/.config/dotfiles/update-notice.sh")
@@ -327,12 +354,12 @@ expected_restore_log=$(printf '%s\n' \
   printf 'rollback did not attempt every target:\n%s\n' "$(<"$restore_log")" >&2
   exit 1
 }
-[ "$(<"$transaction_mise_config")" = $'[tools]\nnode = "22"' ] || {
+[ "$(<"$transaction_mise_config")" = "$transaction_remote_mise" ] || {
   echo 'injected restore failure did not leave target 0 applied' >&2
   exit 1
 }
 for target in \
-  "$transaction_home/custom/mise.lock" \
+  "$transaction_mise_lock" \
   "$transaction_home/.claude/settings.json" \
   "$transaction_home/.claude/statusline.sh" \
   "$transaction_home/.config/dotfiles/update-notice.sh"; do
@@ -349,10 +376,10 @@ done
 setup_transaction_fixture
 rm "$transaction_home/.config/dotfiles/update-notice.sh"
 before_post_validation="$(snapshot_transaction_targets)"
-if post_validation_result="$(DOTFILES_APPLY_MISE_BIN="$fake_mise" MISE_LOG="$mise_log" \
-  MISE_FAIL_POST_VALIDATE=true MISE_POST_CONFIG="$transaction_mise_config" \
+if post_validation_result="$(DOTFILES_APPLY_MISE_BIN="$fake_mise" MISE_LOG="$mise_log" MISE_EFFECTIVE_CONFIG="$transaction_mise_config" \
+  MISE_FAIL_POST_VALIDATE=true \
   bash "$script" apply --home "$transaction_home" --repo "$transaction_repo" --remote-ref HEAD \
-  --mise-config "$transaction_mise_config" --json 2>"$transaction_dir/post-validation.err")"; then
+  --mise-config "$transaction_mise_config" --mise-lock "$transaction_mise_lock" --json 2>"$transaction_dir/post-validation.err")"; then
   echo 'apply accepted malformed post-apply TOML' >&2
   exit 1
 fi
@@ -372,9 +399,9 @@ printf '%s' "$post_validation_result" | jq -e \
 setup_transaction_fixture
 rm "$transaction_home/.config/dotfiles/update-notice.sh"
 before_interrupt="$(snapshot_transaction_targets)"
-if interrupt_result="$(DOTFILES_APPLY_MISE_BIN="$fake_mise" MISE_LOG="$mise_log" MISE_SIGNAL_AT='install' \
+if interrupt_result="$(DOTFILES_APPLY_MISE_BIN="$fake_mise" MISE_LOG="$mise_log" MISE_EFFECTIVE_CONFIG="$transaction_mise_config" MISE_SIGNAL_AT='install' \
   bash "$script" apply --home "$transaction_home" --repo "$transaction_repo" --remote-ref HEAD \
-  --mise-config "$transaction_mise_config" --json 2>"$transaction_dir/interrupt.err")"; then
+  --mise-config "$transaction_mise_config" --mise-lock "$transaction_mise_lock" --json 2>"$transaction_dir/interrupt.err")"; then
   echo 'apply accepted an interrupt during mise install' >&2
   exit 1
 fi
@@ -395,9 +422,9 @@ setup_transaction_fixture
 before_revision_failure="$(snapshot_transaction_targets)"
 revision_before="$(<"$transaction_home/.config/dotfiles/revision")"
 if revision_failure_result="$(PATH="$fake_bin:$PATH" DOTFILES_FAIL_REVISION_MOVE=true \
-  DOTFILES_APPLY_MISE_BIN="$fake_mise" MISE_LOG="$mise_log" \
+  DOTFILES_APPLY_MISE_BIN="$fake_mise" MISE_LOG="$mise_log" MISE_EFFECTIVE_CONFIG="$transaction_mise_config" \
   bash "$script" apply --home "$transaction_home" --repo "$transaction_repo" --remote-ref HEAD \
-  --mise-config "$transaction_mise_config" --json 2>"$transaction_dir/revision.err")"; then
+  --mise-config "$transaction_mise_config" --mise-lock "$transaction_mise_lock" --json 2>"$transaction_dir/revision.err")"; then
   echo 'apply accepted a failing atomic revision replacement' >&2
   exit 1
 fi
@@ -418,9 +445,9 @@ printf '%s' "$revision_failure_result" | jq -e \
 # consistent.  This implementation chooses a fully committed outcome.
 setup_transaction_fixture
 if revision_signal_result="$(PATH="$fake_bin:$PATH" DOTFILES_SIGNAL_AFTER_REVISION_MOVE=true \
-  DOTFILES_APPLY_MISE_BIN="$fake_mise" MISE_LOG="$mise_log" \
+  DOTFILES_APPLY_MISE_BIN="$fake_mise" MISE_LOG="$mise_log" MISE_EFFECTIVE_CONFIG="$transaction_mise_config" \
   bash "$script" apply --home "$transaction_home" --repo "$transaction_repo" --remote-ref HEAD \
-  --mise-config "$transaction_mise_config" --json 2>"$transaction_dir/revision-signal.err")"; then
+  --mise-config "$transaction_mise_config" --mise-lock "$transaction_mise_lock" --json 2>"$transaction_dir/revision-signal.err")"; then
   echo 'apply accepted TERM immediately after revision replacement' >&2
   exit 1
 fi
@@ -439,7 +466,7 @@ transaction_repository_paths=(
 )
 transaction_target_paths=(
   "$transaction_mise_config"
-  "$transaction_home/custom/mise.lock"
+  "$transaction_mise_lock"
   "$transaction_home/.claude/settings.json"
   "$transaction_home/.claude/statusline.sh"
   "$transaction_home/.config/dotfiles/update-notice.sh"
@@ -458,9 +485,9 @@ setup_transaction_fixture
 dangling_target="$transaction_home/dangling-mise-target"
 rm "$transaction_mise_config"
 ln -s "$dangling_target" "$transaction_mise_config"
-if DOTFILES_APPLY_MISE_BIN="$fake_mise" MISE_LOG="$mise_log" \
+if DOTFILES_APPLY_MISE_BIN="$fake_mise" MISE_LOG="$mise_log" MISE_EFFECTIVE_CONFIG="$transaction_mise_config" \
   bash "$script" apply --home "$transaction_home" --repo "$transaction_repo" --remote-ref HEAD \
-  --mise-config "$transaction_mise_config" --json >/dev/null 2>"$transaction_dir/dangling.err"; then
+  --mise-config "$transaction_mise_config" --mise-lock "$transaction_mise_lock" --json >/dev/null 2>"$transaction_dir/dangling.err"; then
   echo 'apply accepted a dangling managed symlink' >&2
   exit 1
 fi
@@ -477,9 +504,9 @@ printf '%s\n' 'invalid-toml' > "$transaction_repo/.mise.toml"
 git -C "$transaction_repo" add .mise.toml
 git -C "$transaction_repo" commit -qm invalid-remote-mise
 before_invalid_stage="$(snapshot_transaction_targets)"
-if invalid_stage_result="$(DOTFILES_APPLY_MISE_BIN="$fake_mise" MISE_LOG="$mise_log" \
+if invalid_stage_result="$(DOTFILES_APPLY_MISE_BIN="$fake_mise" MISE_LOG="$mise_log" MISE_EFFECTIVE_CONFIG="$transaction_mise_config" \
   bash "$script" apply --home "$transaction_home" --repo "$transaction_repo" --remote-ref HEAD \
-  --mise-config "$transaction_mise_config" --json 2>"$transaction_dir/invalid-stage.err")"; then
+  --mise-config "$transaction_mise_config" --mise-lock "$transaction_mise_lock" --json 2>"$transaction_dir/invalid-stage.err")"; then
   echo 'apply accepted malformed staged TOML' >&2
   exit 1
 fi
@@ -497,9 +524,9 @@ printf '%s' "$invalid_stage_result" | jq -e \
 # This fails if the selected --mise-config is ignored, task invocation order or
 # flags drift, or revision is advanced before the full transaction succeeds.
 setup_transaction_fixture
-success_result="$(DOTFILES_APPLY_MISE_BIN="$fake_mise" MISE_LOG="$mise_log" \
+success_result="$(DOTFILES_APPLY_MISE_BIN="$fake_mise" MISE_LOG="$mise_log" MISE_EFFECTIVE_CONFIG="$transaction_mise_config" \
   bash "$script" apply --home "$transaction_home" --repo "$transaction_repo" --remote-ref HEAD \
-  --mise-config "$transaction_mise_config" --json)"
+  --mise-config "$transaction_mise_config" --mise-lock "$transaction_mise_lock" --json)"
 printf '%s' "$success_result" | jq -e \
   --arg remote "$transaction_remote_revision" \
   '.result == "applied" and .remoteRevision == $remote and (.backupPath | type == "string" and length > 0)' >/dev/null
@@ -507,12 +534,12 @@ printf '%s' "$success_result" | jq -e \
   echo 'successful apply did not advance revision' >&2
   exit 1
 }
-[ "$(<"$transaction_mise_config")" = $'[tools]\nnode = "22"' ] || {
+[ "$(<"$transaction_mise_config")" = "$transaction_remote_mise" ] || {
   echo '--mise-config did not receive the staged config' >&2
   exit 1
 }
-grep -vF "HOME=$transaction_home " "$mise_log" >/dev/null && {
-  printf 'mise inherited a HOME other than --home:\n%s\n' "$(<"$mise_log")" >&2
+grep -vF "HOME=$transaction_home XDG=$transaction_home/.config " "$mise_log" >/dev/null && {
+  printf 'mise inherited a HOME or config directory other than --home:\n%s\n' "$(<"$mise_log")" >&2
   exit 1
 }
 expected_mise_args=$'tasks ls\nls\ntasks ls\nls\nrun --skip-tools setup:oci-plugin\ninstall\nrun setup:skills\nrun --skip-deps setup:codex\nrun --skip-deps setup:claude-plugins'
@@ -520,9 +547,136 @@ expected_mise_args=$'tasks ls\nls\ntasks ls\nls\nrun --skip-tools setup:oci-plug
   printf 'mise did not receive the selected HOME/config or expected task order:\n%s\n' "$(<"$mise_log")" >&2
   exit 1
 }
+# Only the two staged parse-checks may name a single config file. Everything
+# from the post-apply validation onwards has to resolve the machine's real
+# global config — config.toml plus conf.d, with the lockfile in the config
+# directory — because MISE_GLOBAL_CONFIG_FILE would also move the lockfile mise
+# looks for next to the named file.
+expected_staged_mise_args=$'tasks ls\nls'
+[ "$(grep -vF 'CONFIG=<none> ' "$mise_log" | sed 's/^.* ARGS=//')" = "$expected_staged_mise_args" ] || {
+  printf 'more than the staged parse-check pinned a single config file:\n%s\n' "$(<"$mise_log")" >&2
+  exit 1
+}
 expected_post_mise_args=$'tasks ls\nls\nrun --skip-tools setup:oci-plugin\ninstall\nrun setup:skills\nrun --skip-deps setup:codex\nrun --skip-deps setup:claude-plugins'
-[ "$(grep -F "CONFIG=$transaction_mise_config " "$mise_log" | sed 's/^.* ARGS=//')" = "$expected_post_mise_args" ] || {
-  printf 'post-apply mise calls ignored --mise-config:\n%s\n' "$(<"$mise_log")" >&2
+[ "$(grep -F 'CONFIG=<none> ' "$mise_log" | sed 's/^.* ARGS=//')" = "$expected_post_mise_args" ] || {
+  printf 'post-apply mise calls did not resolve the real global config:\n%s\n' "$(<"$mise_log")" >&2
+  exit 1
+}
+
+# --- the conf.d layout -------------------------------------------------------
+# This fails if the defaults drift back to the pre-conf.d layout: the
+# repository's copy belongs in conf.d/10-dotfiles.toml, and the lockfile beside
+# config.toml rather than wherever the config path happens to point (#71).
+default_home="$test_dir/default-home"
+mkdir -p "$default_home/.config/dotfiles"
+printf '%s\n' "$base_revision" > "$default_home/.config/dotfiles/revision"
+default_plan="$(bash "$script" plan --home "$default_home" --repo "$repo" --remote-ref HEAD --json)"
+printf '%s' "$default_plan" | jq -e \
+  --arg config "$default_home/.config/mise/conf.d/10-dotfiles.toml" \
+  --arg lock "$default_home/.config/mise/mise.lock" \
+  'any(.files[]; .repositoryPath == ".mise.toml" and .localPath == $config)
+   and any(.files[]; .repositoryPath == "mise.lock" and .localPath == $lock)' >/dev/null || {
+  printf 'default placement is not the conf.d layout:\n%s\n' "$default_plan" >&2
+  exit 1
+}
+
+# Choosing a config path must not drag the lockfile along with it: mise keys the
+# global lockfile to the config directory, so a derived path lands in conf.d/
+# where mise never looks for it.
+selected_plan="$(bash "$script" plan --home "$default_home" --repo "$repo" --remote-ref HEAD \
+  --mise-config "$default_home/.config/mise/conf.d/10-dotfiles.toml" --json)"
+printf '%s' "$selected_plan" | jq -e \
+  --arg lock "$default_home/.config/mise/mise.lock" \
+  'any(.files[]; .repositoryPath == "mise.lock" and .localPath == $lock)' >/dev/null || {
+  printf '--mise-config moved the lockfile with it:\n%s\n' "$selected_plan" >&2
+  exit 1
+}
+
+# --- the pre-conf.d config.toml ----------------------------------------------
+# A config.toml written for the machine carries none of this repository, so it
+# is none of this script's business and must survive an apply untouched.
+setup_transaction_fixture
+write_legacy_mise_config $'[tools]\nripgrep = "latest"'
+[ "$(legacy_state_of)" = 'unrelated' ] || {
+  echo 'a hand-written config.toml was claimed as a copy of this repository' >&2
+  exit 1
+}
+
+# The repository's own old copy, unchanged since the revision it was installed
+# from: provably nothing of the machine's on top, so apply moves it aside — into
+# the transaction backup, not into oblivion — and the conf.d fragment it was
+# shadowing takes effect.
+setup_transaction_fixture
+write_legacy_mise_config "$transaction_base_mise"
+[ "$(legacy_state_of)" = 'migratable' ] || {
+  echo 'an unmodified copy of the repository config was not migratable' >&2
+  exit 1
+}
+migrate_result="$(DOTFILES_APPLY_MISE_BIN="$fake_mise" MISE_LOG="$mise_log" MISE_EFFECTIVE_CONFIG="$transaction_mise_config" \
+  bash "$script" apply --home "$transaction_home" --repo "$transaction_repo" --remote-ref HEAD \
+  --mise-config "$transaction_mise_config" --mise-lock "$transaction_mise_lock" --json)"
+printf '%s' "$migrate_result" | jq -e '.result == "applied"' >/dev/null
+migrate_backup_path="$(printf '%s' "$migrate_result" | jq -r '.backupPath')"
+[ ! -e "$transaction_legacy_config" ] || {
+  echo 'apply left the old copy in config.toml, still shadowing conf.d' >&2
+  exit 1
+}
+[ "$(<"$migrate_backup_path/legacy-config.toml")" = "$transaction_base_mise" ] || {
+  echo 'apply did not keep the displaced config.toml in the backup' >&2
+  exit 1
+}
+
+# The same file with the machine's own changes on top cannot be split by a
+# script. Moving it would silently drop a pin before `mise install` runs, so
+# apply refuses in the same way it refuses a merge conflict, and touches
+# nothing.
+setup_transaction_fixture
+legacy_with_local_pin="$transaction_base_mise"$'\nripgrep = "14.1.0"'
+write_legacy_mise_config "$legacy_with_local_pin"
+[ "$(legacy_state_of)" = 'needs-review' ] || {
+  echo 'a locally modified copy of the repository config was not held back' >&2
+  exit 1
+}
+before_legacy_refusal="$(snapshot_transaction_targets)"
+if legacy_refusal="$(DOTFILES_APPLY_MISE_BIN="$fake_mise" MISE_LOG="$mise_log" MISE_EFFECTIVE_CONFIG="$transaction_mise_config" \
+  bash "$script" apply --home "$transaction_home" --repo "$transaction_repo" --remote-ref HEAD \
+  --mise-config "$transaction_mise_config" --mise-lock "$transaction_mise_lock" --json 2>"$transaction_dir/legacy.err")"; then
+  echo 'apply accepted a config.toml that still shadows conf.d' >&2
+  exit 1
+fi
+printf '%s' "$legacy_refusal" | jq -e --arg path "$transaction_legacy_config" \
+  '.result == "failed" and .backupPath == "" and (.error | contains($path))' >/dev/null
+[ "$(<"$transaction_legacy_config")" = "$legacy_with_local_pin" ] || {
+  echo 'the refused apply modified config.toml anyway' >&2
+  exit 1
+}
+[ "$(snapshot_transaction_targets)" = "$before_legacy_refusal" ] || {
+  echo 'the refused apply wrote a managed target' >&2
+  exit 1
+}
+
+# The escape hatch, for a file whose local half has already been dealt with by
+# hand. It is the same variable install.sh honours, because both read it from
+# the shared layout rules.
+[ "$(DOTFILES_MIGRATE_MISE_CONFIG=1 legacy_state_of)" = 'migratable' ] || {
+  echo 'DOTFILES_MIGRATE_MISE_CONFIG=1 did not force the migration' >&2
+  exit 1
+}
+
+# A rollback has to undo the migration too, or a failed apply leaves the machine
+# without the config.toml it started with.
+setup_transaction_fixture
+write_legacy_mise_config "$transaction_base_mise"
+if legacy_rollback="$(DOTFILES_APPLY_MISE_BIN="$fake_mise" MISE_LOG="$mise_log" MISE_EFFECTIVE_CONFIG="$transaction_mise_config" \
+  MISE_FAIL_AT='install' \
+  bash "$script" apply --home "$transaction_home" --repo "$transaction_repo" --remote-ref HEAD \
+  --mise-config "$transaction_mise_config" --mise-lock "$transaction_mise_lock" --json 2>"$transaction_dir/legacy-rollback.err")"; then
+  echo 'apply accepted a failing mise install while migrating config.toml' >&2
+  exit 1
+fi
+printf '%s' "$legacy_rollback" | jq -e '.result == "rolled-back"' >/dev/null
+[ "$(<"$transaction_legacy_config")" = "$transaction_base_mise" ] || {
+  echo 'rollback did not restore the displaced config.toml' >&2
   exit 1
 }
 

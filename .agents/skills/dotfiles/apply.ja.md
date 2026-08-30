@@ -20,8 +20,9 @@ top-level の field は次のとおりである。
 - `mode`：`inventory` なら apply の可否を判断できる。`no-base` ならできない。
 - `baseRevision` と `remoteRevision`：この inventory に使った revision。
 - `files`：`repositoryPath`、`localPath`、`state` を持つ entry。
+- `legacyMiseConfig`：`~/.config/mise/config.toml`（conf.d 移行前の配置先）の `path` と `state`。
 
-エージェントの判断が必要なのは `conflict` と `needs-decision` だけである。
+エージェントの判断が必要なのは `conflict`、`needs-decision`、そして `legacyMiseConfig` の `needs-review` だけである。
 それ以外の state、その merge、validation、backup、task、rollback、revision の処理はスクリプトに任せる。
 
 `no-base` の plan は安全に適用できない。
@@ -35,8 +36,14 @@ conflict は機械的に片側を選ばず、設定の意味に基づいて解�
 得られている文脈だけでは選べない場合、影響を受ける path と選択肢をユーザーへ示し、決定を得る。
 判断待ちが残っている間は `apply` を実行しない。
 
+`legacyMiseConfig` の `needs-review` も同様に `apply` を止める。
+このファイルはリポジトリのコピーにローカルの変更が乗ったものであり、conf.d より優先される。放置すれば更新は shadow されたままになり、丸ごと退避すれば端末側で足した内容が失われる。
+`~/.config/mise/conf.d/10-dotfiles.toml` との差分をユーザーへ示し、端末固有の部分だけを `config.toml` に残したうえで、新しい plan を作成する。
+`DOTFILES_MIGRATE_MISE_CONFIG=1` での再実行は、ファイルに残したい内容がないとユーザーが確認したときだけにする。
+それ以外の state に対応は要らない。`migratable` はスクリプトが backup へ退避し、`unrelated`、`destination`、`absent` は移行するものがない。
+
 ユーザーが確認したローカル変更だけを行い、新しい plan を作成する。
-この手順は、`mode` が `inventory` であり、どの file の state も `conflict` と `needs-decision` ではなくなったときに完了する。
+この手順は、`mode` が `inventory` であり、どの file の state も `conflict` と `needs-decision` ではなく、`legacyMiseConfig.state` が `needs-review` でもなくなったときに完了する。
 
 ## 3. 確認して適用する
 

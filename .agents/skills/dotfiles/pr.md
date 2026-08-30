@@ -28,12 +28,14 @@ Read the repository facts in [SKILL.md](SKILL.md) first. In addition:
 
   ```bash
   bash -n install.sh .dotfiles/update-notice.sh .claude/statusline.sh \
-    .dotfiles/git-hooks/dispatch .dotfiles/git-hooks/install.sh
+    .dotfiles/git-hooks/dispatch .dotfiles/git-hooks/install.sh .dotfiles/apply.sh
   zsh -n install.sh
   shellcheck install.sh .claude/statusline.sh .dotfiles/update-notice.sh \
+    .dotfiles/apply.sh .dotfiles/mise-layout.sh \
     .dotfiles/git-hooks/* .githooks/pre-commit tests/*.sh
   bash tests/update-notice-test.sh && bash tests/statusline-test.sh
   bash tests/mise-pins-test.sh && bash tests/install-order-test.sh && bash tests/git-hooks-test.sh
+  bash tests/apply-test.sh
   mise ls >/dev/null && mise tasks ls >/dev/null
   ```
 

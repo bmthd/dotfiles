@@ -35,7 +35,11 @@ argument-hint: pr <変更内容> | apply
   `.mise.toml` に入れる
 - **`.mise.toml` は `~/.config/mise/conf.d/10-dotfiles.toml` に配置される**。mise が
   グローバル設定の一部として読むため、タスクはどのディレクトリからでも実行できる。
-  `~/.config/mise/config.toml` は端末側に開けてあり、conf.d より優先される
+  `~/.config/mise/config.toml` は端末側に開けてあり、conf.d より優先される。
+  この配置（両方の配置先と、移行前のコピーの見分け方）は
+  [`.dotfiles/mise-layout.sh`](../../../.dotfiles/mise-layout.sh) に一度だけ定義され、
+  `install.sh` と `.dotfiles/apply.sh` の両方がそれを読む。配置する側にパスを
+  書き直さないこと
 - **ほとんどのスキルはこのリポジトリには無い**。汎用のものは
   [`bmthd/skills`](https://github.com/bmthd/skills) に移した。`.agents/skills/` に残るのは
   このリポジトリに対してしか意味を持たない `dotfiles` スキルだけ。サードパーティのスキルは
