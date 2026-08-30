@@ -103,6 +103,8 @@ printf '%s' "$inventory" | jq -e \
   --arg remote "$remote_revision" \
   --arg local "$mise_config" \
   '.mode == "inventory"
+   and .fetch == "skipped"
+   and .fetchError == ""
    and .baseRevision == $base
    and .remoteRevision == $remote
    and (.files | length == 5
@@ -677,6 +679,102 @@ fi
 printf '%s' "$legacy_rollback" | jq -e '.result == "rolled-back"' >/dev/null
 [ "$(<"$transaction_legacy_config")" = "$transaction_base_mise" ] || {
   echo 'rollback did not restore the displaced config.toml' >&2
+  exit 1
+}
+
+# This fails if the script reads origin/main without fetching it first: the
+# stale clone then reports the commit it was cloned at as the current remote
+# revision, and a run against a moved origin/main looks like "no updates".
+fetch_dir="$test_dir/fetch"
+upstream="$fetch_dir/upstream"
+checkout="$fetch_dir/checkout"
+fetch_home="$fetch_dir/home"
+fetch_mise_config="$fetch_home/custom/mise.toml"
+fetch_mise_lock="$fetch_home/custom/mise.lock"
+
+fetch_managed_targets=(
+  "$fetch_mise_config"
+  "$fetch_mise_lock"
+  "$fetch_home/.claude/settings.json"
+  "$fetch_home/.claude/statusline.sh"
+  "$fetch_home/.config/dotfiles/update-notice.sh"
+)
+
+snapshot_fetch_targets() {
+  local target
+  for target in "${fetch_managed_targets[@]}"; do
+    if [ -e "$target" ]; then
+      printf 'present %s %s\n' "$target" "$(git hash-object "$target")"
+    else
+      printf 'absent %s\n' "$target"
+    fi
+  done
+}
+
+mkdir -p "$upstream/.claude" "$upstream/.dotfiles" \
+  "$fetch_home/custom" "$fetch_home/.claude" "$fetch_home/.config/dotfiles"
+git -C "$upstream" init -q -b main
+git -C "$upstream" config user.email test@example.com
+git -C "$upstream" config user.name test
+printf '%s\n' '[tools]' 'node = "20"' > "$upstream/.mise.toml"
+printf '%s\n' 'base-lock' > "$upstream/mise.lock"
+printf '%s\n' '{"base":true}' > "$upstream/.claude/settings.json"
+printf '%s\n' '#!/usr/bin/env bash' 'echo base-statusline' > "$upstream/.claude/statusline.sh"
+printf '%s\n' '#!/usr/bin/env bash' 'echo base-notice' > "$upstream/.dotfiles/update-notice.sh"
+git -C "$upstream" add .
+git -C "$upstream" commit -qm base
+fetch_base_revision="$(git -C "$upstream" rev-parse HEAD)"
+
+git clone -q "$upstream" "$checkout"
+cp "$checkout/.mise.toml" "$fetch_mise_config"
+cp "$checkout/mise.lock" "$fetch_mise_lock"
+cp "$checkout/.claude/settings.json" "$fetch_home/.claude/settings.json"
+cp "$checkout/.claude/statusline.sh" "$fetch_home/.claude/statusline.sh"
+cp "$checkout/.dotfiles/update-notice.sh" "$fetch_home/.config/dotfiles/update-notice.sh"
+printf '%s\n' "$fetch_base_revision" > "$fetch_home/.config/dotfiles/revision"
+
+printf '%s\n' '[tools]' 'node = "22"' > "$upstream/.mise.toml"
+git -C "$upstream" add .mise.toml
+git -C "$upstream" commit -qm moved
+fetch_moved_revision="$(git -C "$upstream" rev-parse HEAD)"
+
+fetched_inventory="$(bash "$script" plan --home "$fetch_home" --repo "$checkout" \
+  --mise-config "$fetch_mise_config" --mise-lock "$fetch_mise_lock" --json)"
+printf '%s' "$fetched_inventory" | jq -e \
+  --arg remote "$fetch_moved_revision" \
+  '.fetch == "ok"
+   and .fetchError == ""
+   and .remoteRevision == $remote
+   and any(.files[]; .repositoryPath == ".mise.toml" and .state == "unchanged-local")' >/dev/null
+
+# This fails if a fetch failure is swallowed: the inventory is then built from
+# the last successful fetch while claiming to describe the current remote.
+git -C "$upstream" commit -q --allow-empty -m unreachable
+git -C "$checkout" remote set-url origin "$fetch_dir/missing-upstream"
+
+failed_fetch_inventory="$(bash "$script" plan --home "$fetch_home" --repo "$checkout" \
+  --mise-config "$fetch_mise_config" --mise-lock "$fetch_mise_lock" --json)"
+printf '%s' "$failed_fetch_inventory" | jq -e \
+  --arg remote "$fetch_moved_revision" \
+  '.fetch == "failed"
+   and (.fetchError | type == "string" and length > 0)
+   and .remoteRevision == $remote' >/dev/null
+
+before_failed_fetch_apply="$(snapshot_fetch_targets)"
+if failed_fetch_apply="$(DOTFILES_APPLY_MISE_BIN="$fake_mise" MISE_LOG="$mise_log" \
+  bash "$script" apply --home "$fetch_home" --repo "$checkout" \
+  --mise-config "$fetch_mise_config" --mise-lock "$fetch_mise_lock" --json 2>"$fetch_dir/failed-fetch.err")"; then
+  echo 'apply accepted a failed fetch' >&2
+  exit 1
+fi
+printf '%s' "$failed_fetch_apply" | jq -e \
+  '.fetch == "failed" and .result == "failed" and (.error | contains("failed fetch"))' >/dev/null
+[ "$(snapshot_fetch_targets)" = "$before_failed_fetch_apply" ] || {
+  echo 'apply after a failed fetch changed managed targets' >&2
+  exit 1
+}
+[ "$(<"$fetch_home/.config/dotfiles/revision")" = "$fetch_base_revision" ] || {
+  echo 'apply after a failed fetch advanced revision' >&2
   exit 1
 }
 

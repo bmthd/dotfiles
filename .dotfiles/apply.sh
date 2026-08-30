@@ -77,6 +77,40 @@ if [ -z "$mise_lock" ]; then
 fi
 legacy_mise_config="$(dotfiles_legacy_mise_config_path "$home")"
 
+# Refresh the remote-tracking ref this run compares against. Without it the
+# whole run is silently wrong rather than failing: every file compares against
+# whatever this checkout last fetched, comes out `identical`, and the run
+# reports "no updates" for an origin/main that moved days ago.
+#
+# This keeps `plan` read-only in the sense that matters — fetching writes only
+# remote-tracking refs inside the checkout and touches no managed local file.
+#
+# Acquiring a missing checkout is deliberately not done here: this script is
+# part of the checkout, so by the time it runs the clone already exists. That
+# step belongs to the caller (see .agents/skills/dotfiles/apply.md).
+fetch_state='skipped'
+fetch_error=''
+fetch_remote=''
+fetch_branch=''
+case "$remote_ref" in
+  */*)
+    fetch_remote="${remote_ref%%/*}"
+    fetch_branch="${remote_ref#*/}"
+    ;;
+esac
+
+if [ -n "$fetch_remote" ] && git -C "$repo" config --get "remote.${fetch_remote}.url" >/dev/null; then
+  # An explicit refspec so the ref that is fetched is the ref that is read
+  # below, whatever the checkout's configured refspec happens to be.
+  if fetch_error="$(git -C "$repo" fetch "$fetch_remote" \
+    "+refs/heads/${fetch_branch}:refs/remotes/${fetch_remote}/${fetch_branch}" 2>&1 >/dev/null)"; then
+    fetch_state='ok'
+    fetch_error=''
+  else
+    fetch_state='failed'
+  fi
+fi
+
 if ! remote_revision="$(git -C "$repo" rev-parse --verify "${remote_ref}^{commit}")"; then
   printf 'cannot resolve remote ref %s in %s\n' "$remote_ref" "$repo" >&2
   exit 1
@@ -250,16 +284,22 @@ emit_inventory() {
 if "$json"; then
   jq -n \
     --arg mode "$mode" \
+    --arg fetch "$fetch_state" \
+    --arg fetch_error "$fetch_error" \
     --arg base_revision "$base_revision" \
     --arg remote_revision "$remote_revision" \
     --arg legacy_path "$legacy_mise_config" \
     --arg legacy_state "$legacy_state" \
     --argjson files "$files" \
-    '{mode: $mode, baseRevision: $base_revision, remoteRevision: $remote_revision, files: $files,
+    '{mode: $mode, fetch: $fetch, fetchError: $fetch_error, baseRevision: $base_revision,
+      remoteRevision: $remote_revision, files: $files,
       legacyMiseConfig: {path: $legacy_path, state: $legacy_state}}'
 else
-  printf 'mode: %s\nbase revision: %s\nremote revision: %s\n' \
-    "$mode" "${base_revision:-<none>}" "$remote_revision"
+  printf 'mode: %s\nfetch: %s\nbase revision: %s\nremote revision: %s\n' \
+    "$mode" "$fetch_state" "${base_revision:-<none>}" "$remote_revision"
+  if [ -n "$fetch_error" ]; then
+    printf 'fetch error: %s\n' "$fetch_error"
+  fi
   jq -r '.[] | "\(.state): \(.repositoryPath) -> \(.localPath)"' <<<"$files"
   printf 'legacy mise config: %s (%s)\n' "$legacy_mise_config" "$legacy_state"
 fi
@@ -273,6 +313,8 @@ emit_apply_result() {
   if "$json"; then
     jq -n \
       --arg mode "$mode" \
+      --arg fetch "$fetch_state" \
+      --arg fetch_error "$fetch_error" \
       --arg base_revision "$base_revision" \
       --arg remote_revision "$remote_revision" \
       --arg result "$result" \
@@ -281,8 +323,9 @@ emit_apply_result() {
       --arg legacy_path "$legacy_mise_config" \
       --arg legacy_state "$legacy_state" \
       --argjson files "$files" \
-      '{mode: $mode, baseRevision: $base_revision, remoteRevision: $remote_revision,
-        files: $files, result: $result, backupPath: $backup_path, error: $error,
+      '{mode: $mode, fetch: $fetch, fetchError: $fetch_error, baseRevision: $base_revision,
+        remoteRevision: $remote_revision, files: $files, result: $result,
+        backupPath: $backup_path, error: $error,
         legacyMiseConfig: {path: $legacy_path, state: $legacy_state}}'
   else
     printf 'result: %s\nbackup: %s\n' "$result" "${backup_path:-<none>}"
@@ -295,6 +338,16 @@ emit_apply_result() {
 if [ "$command_name" = plan ]; then
   emit_inventory
   exit 0
+fi
+
+# A failed fetch is fatal here even though `plan` only reports it: applying
+# means running the setup tasks and advancing the recorded revision, and doing
+# that against a possibly stale remote records an update that never happened.
+if [ "$fetch_state" = failed ]; then
+  fetch_failure_error="cannot apply after a failed fetch of $remote_ref; the inventory may be stale: $fetch_error"
+  printf '%s\n' "$fetch_failure_error" >&2
+  emit_apply_result 'failed' '' "$fetch_failure_error"
+  exit 1
 fi
 
 if [ "$has_base" != true ]; then
