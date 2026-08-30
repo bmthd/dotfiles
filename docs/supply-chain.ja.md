@@ -64,7 +64,8 @@ checksum による保護は mise ではなく backend の性質です。
 「このリポジトリが入れるツールはすべて checksum 検証される」と書くと、その半分近くについて嘘になります。
 実際に `mise.lock` が記録している内訳は次の通りです。
 
-`linux-x64` と `macos-arm64` を含む全 platform で checksum を記録しているもの:
+このリポジトリが導入する 2 つの platform、`linux-x64` と `macos-arm64` について checksum を記録しているもの。
+policy が必須とし、下のチェックが検証するのもこの 2 つです。lockfile にあるほかの platform variation はそのまま残し、ここでは主張しません:
 
 <!-- coverage:checksum:start -->
 `aqua:anomalyco/opencode`, `aqua:astral-sh/uv`, `aqua:cli/cli`, `aqua:cloudflare/cloudflared`, `aqua:jqlang/jq`, `aqua:modem-dev/hunk`, `aqua:suzuki-shunsuke/pinact`, `aqua:x-motemen/ghq`, `core:bun`, `core:node`, `github:rtk-ai/rtk`

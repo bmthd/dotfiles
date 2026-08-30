@@ -46,6 +46,11 @@ It diffs against the installed revision and separates what to pull in from what 
 When only the skills moved, `mise run setup:skills` is the entire update: skills hold no per-machine state, so there is nothing to merge.
 
 Re-running `install.sh` also updates the machine, and still overwrites `~/.claude/settings.json` and `~/.claude/statusline.sh`.
+The mise config is no longer among them: the repository's copy goes to `~/.config/mise/conf.d/10-dotfiles.toml`, and `~/.config/mise/config.toml` is left to the machine — mise loads it after `conf.d/`, so a pin or a machine-only tool written there overrides the repository's copy and survives every re-run.
+
+A machine installed before that split still has the repository's copy in `config.toml`.
+`install.sh` migrates it only when it can prove nothing was added locally — the file is identical either to the copy being installed or to the `.mise.toml` of the revision it was installed from.
+Otherwise it leaves the file exactly where it is, so pins keep working, and says what to do (`/dotfiles apply`, or `DOTFILES_MIGRATE_MISE_CONFIG=1` to migrate anyway).
 
 Third-party skill sources are deliberately not watched: they move on their own schedule, mostly for reasons unrelated to the skills installed from them. Update those with `npx skills update`. The Markdown it fetches goes straight into an agent's context, so review the diff before running it.
 

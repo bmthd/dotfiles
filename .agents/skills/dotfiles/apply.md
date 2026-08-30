@@ -139,8 +139,14 @@ happens once per machine rather than on every update.
 diff "$BK/config.toml.pre-conf.d" ~/.config/mise/conf.d/10-dotfiles.toml
 ```
 
-`install.sh` performs the same migration, minus the reconstruction: it moves the
-file to `~/.config/dotfiles/backup/<timestamp>/` and leaves the diff to a human.
+`install.sh` does only the provably safe half of this. It migrates the file when
+it is identical either to the copy being installed or to the `.mise.toml` of the
+revision recorded in `~/.config/dotfiles/revision` — meaning nothing was added
+locally — and otherwise **leaves it exactly where it is** and says so. That is
+deliberate: `mise install` and `mise run setup` run moments later in that script,
+so moving a config.toml that pins a version would take the pin out of effect and
+reinstall against the lockfile before anyone could read the warning. Reconstructing
+the machine-local side is this procedure's job, not a bootstrapper's.
 
 Then **verify the content, not just the parse**. `mise ls` exiting 0 proves very
 little.

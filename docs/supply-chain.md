@@ -60,7 +60,8 @@ A newly added version-only or partial backend fails until a maintainer assigns i
 
 Checksum protection is a property of the backend, not of mise. Saying "every tool this repository installs is checksum-verified" would be wrong for nearly half of them, so here is the split as `mise.lock` actually records it.
 
-These record a checksum for every platform, `linux-x64` and `macos-arm64` among them:
+These record a checksum for the two platforms this repository installs on, `linux-x64` and `macos-arm64`.
+That is the pair the policy requires and the pair the check below verifies; the other platform variants in the lockfile are left intact and are not asserted here:
 
 <!-- coverage:checksum:start -->
 `aqua:anomalyco/opencode`, `aqua:astral-sh/uv`, `aqua:cli/cli`, `aqua:cloudflare/cloudflared`, `aqua:jqlang/jq`, `aqua:modem-dev/hunk`, `aqua:suzuki-shunsuke/pinact`, `aqua:x-motemen/ghq`, `core:bun`, `core:node`, `github:rtk-ai/rtk`

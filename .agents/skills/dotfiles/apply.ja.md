@@ -129,8 +129,13 @@ grep -q 'raw.githubusercontent.com/bmthd/dotfiles' ~/.config/mise/config.toml 2>
 diff "$BK/config.toml.pre-conf.d" ~/.config/mise/conf.d/10-dotfiles.toml
 ```
 
-`install.sh` も同じ移行を行う。ただし書き戻しはしない。
-`~/.config/dotfiles/backup/<timestamp>/` へ退避して、diff は人に委ねる。
+`install.sh` がやるのは、安全だと証明できる範囲だけ。配置しようとしているコピーと同一か、
+`~/.config/dotfiles/revision` が指すリビジョンの `.mise.toml` と同一のとき (= ローカルで
+何も足されていないとき) だけ移行し、それ以外は**その場に残して**その旨を表示する。
+これは意図的なもの。あのスクリプトでは直後に `mise install` と `mise run setup` が走るため、
+バージョンを固定している config.toml を退避すると、警告を読む前にピン留めが無効化された
+状態で lockfile 側のバージョンが入ってしまう。端末固有の側を書き戻すのはこの手順の仕事で、
+ブートストラッパの仕事ではない。
 
 その後、**パースだけでなく中身を検証する**。`mise ls` の exit 0 は当てにならない。
 
