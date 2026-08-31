@@ -502,7 +502,11 @@ if ! validate_paths "$mise_config" "${local_paths[2]}" "${local_paths[3]}" "${lo
 fi
 
 run_mise() {
-  HOME="$home" MISE_CONFIG_FILE="$mise_config" "$mise_bin" "$@" >&2
+  # DOTFILES_REPO names this checkout for setup:skills, so the skills it links
+  # come from the revision this run just applied rather than from whatever
+  # other clone the linker would have found on its own.
+  HOME="$home" MISE_CONFIG_FILE="$mise_config" DOTFILES_REPO="$repo" \
+    "$mise_bin" "$@" >&2
 }
 
 if ! run_mise run --skip-tools setup:oci-plugin; then

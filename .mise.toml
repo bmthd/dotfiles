@@ -322,8 +322,18 @@ install_skills() {
       || echo "⚠ $label skills installation failed (continuing)"
 }
 install_skills "own" bmthd/skills
-# the dotfiles skill (pr / apply) targets this repository, so it still lives here
-install_skills "dotfiles-local" bmthd/dotfiles
+# The dotfiles skill (pr / apply) targets this repository, so it still lives
+# here — and is linked out of a checkout rather than copied onto the machine,
+# so that an agent editing an installed skill file edits the repository instead
+# of a copy the next run overwrites (see .dotfiles/link-skills.sh). Falling
+# back to a copy keeps a machine that cannot reach a checkout working.
+RAW_BASE="${DOTFILES_RAW_BASE:-https://raw.githubusercontent.com/bmthd/dotfiles/${DOTFILES_REF:-main}}"
+LINKER="$(mktemp)"
+if ! { curl -fsSL "$RAW_BASE/.dotfiles/link-skills.sh" -o "$LINKER" && bash "$LINKER"; }; then
+    echo "⚠ Falling back to a copy of the dotfiles skill"
+    install_skills "dotfiles-local" bmthd/dotfiles
+fi
+rm -f "$LINKER"
 install_skills "superpowers" obra/superpowers
 install_skills "productivity" https://github.com/mattpocock/skills/tree/main/skills/productivity -s '*'
 install_skills "mathbullet" mathbullet/skills -s html -s explain
