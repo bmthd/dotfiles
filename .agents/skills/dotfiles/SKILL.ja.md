@@ -40,5 +40,11 @@ argument-hint: pr <変更内容> | apply
   [`bmthd/skills`](https://github.com/bmthd/skills) に移した。`.agents/skills/` に残るのは
   このリポジトリに対してしか意味を持たない `dotfiles` スキルだけ。サードパーティのスキルは
   vendoring せず `setup:skills` タスクが upstream から入れる
+- **インストールされた `dotfiles` スキルはチェックアウトへの symlink**。`setup:skills` は
+  `~/.agents/skills/dotfiles` と `~/.claude/skills/dotfiles` を clone の
+  `.agents/skills/dotfiles` に向けるだけで、コピーはしない
+  ([`.dotfiles/link-skills.sh`](../../../.dotfiles/link-skills.sh))。つまりインストール済みの
+  スキルファイルを編集するとその作業ツリーが変わる — `git status` に出て、他の端末へは
+  PR としてしか届かない。サードパーティのスキルはコピーのまま
 - **CI (`.github/workflows/quality.yml`) が実行するのは** `mise ls`、`mise tasks ls`、
   ShellCheck、`bash -n`、`zsh -n`、`tests/` 配下のスクリプト

@@ -40,5 +40,11 @@ Both subcommands rely on these.
   `.agents/skills/` is this `dotfiles` skill, which only makes sense against this
   repository. Third-party skills are installed from their upstream by the
   `setup:skills` task rather than vendored.
+- **The installed `dotfiles` skill is a symlink into a checkout.** `setup:skills` links
+  `~/.agents/skills/dotfiles` and `~/.claude/skills/dotfiles` at a clone's
+  `.agents/skills/dotfiles` instead of copying it there
+  ([`.dotfiles/link-skills.sh`](../../../.dotfiles/link-skills.sh)), so editing an
+  installed skill file edits that working tree — visible in `git status`, and reaching
+  another machine only as a PR. Third-party skills stay copies.
 - **CI (`.github/workflows/quality.yml`) runs** `mise ls`, `mise tasks ls`, ShellCheck,
   `bash -n`, `zsh -n`, and the scripts under `tests/`.
