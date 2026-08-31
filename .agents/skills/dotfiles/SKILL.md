@@ -29,9 +29,12 @@ neither is safe to improvise.
 
 Both subcommands rely on these.
 
-- **Setup logic lives in `.mise.toml`**, not `install.sh`. `install.sh` is only a
+- **Setup logic lives in mise**, not `install.sh`. `install.sh` is only a
   bootstrapper (install mise → place the config → `mise install` → `mise run setup`).
-  Changes to tools, environment, or setup steps belong in `.mise.toml`.
+  `.mise.toml` is a facade: it declares the tools and names the setup tasks, and each
+  `setup:<name>` task runs `.dotfiles/setup/<name>.sh`, which the `setup:scripts` task
+  downloads first. Tools and environment are changed in `.mise.toml`; a setup step is
+  changed in its script.
 - **`.mise.toml` is installed to `~/.config/mise/conf.d/10-dotfiles.toml`**, which mise
   loads as part of the global config, so its tasks run from any directory.
   `~/.config/mise/config.toml` is left to the machine and overrides conf.d.

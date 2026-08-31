@@ -10,8 +10,8 @@
 #
 # What can regress silently here:
 #
-#   1. a new download added to install.sh or .mise.toml written against `main`
-#      directly — the file installs fine, it just comes from a different commit
+#   1. a new download added to install.sh or a setup script written against
+#      `main` directly — it installs fine, it just comes from a different commit
 #      than everything around it, and the revision recorded for this machine
 #      then describes an installation that never existed
 #   2. a network call written without a timeout — nothing fails, terminals just
@@ -56,7 +56,7 @@ grep -q 'DOTFILES_REF' "$install_sh" ||
 
 # --- nothing fetches from a moving ref --------------------------------------
 
-for f in "$install_sh" "$mise_toml" "$hooks_install"; do
+for f in "$install_sh" "$mise_toml" "$hooks_install" "$repo"/.dotfiles/setup/*.sh; do
   if grep -n 'raw.githubusercontent.com/bmthd/dotfiles/main/' "$f"; then
     fail "$(basename "$f") downloads from main directly; use the pinned base URL"
   fi
@@ -69,9 +69,17 @@ downloads="$(grep -c 'curl .*\$DOTFILES_RAW_BASE/' "$install_sh" || true)"
   fail "install.sh fetches only $downloads file(s) through \$DOTFILES_RAW_BASE; expected the mise config, the lockfile and the update notice"
 
 # The setup tasks run under install.sh's environment, but also stand alone.
-task_bases="$(grep -c 'DOTFILES_RAW_BASE:-' "$mise_toml" || true)"
-[[ "$task_bases" -ge 3 ]] ||
-  fail ".mise.toml has $task_bases task(s) taking their base URL from DOTFILES_RAW_BASE; expected setup:git-hooks, setup:update-notice and setup:claude"
+# .mise.toml is a facade now, so it holds exactly one of these fallbacks — in
+# setup:scripts, which downloads the scripts the tasks delegate to. Get that
+# one wrong and every script arrives from the wrong revision.
+grep -q 'DOTFILES_RAW_BASE:-' "$mise_toml" ||
+  fail "setup:scripts does not take its base URL from DOTFILES_RAW_BASE, so the setup scripts would come from a different revision than the config declaring them"
+
+# Each script that fetches from the repository carries its own fallback: it is
+# executed on its own, from a copy that no longer sits next to the config.
+script_bases="$(grep -l 'DOTFILES_RAW_BASE:-' "$repo"/.dotfiles/setup/*.sh | wc -l)"
+[[ "$script_bases" -ge 3 ]] ||
+  fail "only $script_bases setup script(s) take their base URL from DOTFILES_RAW_BASE; expected git-hooks, update-notice and claude"
 
 grep -q 'DOTFILES_RAW_BASE:-' "$hooks_install" ||
   fail "the git hook installer does not honour DOTFILES_RAW_BASE, so dispatch would come from a different revision"

@@ -38,6 +38,10 @@ jobs:
         run: |
           bash tests/mise-pins-test.sh
           bash tests/mise-pins-policy-test.sh
+      # The tasks are one-line delegations to .dotfiles/setup/; nothing in mise
+      # checks that a task and its script still agree.
+      - name: Test the setup task facade
+        run: bash tests/setup-facade-test.sh
       - name: Verify immutable GitHub Actions references
         run: mise x pinact -- pinact run -check -verify-comment
         env:
@@ -63,6 +67,9 @@ jobs:
           bash -n .dotfiles/git-hooks/dispatch
           bash -n .dotfiles/git-hooks/install.sh
           bash -n .dotfiles/apply.sh
+          # The setup task bodies. They are only shell once they are files —
+          # inline in .mise.toml nothing here could have parsed them.
+          for script in .dotfiles/setup/*.sh; do bash -n "$script"; done
       - name: zsh -n
         # install.sh is documented to run under zsh too (see README), so
         # verify it parses cleanly there in addition to bash.

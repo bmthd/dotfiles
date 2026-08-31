@@ -48,20 +48,27 @@ author であって PR を開くアカウントではない。会社の端末で
 先に [SKILL.ja.md](SKILL.ja.md) のリポジトリ前提知識を読むこと。加えて:
 
 - **サードパーティのスキルを追加するとき**: スキルをこのリポジトリにコピーするのではなく、
-  `setup:skills` タスクに `install_skills` の行を足す。gist も `.git` の clone URL を使えば
-  動く — ページ URL が失敗する理由は `japanese-tech-writing` の行を参照
+  [`.dotfiles/setup/skills.sh`](../../../.dotfiles/setup/skills.sh) に `install_skills` の
+  行を足す。gist も `.git` の clone URL を使えば動く — ページ URL が失敗する理由は
+  `japanese-tech-writing` の行を参照
+- **セットアップタスクの中身を変えるとき**は `.mise.toml` ではなく
+  `.dotfiles/setup/<name>.sh` を編集する。`.mise.toml` のタスクはスクリプトへの 1 行の
+  委譲であり、そのまま保つ。タスクを *新設* するときは同じコミットで 3 つ必要 —
+  スクリプト、タスク、そして端末にそれを届ける `setup:scripts` の `SCRIPTS=(...)` への
+  スクリプト名の追加。3 つとも `bash tests/setup-facade-test.sh` が検査する
 - **`.mise.toml` やシェルスクリプトを編集したら**、config がパースでき、スクリプトが
   bash と zsh の両方で ShellCheck をクリアしている必要がある。push 前にローカルで CI と
   同じものを流す:
 
   ```bash
   bash -n install.sh .dotfiles/update-notice.sh .claude/statusline.sh \
-    .dotfiles/git-hooks/dispatch .dotfiles/git-hooks/install.sh
+    .dotfiles/git-hooks/dispatch .dotfiles/git-hooks/install.sh .dotfiles/setup/*.sh
   zsh -n install.sh
   shellcheck install.sh .claude/statusline.sh .dotfiles/update-notice.sh \
-    .dotfiles/git-hooks/* .githooks/pre-commit tests/*.sh
+    .dotfiles/git-hooks/* .dotfiles/setup/*.sh .githooks/pre-commit tests/*.sh
   bash tests/update-notice-test.sh && bash tests/statusline-test.sh
   bash tests/mise-pins-test.sh && bash tests/install-order-test.sh && bash tests/git-hooks-test.sh
+  bash tests/setup-facade-test.sh && bash tests/oci-plugin-test.sh && bash tests/revision-pinning-test.sh
   mise ls >/dev/null && mise tasks ls >/dev/null
   ```
 

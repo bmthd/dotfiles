@@ -1,7 +1,9 @@
 # Global mise configuration — installed to ~/.config/mise/conf.d/10-dotfiles.toml
-# by install.sh. Tools, environment, and setup tasks all live here; install.sh
-# is only a thin bootstrapper (install mise → download this file →
-# `mise install` → `mise run setup`).
+# by install.sh. It declares what a machine gets: tools, environment, and the
+# setup tasks that install everything mise itself cannot. install.sh is only a
+# thin bootstrapper (install mise → download this file → `mise install` →
+# `mise run setup`), and the tasks at the bottom are a facade over the scripts
+# in .dotfiles/setup/ rather than the shell that does the work.
 #
 # conf.d rather than ~/.config/mise/config.toml so that re-running install.sh
 # has nothing machine-local to overwrite: mise merges both, and config.toml
@@ -27,6 +29,10 @@
 # question of which form a new tool should use, or where in the block it goes.
 # Inline tables must stay on a single line: multi-line ones are TOML 1.1, which
 # non-mise parsers reject and `mise fmt` reorders.
+#
+# The postinstall hooks below are the one place shell still belongs in this
+# file: they run during `mise install`, before any task, so they cannot be
+# delegated to a script that a task downloads.
 [tools]
 node = { version = "latest" }
 "npm:pnpm" = { version = "latest" }
@@ -85,8 +91,21 @@ locked_verify_provenance = true
 experimental = false
 
 # --- Setup tasks ------------------------------------------------------------
-# Everything below used to live in install.sh. Re-run the whole setup any
-# time with `mise run setup`, or a single piece (e.g. `mise run setup:skills`).
+# Everything below used to live in install.sh, then here as inline shell. Now
+# each task carries only its name, description and dependencies, and
+# `setup:<name>` runs `.dotfiles/setup/<name>.sh` from the repository. Re-run
+# the whole setup with `mise run setup`, or one piece with `mise run
+# setup:skills`.
+#
+# The bodies moved out because this file cannot be reviewed the way a shell
+# script can. install.sh downloads it as a single file, so shell written here
+# arrives as a TOML string that ShellCheck never sees, `bash -n` never parses
+# and a test can only reach by re-parsing the TOML. As separate files they are
+# ordinary scripts: CI lints and syntax-checks them, tests run them directly,
+# and `bash .dotfiles/setup/claude.sh` reproduces exactly what a machine does.
+#
+# setup:scripts is what makes that work on a machine that has only this file.
+# Every task below depends on it, so a single task pulls in what it needs.
 #
 # Tasks that download from this repository take their base URL from
 # DOTFILES_RAW_BASE, which install.sh exports after resolving the repository to
@@ -113,288 +132,87 @@ depends = [
   "setup:update-notice",
 ]
 
-[tasks."setup:oci-plugin"]
-description = "Migrate the OCI plugin from the legacy asdf backend to vfox"
+[tasks."setup:scripts"]
+description = "Place the setup scripts the tasks below delegate to"
 shell = "bash -c"
 run = '''
-set -eo pipefail
-vfox_url="https://github.com/jdx/vfox-oci.git"
-plugin_url="$(mise plugins ls --urls | awk '$1 == "oci" { print $2; exit }')"
-case "$plugin_url" in
-    https://github.com/jdx/vfox-oci|https://github.com/jdx/vfox-oci.git|git@github.com:jdx/vfox-oci.git)
-        echo "✓ OCI vfox plugin is already installed"
-        ;;
-    "")
-        echo "📦 Installing the OCI vfox plugin..."
-        mise plugins install oci "$vfox_url"
-        ;;
-    *)
-        echo "📦 Replacing the non-vfox OCI plugin ($plugin_url)..."
-        # `mise plugins install oci` manages asdf plugins and therefore picks
-        # the registry's asdf fallback even though vfox is listed first. The
-        # explicit URL is what changes the checkout's implementation.
-        mise plugins install --force oci "$vfox_url"
-        ;;
-esac
+set -euo pipefail
+RAW_BASE="${DOTFILES_RAW_BASE:-https://raw.githubusercontent.com/bmthd/dotfiles/${DOTFILES_REF:-main}}"
+# ~/.cache, not ~/.config/dotfiles: these are a copy of what the repository
+# publishes, replaced on every run and carrying nothing of this machine's.
+# ~/.config/dotfiles holds the opposite kind of file — the ones `/dotfiles
+# apply` three-way merges because local edits there are meant to survive.
+SETUP_DIR="$HOME/.cache/dotfiles/setup"
+# Every task below by name: `setup:<name>` runs `<name>.sh`. A task added
+# without its name here would point at a script that never arrives, which is
+# what tests/setup-facade-test.sh exists to catch.
+SCRIPTS=(npm-registry oci-plugin claude skills codex claude-plugins git-hooks update-notice)
+mkdir -p "$SETUP_DIR"
+failures=0
+for name in "${SCRIPTS[@]}"; do
+    # Into a temp file first: `curl -f -o dest` creates and partially fills dest
+    # before it gives up on an error response, and a half-written script that a
+    # task then executes is worse than one that never downloaded.
+    tmp="$(mktemp)"
+    if curl -fsSL --max-time 30 "$RAW_BASE/.dotfiles/setup/$name.sh" -o "$tmp"; then
+        # mktemp creates the file 0600, so set the mode outright rather than
+        # adding +x to it and leaving a script only its owner can read.
+        chmod 755 "$tmp"
+        mv "$tmp" "$SETUP_DIR/$name.sh"
+    else
+        rm -f "$tmp"
+        echo "⚠ Failed to download the $name setup script"
+        failures=$((failures + 1))
+    fi
+done
+if [ "$failures" -gt 0 ]; then
+    # Fail closed, and with it every task depending on this one. Falling back to
+    # last run's copy would run a script this config was never checked against,
+    # and every task here needs the network for its own work anyway.
+    echo "✗ $failures setup script(s) could not be downloaded from $RAW_BASE"
+    exit 1
+fi
 '''
+
+[tasks."setup:oci-plugin"]
+description = "Migrate the OCI plugin from the legacy asdf backend to vfox"
+depends = ["setup:scripts"]
+run = "$HOME/.cache/dotfiles/setup/oci-plugin.sh"
 
 [tasks."setup:npm-registry"]
 description = "Route npm installs through the Takumi Guard malware-blocking proxy"
-shell = "bash -c"
-run = '''
-set -e
-# Point npm at Takumi Guard (https://npm.flatt.tech/), a proxy that refuses to
-# serve packages it knows to be malicious. Anonymous mode ("Tier A") needs no
-# account: blocking only, no audit log.
-#
-# This covers the part of the supply chain that pinning cannot. The mise `npm:`
-# tools resolve to a pinned version and Renovate holds new ones back, but the
-# postinstall hooks below shell out to `npx ctx7@latest` and `npx skills add`,
-# which always fetch the newest package at run time. The proxy is the only
-# control that sits in front of those.
-#
-# It is written to ~/.npmrc, not exported as NPM_CONFIG_REGISTRY, so that a
-# project-level .npmrc (a work repo on a private registry) still wins — npm
-# reads env vars at a higher precedence than any .npmrc file.
-NPMRC="$HOME/.npmrc"
-REGISTRY="https://npm.flatt.tech/"
-touch "$NPMRC"
-current="$(sed -n 's/^registry=//p' "$NPMRC" | tail -1)"
-case "$current" in
-    "$REGISTRY")
-        echo "✓ npm registry already points at Takumi Guard"
-        ;;
-    ""|https://registry.npmjs.org*)
-        # No registry line, or still the npm default: safe to (re)write.
-        tmp="$(mktemp)"
-        grep -v '^registry=' "$NPMRC" > "$tmp" || true
-        printf 'registry=%s\n' "$REGISTRY" >> "$tmp"
-        cat "$tmp" > "$NPMRC"
-        rm -f "$tmp"
-        echo "✓ npm registry set to Takumi Guard ($REGISTRY)"
-        ;;
-    *)
-        # Somebody pointed ~/.npmrc at a registry of their own; leave it alone.
-        echo "⚠ ~/.npmrc already uses a custom registry ($current); leaving it unchanged"
-        exit 1
-        ;;
-esac
-'''
+depends = ["setup:scripts"]
+run = "$HOME/.cache/dotfiles/setup/npm-registry.sh"
 
 [tasks."setup:git-hooks"]
 description = "Install the global git hooks that trust mise configs in new worktrees"
-shell = "bash -c"
-run = '''
-RAW_BASE="${DOTFILES_RAW_BASE:-https://raw.githubusercontent.com/bmthd/dotfiles/${DOTFILES_REF:-main}}"
-INSTALLER="$(mktemp)"
-# The installer downloads dispatch and pinact-staged itself, so hand it the
-# same base rather than letting it fall back to main on its own.
-export DOTFILES_RAW_BASE="$RAW_BASE"
-if curl -fsSL "$RAW_BASE/.dotfiles/git-hooks/install.sh" -o "$INSTALLER"; then
-    bash "$INSTALLER"
-else
-    echo "⚠ Failed to download the git hook installer"
-    rm -f "$INSTALLER"
-    exit 1
-fi
-rm -f "$INSTALLER"
-'''
+depends = ["setup:scripts"]
+run = "$HOME/.cache/dotfiles/setup/git-hooks.sh"
 
 [tasks."setup:update-notice"]
 description = "Install the shell-startup dotfiles update notification"
-shell = "bash -c"
-run = '''
-RAW_BASE="${DOTFILES_RAW_BASE:-https://raw.githubusercontent.com/bmthd/dotfiles/${DOTFILES_REF:-main}}"
-DOTFILES_CONFIG_DIR="$HOME/.config/dotfiles"
-UPDATE_NOTICE="$DOTFILES_CONFIG_DIR/update-notice.sh"
-mkdir -p "$DOTFILES_CONFIG_DIR"
-if curl -fsSL "$RAW_BASE/.dotfiles/update-notice.sh" -o "$UPDATE_NOTICE"; then
-    bash "$UPDATE_NOTICE" install
-    echo "✓ Dotfiles update notification installed"
-else
-    echo "⚠ Failed to install dotfiles update notification"
-    exit 1
-fi
-'''
+depends = ["setup:scripts"]
+run = "$HOME/.cache/dotfiles/setup/update-notice.sh"
 
 [tasks."setup:claude"]
 description = "Install Claude Code plus its settings.json and status line"
-shell = "bash -c"
-run = '''
-# Install Claude Code via the official installer (not mise/npm, which cannot
-# complete the native binary postinstall)
-if ! command -v claude &> /dev/null; then
-    echo "📦 Installing Claude Code..."
-    if curl -fsSL https://claude.ai/install.sh | bash; then
-        echo "✓ Claude Code installed"
-    else
-        echo "⚠ Claude Code installation failed; skipping"
-    fi
-else
-    echo "✓ Claude Code is already installed"
-fi
-
-echo "📦 Setting up Claude Code configuration..."
-RAW_BASE="${DOTFILES_RAW_BASE:-https://raw.githubusercontent.com/bmthd/dotfiles/${DOTFILES_REF:-main}}"
-mkdir -p "$HOME/.claude/skills"
-CLAUDE_SETTINGS="$HOME/.claude/settings.json"
-REMOTE_SETTINGS="$(mktemp)"
-if curl -fsSL "$RAW_BASE/.claude/settings.json" -o "$REMOTE_SETTINGS"; then
-    if [ -f "$CLAUDE_SETTINGS" ] && command -v jq &> /dev/null; then
-        # Deep-merge settings, preserving array order (remote wins on scalars)
-        MERGED_SETTINGS="$(mktemp)"
-        if jq -s --arg prefer remote '
-          def m($a; $b; $has_a; $has_b):
-            if ($a | type) == "object" and ($b | type) == "object" then
-              reduce ($b | keys_unsorted[]) as $k
-                ($a; .[$k] = m($a[$k]; $b[$k]; $a | has($k); true))
-            elif ($a | type) == "array" and ($b | type) == "array" then
-              reduce (($a + $b)[]) as $item
-                ([]; if index($item) == null then . + [$item] else . end)
-            elif $prefer == "local" and $has_a then $a
-            elif $prefer == "remote" and $has_b then $b
-            elif $has_a then $a
-            else $b
-            end;
-          m(.[0]; .[1]; true; true)
-        ' "$CLAUDE_SETTINGS" "$REMOTE_SETTINGS" > "$MERGED_SETTINGS" 2>/dev/null; then
-            mv "$MERGED_SETTINGS" "$CLAUDE_SETTINGS"
-            echo "✓ Merged Claude Code settings into existing $CLAUDE_SETTINGS"
-        else
-            rm -f "$MERGED_SETTINGS"
-            echo "⚠ Failed to merge settings; keeping existing $CLAUDE_SETTINGS unchanged"
-        fi
-    else
-        mv "$REMOTE_SETTINGS" "$CLAUDE_SETTINGS"
-        echo "✓ Installed Claude Code settings to $CLAUDE_SETTINGS"
-    fi
-else
-    echo "⚠ Failed to download Claude Code settings"
-    rm -f "$REMOTE_SETTINGS"
-    exit 1
-fi
-rm -f "$REMOTE_SETTINGS"
-
-if curl -fsSL "$RAW_BASE/.claude/statusline.sh" -o "$HOME/.claude/statusline.sh"; then
-    chmod +x "$HOME/.claude/statusline.sh"
-    echo "✓ Claude Code status line installed"
-else
-    echo "⚠ Failed to download Claude Code status line"
-    exit 1
-fi
-'''
+depends = ["setup:scripts"]
+run = "$HOME/.cache/dotfiles/setup/claude.sh"
 
 [tasks."setup:skills"]
 description = "Install agent skills for Claude Code, OpenCode, and Cursor"
-# The `npx skills add` calls below must resolve through the Takumi Guard proxy,
-# so make the registry configuration an explicit dependency rather than relying
-# on the order of the parent task's depends list.
-depends = ["setup:npm-registry"]
-shell = "bash -c"
-run = '''
-# Skill directories for each agent CLI (Cursor reads ~/.agents/skills)
-mkdir -p "$HOME/.claude/skills" "$HOME/.config/opencode/skills" "$HOME/.agents/skills"
-
-# Install skills via the `skills` CLI — one mechanism for every source.
-# Own skills live in bmthd/skills, split out of this repo so they can be shared
-# on their own. What stays in this repo's .agents/skills/ is what does not
-# belong anywhere else: the dotfiles skill, which only makes sense against this
-# repo. Third-party skills come from their upstream repos. productivity pulls
-# all skills from Matt Pocock's upstream productivity skills folder.
-# mathbullet contributes html and explain, the two skills html's SKILL.md
-# recommends using together. The other two it recommends, japanese-tech-writing
-# and cognitive-rhythm-writing, are published as gists and are fetched from
-# there directly. Skills cross-reference each other by name, so all four
-# resolve once they share an agent's skills directory.
-# Update any of them later with `npx skills update`.
-#
-# SECURITY: these are the one dependency here that nothing checks. A skill is
-# Markdown that is loaded straight into every agent's context, so a compromised
-# one is a prompt-injection channel, not just a malicious package — and the
-# skills CLI has no way to pin a revision (`skills add` takes no ref, and the
-# skills-lock.json restore path is experimental and project-scoped). Treat
-# `npx skills update` as a change to review, not to run unattended.
-echo "📦 Installing skills..."
-install_skills() {
-    local label="$1"; shift
-    npx skills add "$@" -y -g -a claude-code -a opencode -a cursor 2>/dev/null \
-      && echo "✓ $label skills installed" \
-      || echo "⚠ $label skills installation failed (continuing)"
-}
-install_skills "own" bmthd/skills
-# the dotfiles skill (pr / apply) targets this repository, so it still lives here
-install_skills "dotfiles-local" bmthd/dotfiles
-install_skills "superpowers" obra/superpowers
-install_skills "productivity" https://github.com/mattpocock/skills/tree/main/skills/productivity -s '*'
-install_skills "mathbullet" mathbullet/skills -s html -s explain
-# Orca (the parallel-agent ADE) ships its skills in the app's own repo. The CLI
-# itself is not installable here — it comes from the desktop app, or over the
-# SSH relay on a VPS — but the skills teach an agent to drive it, so install
-# them all and let the ones for absent features simply never trigger.
-install_skills "orca" stablyai/orca -s '*'
-# hunk ships four skills; only hunk-review drives a review session from an agent
-install_skills "hunk" modem-dev/hunk -s hunk-review
-# japanese-tech-writing and cognitive-rhythm-writing are Keiichiro Shikano's
-# (k16shikano) gists:
-# https://gist.github.com/k16shikano/fd287c3133457c4fd8f5601d34aa817d
-# https://gist.github.com/k16shikano/eb2929f13ed19c97188393d297be8432
-# Use the .git clone URL, not the page URL: the skills CLI source parser
-# mistakes gist.github.com for github.com and the page URL 404s.
-install_skills "japanese-tech-writing" https://gist.github.com/fd287c3133457c4fd8f5601d34aa817d.git
-install_skills "cognitive-rhythm-writing" https://gist.github.com/eb2929f13ed19c97188393d297be8432.git
-
-# Record which revision of bmthd/skills this machine now carries, so the
-# shell-startup notice can tell when that repository has moved on. `skills add`
-# takes no ref, so the head at this moment is the closest thing to "the revision
-# we installed" that exists — and recording it here is also what stops the
-# notice from firing again once an update has been applied.
-#
-# On a first install the notice script is not in place yet (setup:update-notice
-# puts it there, and mise may run the two in either order). That is harmless:
-# its own install step records every watched repository.
-UPDATE_NOTICE="$HOME/.config/dotfiles/update-notice.sh"
-if [ -r "$UPDATE_NOTICE" ]; then
-    bash "$UPDATE_NOTICE" record skills || echo "⚠ Failed to record the skills revision (continuing)"
-fi
-'''
+# The `npx skills add` calls in the script must resolve through the Takumi Guard
+# proxy, so make the registry configuration an explicit dependency rather than
+# relying on the order of the parent task's depends list.
+depends = ["setup:scripts", "setup:npm-registry"]
+run = "$HOME/.cache/dotfiles/setup/skills.sh"
 
 [tasks."setup:codex"]
 description = "Install the official Codex plugin for Claude Code"
-depends = ["setup:claude"]
-shell = "bash -c"
-run = '''
-echo "📦 Setting up Codex plugin..."
-if command -v claude &> /dev/null; then
-    claude plugin marketplace add openai/codex-plugin-cc 2>/dev/null \
-      && claude plugin install codex@openai-codex -s user 2>/dev/null \
-      && echo "✓ Codex plugin installed" \
-      || echo "⚠ Codex plugin installation failed (continuing)"
-else
-    echo "⚠ claude not found on PATH; skipping Codex plugin installation"
-fi
-'''
+depends = ["setup:scripts", "setup:claude"]
+run = "$HOME/.cache/dotfiles/setup/codex.sh"
 
 [tasks."setup:claude-plugins"]
 description = "Install official Anthropic plugins for Claude Code (TypeScript LSP)"
-depends = ["setup:claude"]
-shell = "bash -c"
-run = '''
-echo "📦 Setting up official Claude Code plugins..."
-if ! command -v claude &> /dev/null; then
-    echo "⚠ claude not found on PATH; skipping official plugin installation"
-    exit 0
-fi
-
-# 公式マーケットプレイスは登録済みでも add は失敗しないが、念のため結果を握り潰す
-claude plugin marketplace add anthropics/claude-plugins-official 2>/dev/null || true
-
-# インストール対象の公式プラグイン。増やす場合はここに追記する
-OFFICIAL_PLUGINS=(
-    typescript-lsp
-)
-for plugin in "${OFFICIAL_PLUGINS[@]}"; do
-    claude plugin install "$plugin@claude-plugins-official" -s user 2>/dev/null \
-      && echo "✓ $plugin installed" \
-      || echo "⚠ $plugin installation failed (continuing)"
-done
-'''
+depends = ["setup:scripts", "setup:claude"]
+run = "$HOME/.cache/dotfiles/setup/claude-plugins.sh"

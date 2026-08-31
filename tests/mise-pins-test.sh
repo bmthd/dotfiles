@@ -314,9 +314,16 @@ print(
 if not check_setup:
     sys.exit(0)
 
+# The remaining checks read the setup scripts .mise.toml delegates to, not the
+# tasks: the config holds only their names now (see tests/setup-facade-test.sh,
+# which is what keeps the two in step).
+def setup_script(task_name):
+    return (repo / ".dotfiles/setup" / f"{task_name.removeprefix('setup:')}.sh").read_text()
+
+
 # 8. setup:claude must preserve both array order and scalar priority. Extract
-# the real jq program from the task so this exercises the expression mise runs.
-claude_setup = config["tasks"]["setup:claude"]["run"]
+# the real jq program from the script so this exercises the expression it runs.
+claude_setup = setup_script("setup:claude")
 jq_match = re.search(
     r"jq -s --arg prefer remote '(.+?)' \"\$CLAUDE_SETTINGS\" \"\$REMOTE_SETTINGS\"",
     claude_setup,
@@ -372,8 +379,15 @@ fatal_task_modes = {
     "setup:npm-registry": "set -e",
 }
 for task_name, mode in fatal_task_modes.items():
-    if not config["tasks"][task_name]["run"].lstrip().startswith(mode):
-        fail(f"{task_name} must start with {mode!r}")
+    # The shebang and the header comment come first in a script; the mode has
+    # to be the first line that actually runs.
+    body = [
+        line
+        for line in setup_script(task_name).splitlines()
+        if line.strip() and not line.startswith("#")
+    ]
+    if not body or body[0] != mode:
+        fail(f"{task_name} must set {mode!r} before anything else runs")
 
 fatal_messages = (
     ("setup:npm-registry", "~/.npmrc already uses a custom registry"),
@@ -383,7 +397,7 @@ fatal_messages = (
     ("setup:claude", "Failed to download Claude Code status line"),
 )
 for task_name, message in fatal_messages:
-    script = config["tasks"][task_name]["run"]
+    script = setup_script(task_name)
     pattern = rf'echo "⚠ {re.escape(message)}[^\n]*\n(?:\s*rm[^\n]*\n)?\s*exit 1'
     if re.search(pattern, script) is None:
         fail(f"{task_name} must exit non-zero after reporting {message!r}")
