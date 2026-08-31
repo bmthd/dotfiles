@@ -55,6 +55,12 @@ jobs:
       # also keeps the lazy clone off the resolution path: when the two race,
       # `mise lock` gives up and writes the literal `latest` into mise.lock.
       - name: Install the plugin oci resolves through
+        # The task delegates to .dotfiles/setup/oci-plugin.sh, which
+        # setup:scripts downloads from the repository. Point that at the commit
+        # this job checked out, so a workflow_dispatch on another ref exercises
+        # that ref's script instead of main's.
+        env:
+          DOTFILES_RAW_BASE: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}
         run: mise run --skip-tools setup:oci-plugin
 
       - name: Re-resolve every tool, ignoring releases younger than two days

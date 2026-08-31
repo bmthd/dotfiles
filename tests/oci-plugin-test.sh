@@ -1,31 +1,16 @@
 #!/usr/bin/env bash
 # Verify that setup:oci-plugin migrates the legacy asdf checkout to vfox
 # without reinstalling an already-correct plugin.
+#
+# The task is a one-line delegation to this script, so the script is what gets
+# run here — the same file setup:scripts places on a machine.
 
 set -euo pipefail
 
 repo="$(cd "$(dirname "$0")/.." && pwd)"
+task_script="$repo/.dotfiles/setup/oci-plugin.sh"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
-
-if python3 -c 'import tomllib' 2>/dev/null; then
-  py=(python3)
-elif command -v uv >/dev/null 2>&1; then
-  py=(uv run --quiet --python 3.12 python)
-else
-  echo "✗ needs Python 3.11+ (for tomllib) or uv on PATH"
-  exit 1
-fi
-
-task_script="$("${py[@]}" - "$repo/.mise.toml" <<'PY'
-import sys
-import tomllib
-
-with open(sys.argv[1], "rb") as config_file:
-    config = tomllib.load(config_file)
-print(config["tasks"]["setup:oci-plugin"]["run"])
-PY
-)"
 
 mkdir -p "$tmp/bin"
 cat > "$tmp/bin/mise" <<'SH'
@@ -46,7 +31,7 @@ run_case() {
   local plugin_url="$1"
   local expected="$2"
   : > "$tmp/calls"
-  PATH="$tmp/bin:$PATH" PLUGIN_URL="$plugin_url" CALL_LOG="$tmp/calls" bash -c "$task_script" >/dev/null
+  PATH="$tmp/bin:$PATH" PLUGIN_URL="$plugin_url" CALL_LOG="$tmp/calls" bash "$task_script" >/dev/null
   if [[ "$(cat "$tmp/calls")" != "$expected" ]]; then
     echo "✗ plugin URL $plugin_url produced the wrong install command" >&2
     echo "  expected: $expected" >&2

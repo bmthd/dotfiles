@@ -50,21 +50,28 @@ on a work machine those two routinely differ.
 
 Read the repository facts in [SKILL.md](SKILL.md) first. In addition:
 
-- **Adding a third-party skill**: add an `install_skills` line to the `setup:skills`
-  task rather than copying the skill into this repository. Gists work too, via their
-  `.git` clone URL — see the `japanese-tech-writing` line for why the page URL fails.
+- **Adding a third-party skill**: add an `install_skills` line to
+  [`.dotfiles/setup/skills.sh`](../../../.dotfiles/setup/skills.sh) rather than copying
+  the skill into this repository. Gists work too, via their `.git` clone URL — see the
+  `japanese-tech-writing` line for why the page URL fails.
+- **Changing what a setup task does** means editing `.dotfiles/setup/<name>.sh`, not
+  `.mise.toml`: a task there is a one-line delegation to its script and stays that way.
+  A *new* task needs three things in the same commit — the script, the task, and the
+  script's name in the `SCRIPTS=(...)` list of `setup:scripts`, which is what puts it on
+  a machine. `bash tests/setup-facade-test.sh` checks all three.
 - **Editing `.mise.toml` or any shell script** means the config must still parse and
   the scripts must stay ShellCheck-clean under both bash and zsh. Run the CI checks
   locally before pushing:
 
   ```bash
   bash -n install.sh .dotfiles/update-notice.sh .claude/statusline.sh \
-    .dotfiles/git-hooks/dispatch .dotfiles/git-hooks/install.sh
+    .dotfiles/git-hooks/dispatch .dotfiles/git-hooks/install.sh .dotfiles/setup/*.sh
   zsh -n install.sh
   shellcheck install.sh .claude/statusline.sh .dotfiles/update-notice.sh \
-    .dotfiles/git-hooks/* .githooks/pre-commit tests/*.sh
+    .dotfiles/git-hooks/* .dotfiles/setup/*.sh .githooks/pre-commit tests/*.sh
   bash tests/update-notice-test.sh && bash tests/statusline-test.sh
   bash tests/mise-pins-test.sh && bash tests/install-order-test.sh && bash tests/git-hooks-test.sh
+  bash tests/setup-facade-test.sh && bash tests/oci-plugin-test.sh && bash tests/revision-pinning-test.sh
   mise ls >/dev/null && mise tasks ls >/dev/null
   ```
 

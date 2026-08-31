@@ -517,12 +517,12 @@ grep -vF "HOME=$transaction_home " "$mise_log" >/dev/null && {
   printf 'mise inherited a HOME other than --home:\n%s\n' "$(<"$mise_log")" >&2
   exit 1
 }
-expected_mise_args=$'tasks ls\nls\ntasks ls\nls\nrun --skip-tools setup:oci-plugin\ninstall\nrun setup:skills\nrun --skip-deps setup:codex\nrun --skip-deps setup:claude-plugins'
+expected_mise_args=$'tasks ls\nls\ntasks ls\nls\nrun --skip-tools setup:scripts\nrun --skip-tools setup:oci-plugin\ninstall\nrun setup:skills\nrun --skip-deps setup:codex\nrun --skip-deps setup:claude-plugins'
 [ "$(sed 's/^.* ARGS=//' "$mise_log")" = "$expected_mise_args" ] || {
   printf 'mise did not receive the selected HOME/config or expected task order:\n%s\n' "$(<"$mise_log")" >&2
   exit 1
 }
-expected_post_mise_args=$'tasks ls\nls\nrun --skip-tools setup:oci-plugin\ninstall\nrun setup:skills\nrun --skip-deps setup:codex\nrun --skip-deps setup:claude-plugins'
+expected_post_mise_args=$'tasks ls\nls\nrun --skip-tools setup:scripts\nrun --skip-tools setup:oci-plugin\ninstall\nrun setup:skills\nrun --skip-deps setup:codex\nrun --skip-deps setup:claude-plugins'
 [ "$(grep -F "CONFIG=$transaction_mise_config " "$mise_log" | sed 's/^.* ARGS=//')" = "$expected_post_mise_args" ] || {
   printf 'post-apply mise calls ignored --mise-config:\n%s\n' "$(<"$mise_log")" >&2
   exit 1

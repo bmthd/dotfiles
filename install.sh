@@ -9,7 +9,8 @@
 
 # Thin bootstrapper: installs mise, places the mise config, and hands the
 # rest of the setup over to mise (`mise install` + `mise run setup`).
-# All tool definitions and setup logic live in .mise.toml.
+# Tool definitions live in .mise.toml; the setup logic lives in the scripts its
+# tasks delegate to, which the setup:scripts task downloads from .dotfiles/setup.
 
 echo "🚀 Bootstrapping dotfiles..."
 
