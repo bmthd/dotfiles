@@ -49,6 +49,15 @@ install_skills "mathbullet" mathbullet/skills -s html -s explain
 install_skills "orca" stablyai/orca -s '*'
 # hunk ships four skills; only hunk-review drives a review session from an agent
 install_skills "hunk" modem-dev/hunk -s hunk-review
+# pstack ships as a Cursor plugin — `/add-plugin pstack` — which is not
+# installable here: the repository carries .cursor-plugin/plugin.json and no
+# .claude-plugin/marketplace.json, so `claude plugin marketplace add` has
+# nothing to read. That manifest's `skills` key points at a plain directory of
+# SKILL.md files, so the skills CLI installs the same set from the subpath for
+# every agent. Take all of them: poteto-mode is the entry point and its inline
+# Principles index navigates to the 21 principle-* skills by name, so a subset
+# leaves it pointing at skills that are not there.
+install_skills "pstack" https://github.com/cursor/plugins/tree/main/pstack/skills -s '*'
 # japanese-tech-writing and cognitive-rhythm-writing are Keiichiro Shikano's
 # (k16shikano) gists:
 # https://gist.github.com/k16shikano/fd287c3133457c4fd8f5601d34aa817d
@@ -57,6 +66,35 @@ install_skills "hunk" modem-dev/hunk -s hunk-review
 # mistakes gist.github.com for github.com and the page URL 404s.
 install_skills "japanese-tech-writing" https://gist.github.com/fd287c3133457c4fd8f5601d34aa817d.git
 install_skills "cognitive-rhythm-writing" https://gist.github.com/eb2929f13ed19c97188393d297be8432.git
+
+# pstack's plugin manifest also declares `agents`, which the skills CLI has no
+# concept of and therefore skips. The two it names are not optional extras:
+# poteto-mode spawns `subagent_type: "poteto-agent"` for every delegate inside
+# a playbook step, and no-comments spawns "Comment Sicko", so both skills stop
+# at their first delegation without these files. Claude Code reads
+# ~/.claude/agents/*.md and takes the subagent_type from the frontmatter
+# `name` verbatim, so "Comment Sicko" resolves as published and the files need
+# no rewriting. Claude Code is the only target: on Cursor the plugin installs
+# itself and brings its own agents, and OpenCode's agent frontmatter is a
+# different schema these files do not satisfy.
+#
+# SECURITY: same trust boundary as the skills above, and pinned no harder —
+# this is Markdown that goes straight into an agent's context.
+echo "📦 Installing pstack subagents for Claude Code..."
+PSTACK_AGENTS="https://raw.githubusercontent.com/cursor/plugins/main/pstack/agents"
+mkdir -p "$HOME/.claude/agents"
+for agent in poteto-agent comment-sicko; do
+    # Download to a temporary file so a failed fetch leaves any previously
+    # installed copy in place rather than truncating it.
+    tmp="$(mktemp)"
+    if curl -fsSL --max-time 30 "$PSTACK_AGENTS/$agent.md" -o "$tmp"; then
+        mv "$tmp" "$HOME/.claude/agents/$agent.md"
+        echo "✓ pstack $agent subagent installed"
+    else
+        rm -f "$tmp"
+        echo "⚠ pstack $agent subagent installation failed (continuing)"
+    fi
+done
 
 # Record which revision of bmthd/skills this machine now carries, so the
 # shell-startup notice can tell when that repository has moved on. `skills add`
