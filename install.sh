@@ -130,16 +130,39 @@ fi
 # has anything of the user's to overwrite. The global lockfile
 # (~/.config/mise/mise.lock) is keyed to the config directory, not to a single
 # file name, so it still pins the tools declared here.
-DOTFILES_CONF_D="$HOME/.config/mise/conf.d"
+#
+# None of those paths are written out here. They come from
+# .dotfiles/mise-layout.sh, the one definition that `/dotfiles apply` reads too;
+# a piped install has no checkout to read it from, so it is fetched at the same
+# resolved revision as everything else below.
 echo "📦 Setting up mise configuration..."
-mkdir -p "$DOTFILES_CONF_D"
+MISE_LAYOUT_TMP="$(mktemp)"
+if curl -fsSL "$DOTFILES_RAW_BASE/.dotfiles/mise-layout.sh" -o "$MISE_LAYOUT_TMP"; then
+    # The file is .dotfiles/mise-layout.sh at $DOTFILES_REVISION; shellcheck
+    # cannot follow it through the temp path it was downloaded to.
+    # shellcheck disable=SC1090
+    . "$MISE_LAYOUT_TMP"
+    rm -f "$MISE_LAYOUT_TMP"
+else
+    rm -f "$MISE_LAYOUT_TMP"
+    echo "✗ Failed to download the mise layout rules."
+    echo "  Aborting: without them this script would have to guess where the"
+    echo "  config and the lockfile belong, and a wrong guess writes the"
+    echo "  repository's copy over this machine's own config.toml."
+    exit 1
+fi
+
+MISE_CONFIG_DEST="$(dotfiles_mise_config_path "$HOME")"
+MISE_LOCK_DEST="$(dotfiles_mise_lock_path "$HOME")"
+LEGACY_MISE_CONFIG="$(dotfiles_legacy_mise_config_path "$HOME")"
+mkdir -p "$(dirname "$MISE_CONFIG_DEST")" "$(dirname "$MISE_LOCK_DEST")"
 # Downloads land in a temp file and are moved into place only once curl has
 # succeeded. `curl -f -o dest` still creates (and partially fills) dest before it
 # gives up on an error response, so writing straight to the destination turns a
 # failed download into a truncated config that later runs would happily read.
 MISE_CONFIG_TMP="$(mktemp)"
 if curl -fsSL "$DOTFILES_RAW_BASE/.mise.toml" -o "$MISE_CONFIG_TMP"; then
-    mv "$MISE_CONFIG_TMP" "$DOTFILES_CONF_D/10-dotfiles.toml"
+    mv "$MISE_CONFIG_TMP" "$MISE_CONFIG_DEST"
 else
     rm -f "$MISE_CONFIG_TMP"
     echo "⚠ Failed to download mise config"
@@ -152,15 +175,12 @@ fi
 # config.toml outranks conf.d, and `[tasks]` are replaced whole rather than
 # merged, so a stale copy would keep shadowing every task shipped from here.
 #
-# The marker is the raw.githubusercontent.com URL this repository's own setup
-# tasks fetch from. A config.toml written by hand for this machine — the file's
-# job from now on — does not contain it, so it is left alone.
+# What counts as the repository's copy is decided by the shared layout rules,
+# so `/dotfiles apply` migrates exactly the same files this does.
 #
 # Guarded on the new fragment being there: if the download above failed, moving
 # the old copy aside would leave the machine with no dotfiles config at all.
-LEGACY_MISE_CONFIG="$HOME/.config/mise/config.toml"
-if [ -s "$DOTFILES_CONF_D/10-dotfiles.toml" ] && [ -f "$LEGACY_MISE_CONFIG" ] &&
-    grep -q 'raw.githubusercontent.com/bmthd/dotfiles' "$LEGACY_MISE_CONFIG" 2>/dev/null; then
+if [ -s "$MISE_CONFIG_DEST" ] && dotfiles_is_repository_mise_config "$LEGACY_MISE_CONFIG"; then
 
     # Move it only when the old file can be *proved* to carry nothing of the
     # user's. Backing it up protects the bytes, but not the behaviour: `mise
@@ -170,7 +190,7 @@ if [ -s "$DOTFILES_CONF_D/10-dotfiles.toml" ] && [ -f "$LEGACY_MISE_CONFIG" ] &&
     # Losing a pin for the rest of the run is the very thing this whole change
     # exists to prevent, so an unprovable file is left where it is.
     MIGRATION_REASON=""
-    if diff -q "$LEGACY_MISE_CONFIG" "$DOTFILES_CONF_D/10-dotfiles.toml" > /dev/null 2>&1; then
+    if diff -q "$LEGACY_MISE_CONFIG" "$MISE_CONFIG_DEST" > /dev/null 2>&1; then
         MIGRATION_REASON="it is identical to the copy being installed"
     else
         # Upstream may simply have moved since the install, which says nothing
@@ -194,7 +214,7 @@ if [ -s "$DOTFILES_CONF_D/10-dotfiles.toml" ] && [ -f "$LEGACY_MISE_CONFIG" ] &&
     fi
     # Escape hatch for someone who has already merged their side by hand, or
     # who knows the file holds nothing they want.
-    if [ "${DOTFILES_MIGRATE_MISE_CONFIG:-}" = "1" ]; then
+    if dotfiles_migration_is_forced; then
         MIGRATION_REASON="DOTFILES_MIGRATE_MISE_CONFIG=1 was set"
     fi
 
@@ -223,7 +243,7 @@ if [ -s "$DOTFILES_CONF_D/10-dotfiles.toml" ] && [ -f "$LEGACY_MISE_CONFIG" ] &&
         echo "  tools and setup tasks will not reach this machine until it is migrated."
         echo "  Migrate with \`/dotfiles apply\`, which separates the two sides properly, or"
         echo "  review it yourself and keep only the machine-local part in config.toml:"
-        echo "    diff \"$LEGACY_MISE_CONFIG\" \"$DOTFILES_CONF_D/10-dotfiles.toml\""
+        echo "    diff \"$LEGACY_MISE_CONFIG\" \"$MISE_CONFIG_DEST\""
     fi
 fi
 
@@ -240,7 +260,7 @@ fi
 # resolve `latest` with neither the release-age gate nor checksum verification.
 MISE_LOCK_TMP="$(mktemp)"
 if curl -fsSL "$DOTFILES_RAW_BASE/mise.lock" -o "$MISE_LOCK_TMP"; then
-    mv "$MISE_LOCK_TMP" "$HOME/.config/mise/mise.lock"
+    mv "$MISE_LOCK_TMP" "$MISE_LOCK_DEST"
 else
     rm -f "$MISE_LOCK_TMP"
     echo "✗ Failed to download mise lockfile."

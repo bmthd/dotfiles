@@ -4,10 +4,19 @@ set -euo pipefail
 
 usage() {
   cat >&2 <<'EOF'
-usage: apply.sh plan|apply [--home HOME] [--repo REPO] [--remote-ref REF] [--mise-config PATH] [--json]
+usage: apply.sh plan|apply [--home HOME] [--repo REPO] [--remote-ref REF] [--mise-config PATH] [--mise-lock PATH] [--json]
 EOF
   exit 2
 }
+
+# Where the repository's mise files belong, and how to recognise the copy an
+# older installation left in config.toml. Shared with install.sh rather than
+# restated here: this script had its own copy of those rules, missed the conf.d
+# split install.sh had already made, and wrote the repository's config back over
+# the machine's own config.toml (#71). Read from this script's directory, not
+# from --repo, so the rules always come from the checkout being run.
+# shellcheck source=.dotfiles/mise-layout.sh disable=SC1091
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/mise-layout.sh"
 
 command_name="${1:-}"
 case "$command_name" in
@@ -19,6 +28,7 @@ home="$HOME"
 repo="$(pwd)"
 remote_ref="origin/main"
 mise_config=""
+mise_lock=""
 json=false
 
 while [ "$#" -gt 0 ]; do
@@ -43,6 +53,11 @@ while [ "$#" -gt 0 ]; do
       mise_config="$2"
       shift 2
       ;;
+    --mise-lock)
+      [ "$#" -ge 2 ] || usage
+      mise_lock="$2"
+      shift 2
+      ;;
     --json)
       json=true
       shift
@@ -52,8 +67,15 @@ while [ "$#" -gt 0 ]; do
 done
 
 if [ -z "$mise_config" ]; then
-  mise_config="$home/.config/mise/config.toml"
+  mise_config="$(dotfiles_mise_config_path "$home")"
 fi
+# Independent of --mise-config on purpose. The lockfile is keyed to the config
+# directory, so deriving it from the config path puts it inside conf.d/, where
+# mise never looks for it.
+if [ -z "$mise_lock" ]; then
+  mise_lock="$(dotfiles_mise_lock_path "$home")"
+fi
+legacy_mise_config="$(dotfiles_legacy_mise_config_path "$home")"
 
 # Refresh the remote-tracking ref this run compares against. Without it the
 # whole run is silently wrong rather than failing: every file compares against
@@ -114,7 +136,7 @@ repository_paths=(
 )
 local_paths=(
   "$mise_config"
-  "$(dirname "$mise_config")/mise.lock"
+  "$mise_lock"
   "$home/.claude/settings.json"
   "$home/.claude/statusline.sh"
   "$home/.config/dotfiles/update-notice.sh"
@@ -214,6 +236,44 @@ for index in "${!repository_paths[@]}"; do
 done
 files="$(jq -s '.' "$files_file")"
 
+# The pre-conf.d copy in ~/.config/mise/config.toml. It is not a managed target
+# — nothing is ever written to it — but it outranks conf.d, so as long as it
+# holds the repository's old copy every update staged into conf.d is shadowed
+# and the machine keeps running the tasks of the revision it was installed at.
+# install.sh has moved it aside since the split; this script did not, which left
+# `apply` unable to migrate the machines it exists to serve (#71).
+base_mise_blob=''
+if [ "$has_base" = true ]; then
+  base_mise_blob="$(blob_for "$base_revision" '.mise.toml')"
+fi
+remote_mise_blob="$(blob_for "$remote_revision" '.mise.toml')"
+
+legacy_state='absent'
+if [ "$legacy_mise_config" = "$mise_config" ]; then
+  # config.toml was named as the destination, so there is nothing to displace.
+  legacy_state='destination'
+elif [ -L "$legacy_mise_config" ] || { [ -e "$legacy_mise_config" ] && [ ! -f "$legacy_mise_config" ]; }; then
+  legacy_state='unrelated'
+elif dotfiles_is_repository_mise_config "$legacy_mise_config"; then
+  legacy_blob="$(git hash-object "$legacy_mise_config")"
+  if dotfiles_migration_is_forced; then
+    legacy_state='migratable'
+  elif [ -n "$base_mise_blob" ] && [ "$legacy_blob" = "$base_mise_blob" ]; then
+    legacy_state='migratable'
+  elif [ -n "$remote_mise_blob" ] && [ "$legacy_blob" = "$remote_mise_blob" ]; then
+    legacy_state='migratable'
+  else
+    # Moving it would protect the bytes but not the behaviour: a `node =
+    # { version = "22.11.0" }` written on top of the old copy stops applying the
+    # moment the file moves, and `mise install` runs a few steps later. An
+    # unprovable file is left exactly where it is, and the apply refuses.
+    legacy_state='needs-review'
+  fi
+elif [ -e "$legacy_mise_config" ]; then
+  # A config.toml written for this machine — the file's job from now on.
+  legacy_state='unrelated'
+fi
+
 if [ "$has_base" = true ]; then
   mode='inventory'
 else
@@ -228,9 +288,12 @@ if "$json"; then
     --arg fetch_error "$fetch_error" \
     --arg base_revision "$base_revision" \
     --arg remote_revision "$remote_revision" \
+    --arg legacy_path "$legacy_mise_config" \
+    --arg legacy_state "$legacy_state" \
     --argjson files "$files" \
     '{mode: $mode, fetch: $fetch, fetchError: $fetch_error, baseRevision: $base_revision,
-      remoteRevision: $remote_revision, files: $files}'
+      remoteRevision: $remote_revision, files: $files,
+      legacyMiseConfig: {path: $legacy_path, state: $legacy_state}}'
 else
   printf 'mode: %s\nfetch: %s\nbase revision: %s\nremote revision: %s\n' \
     "$mode" "$fetch_state" "${base_revision:-<none>}" "$remote_revision"
@@ -238,6 +301,7 @@ else
     printf 'fetch error: %s\n' "$fetch_error"
   fi
   jq -r '.[] | "\(.state): \(.repositoryPath) -> \(.localPath)"' <<<"$files"
+  printf 'legacy mise config: %s (%s)\n' "$legacy_mise_config" "$legacy_state"
 fi
 }
 
@@ -256,10 +320,13 @@ emit_apply_result() {
       --arg result "$result" \
       --arg backup_path "$backup_path" \
       --arg error "$error" \
+      --arg legacy_path "$legacy_mise_config" \
+      --arg legacy_state "$legacy_state" \
       --argjson files "$files" \
       '{mode: $mode, fetch: $fetch, fetchError: $fetch_error, baseRevision: $base_revision,
         remoteRevision: $remote_revision, files: $files, result: $result,
-        backupPath: $backup_path, error: $error}'
+        backupPath: $backup_path, error: $error,
+        legacyMiseConfig: {path: $legacy_path, state: $legacy_state}}'
   else
     printf 'result: %s\nbackup: %s\n' "$result" "${backup_path:-<none>}"
     if [ -n "$error" ]; then
@@ -295,9 +362,19 @@ if jq -e 'any(.[]; .state == "conflict" or .state == "needs-decision")' <<<"$fil
   exit 1
 fi
 
+# Same refusal as a merge conflict, for the same reason: the script cannot tell
+# which half of the file is the machine's, and applying anyway would either
+# drop a local pin or leave the update shadowed by the old copy.
+if [ "$legacy_state" = 'needs-review' ]; then
+  legacy_error="$legacy_mise_config still holds this repository's copy with local changes on top; review it, keep only the machine-local part, or re-run with DOTFILES_MIGRATE_MISE_CONFIG=1"
+  printf '%s\n' "$legacy_error" >&2
+  emit_apply_result 'failed' '' "$legacy_error"
+  exit 1
+fi
+
 stage_dir="$work_dir/stage"
 stage_paths=(
-  "$stage_dir/mise/config.toml"
+  "$stage_dir/mise/10-dotfiles.toml"
   "$stage_dir/mise/mise.lock"
   "$stage_dir/.claude/settings.json"
   "$stage_dir/.claude/statusline.sh"
@@ -344,24 +421,55 @@ done
 
 mise_bin="${DOTFILES_APPLY_MISE_BIN:-mise}"
 
-validate_paths() {
-  local config_path="$1"
-  local settings_path="$2"
-  local statusline_path="$3"
-  local notice_path="$4"
+# Run mise the way this machine runs it: the global config is config.toml plus
+# every fragment in conf.d/, with the lockfile beside them in the config
+# directory. XDG_CONFIG_HOME is pinned alongside HOME because mise resolves that
+# directory from XDG_CONFIG_HOME, and every path this script manages is under
+# $home/.config — without it a machine with XDG_CONFIG_HOME set elsewhere would
+# have its files updated here and its tools installed from a config over there.
+run_mise() {
+  HOME="$home" XDG_CONFIG_HOME="$home/.config" "$mise_bin" "$@" >&2
+}
+
+# Parse-check one staged fragment on its own, before anything is written.
+# MISE_GLOBAL_CONFIG_FILE replaces the whole global config set with this single
+# file, which is what isolation means here — and exactly why nothing that
+# installs may use it: it also moves the lockfile mise looks for next to the
+# named file, so pointing it at conf.d/10-dotfiles.toml would send mise looking
+# for conf.d/mise.lock.
+validate_staged_mise_config() {
+  HOME="$home" XDG_CONFIG_HOME="$home/.config" MISE_GLOBAL_CONFIG_FILE="$1" "$mise_bin" tasks ls >/dev/null &&
+    HOME="$home" XDG_CONFIG_HOME="$home/.config" MISE_GLOBAL_CONFIG_FILE="$1" "$mise_bin" ls >/dev/null
+}
+
+# The same two commands against the machine's real global config, once the
+# staged files are in place.
+validate_applied_mise_config() {
+  HOME="$home" XDG_CONFIG_HOME="$home/.config" "$mise_bin" tasks ls >/dev/null &&
+    HOME="$home" XDG_CONFIG_HOME="$home/.config" "$mise_bin" ls >/dev/null
+}
+
+validate_files() {
+  local settings_path="$1"
+  local statusline_path="$2"
+  local notice_path="$3"
 
   jq empty "$settings_path" >/dev/null &&
     bash -n "$statusline_path" &&
-    bash -n "$notice_path" &&
-    HOME="$home" MISE_CONFIG_FILE="$config_path" "$mise_bin" tasks ls >/dev/null &&
-    HOME="$home" MISE_CONFIG_FILE="$config_path" "$mise_bin" ls >/dev/null
+    bash -n "$notice_path"
 }
 
-if ! validate_paths "${stage_paths[0]}" "${stage_paths[2]}" "${stage_paths[3]}" "${stage_paths[4]}"; then
+if ! validate_files "${stage_paths[2]}" "${stage_paths[3]}" "${stage_paths[4]}" ||
+  ! validate_staged_mise_config "${stage_paths[0]}"; then
   printf 'staged configuration validation failed\n' >&2
   emit_apply_result 'failed' '' 'staged configuration validation failed'
   exit 1
 fi
+
+# Set before the backup directory exists so that rollback, which may run from
+# the EXIT trap at any point after that, always finds them defined.
+legacy_migrated=false
+legacy_backup_file=''
 
 backup_root="$home/.config/dotfiles/backups"
 mkdir -p "$backup_root"
@@ -382,6 +490,7 @@ for index in "${!local_paths[@]}"; do
 done
 jq -s '.' "$manifest_file" > "$backup_path/manifest.json"
 rm "$manifest_file"
+legacy_backup_file="$backup_path/legacy-config.toml"
 transaction_active=true
 transaction_phase='active'
 
@@ -410,7 +519,26 @@ rollback() {
       fi
     fi
   done
+  # Put a migrated config.toml back last: while it is in place it outranks
+  # conf.d, so restoring it before the managed targets would briefly give the
+  # machine the old copy on top of the new fragment.
+  if [ "$legacy_migrated" = true ]; then
+    if cp -p "$legacy_backup_file" "$legacy_mise_config"; then
+      legacy_migrated=false
+    else
+      rollback_error_summary="${rollback_error_summary}${rollback_error_summary:+, }$legacy_mise_config"
+    fi
+  fi
   [ -z "$rollback_error_summary" ]
+}
+
+# Move the pre-conf.d copy out of the way, into this transaction's backup
+# directory so that a rollback can put it back. Only ever called for a
+# `migratable` inventory; every other state was settled before any writes.
+migrate_legacy_mise_config() {
+  [ "$legacy_state" = 'migratable' ] && [ -f "$legacy_mise_config" ] || return 0
+  mv "$legacy_mise_config" "$legacy_backup_file" || return 1
+  legacy_migrated=true
 }
 
 apply_stage() {
@@ -493,17 +621,23 @@ handle_signal() {
 trap 'handle_signal 130' INT
 trap 'handle_signal 143' TERM
 
+if ! migrate_legacy_mise_config; then
+  rollback_with_error "failed to move $legacy_mise_config aside"
+fi
+
 if ! apply_stage; then
   rollback_with_error 'failed to apply staged configuration'
 fi
 
-if ! validate_paths "$mise_config" "${local_paths[2]}" "${local_paths[3]}" "${local_paths[4]}"; then
+# The post-apply check is what the staged one cannot be: mise resolving the
+# machine's whole global config, with the fragment just written in it and the
+# old copy out of the way. Anything that only shows up in that combination —
+# a conf.d fragment that a leftover config.toml contradicts — fails here, while
+# the transaction can still be rolled back.
+if ! validate_files "${local_paths[2]}" "${local_paths[3]}" "${local_paths[4]}" ||
+  ! validate_applied_mise_config; then
   rollback_with_error 'post-apply configuration validation failed'
 fi
-
-run_mise() {
-  HOME="$home" MISE_CONFIG_FILE="$mise_config" "$mise_bin" "$@" >&2
-}
 
 # The tasks below are facades over .dotfiles/setup/, placed by setup:scripts.
 # Run it once, explicitly: the two --skip-deps invocations at the end skip every
