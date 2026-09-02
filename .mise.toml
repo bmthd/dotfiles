@@ -58,16 +58,23 @@ github-cli = { version = "latest", postinstall = "gh extension install github/gh
 # ctx7: `ctx7 setup` blocks on an interactive OAuth device-code prompt that
 # neither --yes nor CI=true suppresses; only --api-key skips it. Pass the flag
 # when CONTEXT7_API_KEY is set (CI) and otherwise keep the interactive sign-in.
-"npm:ctx7" = { version = "latest", depends = ["node"], postinstall = "npx ctx7@latest setup --cli --claude --opencode --cursor --yes ${CONTEXT7_API_KEY:+--api-key \"$CONTEXT7_API_KEY\"}" }
+"npm:ctx7" = { version = "latest", depends = ["node"], postinstall = "npx ctx7@latest setup --cli --claude --opencode --cursor --codex --yes ${CONTEXT7_API_KEY:+--api-key \"$CONTEXT7_API_KEY\"}" }
 # playwright-cli is deprecated; use @playwright/cli. Note that the version
 # series restarted with the rename, so the current 0.1.x is newer than the
 # 0.262.0 that the old playwright-cli package left behind on some machines.
-"npm:@playwright/cli" = { version = "latest", depends = ["node"], postinstall = "npx skills add microsoft/playwright-cli -y -g -a claude-code -a opencode -a cursor" }
-"npm:difit" = { version = "latest", depends = ["node"], postinstall = "npx skills add yoshiko-pg/difit -y -g -a claude-code -a opencode -a cursor" }
+"npm:@playwright/cli" = { version = "latest", depends = ["node"], postinstall = "npx skills add microsoft/playwright-cli -y -g -a claude-code -a opencode -a cursor -a codex" }
+"npm:difit" = { version = "latest", depends = ["node"], postinstall = "npx skills add yoshiko-pg/difit -y -g -a claude-code -a opencode -a cursor -a codex" }
 # rtk init writes into each agent's config dir and fails outright if the dir is
 # missing, so create all three up front. On a fresh machine (and in CI) nothing
 # else has necessarily created ~/.cursor yet.
-"github:rtk-ai/rtk" = { version = "latest", postinstall = "mkdir -p \"$HOME/.claude\" \"$HOME/.cursor\" \"$HOME/.config/opencode\" && rtk init -g --auto-patch && rtk init -g --opencode --auto-patch && rtk init -g --agent cursor --auto-patch" }
+#
+# The Codex run is the exception on both counts, and deliberately shaped
+# differently. `--codex` writes ~/.codex/RTK.md and an @-reference to it from
+# ~/.codex/AGENTS.md rather than patching a settings.json, so rtk rejects
+# `--codex --auto-patch` outright ("cannot be combined") — there is nothing to
+# patch and nothing to prompt about, which is also why it needs no directory
+# created for it.
+"github:rtk-ai/rtk" = { version = "latest", postinstall = "mkdir -p \"$HOME/.claude\" \"$HOME/.cursor\" \"$HOME/.config/opencode\" && rtk init -g --auto-patch && rtk init -g --opencode --auto-patch && rtk init -g --agent cursor --auto-patch && rtk init -g --codex" }
 
 [env]
 # Claude Code installs to ~/.local/bin; make it visible to setup tasks and
@@ -200,7 +207,7 @@ depends = ["setup:scripts"]
 run = "$HOME/.cache/dotfiles/setup/claude.sh"
 
 [tasks."setup:skills"]
-description = "Install agent skills for Claude Code, OpenCode, and Cursor"
+description = "Install agent skills for Claude Code, OpenCode, Cursor, and Codex"
 # The `npx skills add` calls in the script must resolve through the Takumi Guard
 # proxy, so make the registry configuration an explicit dependency rather than
 # relying on the order of the parent task's depends list.

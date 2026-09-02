@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
-# `setup:skills`: install agent skills for Claude Code, OpenCode, and Cursor.
+# `setup:skills`: install agent skills for Claude Code, OpenCode, Cursor, and
+# Codex.
 # Placed by the setup:scripts task in .mise.toml; see the comment there.
 #
 # The `npx skills add` calls below must resolve through the Takumi Guard proxy,
 # which is why the task declares setup:npm-registry as a dependency rather than
 # relying on the order of the parent task's depends list.
 
-# Skill directories for each agent CLI (Cursor reads ~/.agents/skills)
+# Skill directories for each agent CLI. Cursor and Codex are "universal" agents
+# to the skills CLI: both read ~/.agents/skills, which is also where it puts a
+# skill for OpenCode, so the one directory covers all three and only Claude Code
+# gets a tree of its own (symlinks into ~/.agents/skills).
 mkdir -p "$HOME/.claude/skills" "$HOME/.config/opencode/skills" "$HOME/.agents/skills"
 
 # Install skills via the `skills` CLI — one mechanism for every source.
@@ -31,7 +35,7 @@ mkdir -p "$HOME/.claude/skills" "$HOME/.config/opencode/skills" "$HOME/.agents/s
 echo "📦 Installing skills..."
 install_skills() {
     local label="$1"; shift
-    npx skills add "$@" -y -g -a claude-code -a opencode -a cursor 2>/dev/null \
+    npx skills add "$@" -y -g -a claude-code -a opencode -a cursor -a codex 2>/dev/null \
       && echo "✓ $label skills installed" \
       || echo "⚠ $label skills installation failed (continuing)"
 }
@@ -75,8 +79,9 @@ install_skills "cognitive-rhythm-writing" https://gist.github.com/eb2929f13ed19c
 # ~/.claude/agents/*.md and takes the subagent_type from the frontmatter
 # `name` verbatim, so "Comment Sicko" resolves as published and the files need
 # no rewriting. Claude Code is the only target: on Cursor the plugin installs
-# itself and brings its own agents, and OpenCode's agent frontmatter is a
-# different schema these files do not satisfy.
+# itself and brings its own agents, OpenCode's agent frontmatter is a different
+# schema these files do not satisfy, and Codex has no user-defined subagents to
+# install them as at all.
 #
 # SECURITY: same trust boundary as the skills above, and pinned no harder —
 # this is Markdown that goes straight into an agent's context.
