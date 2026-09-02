@@ -29,10 +29,12 @@ argument-hint: pr <変更内容> | apply
 
 両方のサブコマンドがこれに依存する。
 
-- **セットアップのロジックは `.mise.toml` にある**。`install.sh` ではない。
+- **セットアップのロジックは mise にある**。`install.sh` ではない。
   `install.sh` はブートストラップのみ (mise を入れる → config を配置する →
-  `mise install` → `mise run setup`)。ツール・環境・セットアップ手順の変更は
-  `.mise.toml` に入れる
+  `mise install` → `mise run setup`)。`.mise.toml` はファサードで、ツールの宣言と
+  タスク名だけを持ち、`setup:<name>` タスクは `setup:scripts` タスクが先に
+  ダウンロードする `.dotfiles/setup/<name>.sh` を実行する。ツールと環境の変更は
+  `.mise.toml`、セットアップ手順の変更はそのスクリプトに入れる
 - **`.mise.toml` は `~/.config/mise/conf.d/10-dotfiles.toml` に配置される**。mise が
   グローバル設定の一部として読むため、タスクはどのディレクトリからでも実行できる。
   `~/.config/mise/config.toml` は端末側に開けてあり、conf.d より優先される。

@@ -82,7 +82,7 @@ mise の設定はもう含まれません。リポジトリ側のコピーは `~
 | ファイル | 役割 |
 | --- | --- |
 | [`install.sh`](install.sh) | ブートストラップのみ。mise の導入、設定ファイルの配置、シェル連携の追記 |
-| [`.mise.toml`](.mise.toml) | ツール定義 (`[tools]`) とセットアップタスク (`[tasks]`)。`~/.config/mise/conf.d/10-dotfiles.toml` に配置される |
+| [`.mise.toml`](.mise.toml) | ツール定義 (`[tools]`) とセットアップタスク。各タスクは [`.dotfiles/setup`](.dotfiles/setup) のスクリプトに委譲する。`~/.config/mise/conf.d/10-dotfiles.toml` に配置される |
 | [`mise.lock`](mise.lock) | 実際に入るバージョンとチェックサム。`~/.config/mise/mise.lock` に配置される |
 | [`.agents/skills`](.agents/skills) | このリポジトリ専用のスキル。汎用のものは [bmthd/skills](https://github.com/bmthd/skills) に分離 |
 | [`renovate.json`](renovate.json) | GitHub Actions の更新 PR の方針 |

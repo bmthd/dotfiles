@@ -76,7 +76,7 @@ All of the setup logic lives in mise.
 | File | Role |
 | --- | --- |
 | [`install.sh`](install.sh) | Bootstrap only: install mise, place the config files, wire up the shell |
-| [`.mise.toml`](.mise.toml) | Tool definitions (`[tools]`) and setup tasks (`[tasks]`), installed to `~/.config/mise/conf.d/10-dotfiles.toml` |
+| [`.mise.toml`](.mise.toml) | Tool definitions (`[tools]`) and setup tasks, each delegating to a script in [`.dotfiles/setup`](.dotfiles/setup); installed to `~/.config/mise/conf.d/10-dotfiles.toml` |
 | [`mise.lock`](mise.lock) | The versions and checksums that actually get installed, installed to `~/.config/mise/mise.lock` |
 | [`.agents/skills`](.agents/skills) | Skills specific to this repository; the general-purpose ones live in [bmthd/skills](https://github.com/bmthd/skills) |
 | [`renovate.json`](renovate.json) | Update policy for GitHub Actions PRs |

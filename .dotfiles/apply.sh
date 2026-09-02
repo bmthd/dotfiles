@@ -639,6 +639,13 @@ if ! validate_files "${local_paths[2]}" "${local_paths[3]}" "${local_paths[4]}" 
   rollback_with_error 'post-apply configuration validation failed'
 fi
 
+# The tasks below are facades over .dotfiles/setup/, placed by setup:scripts.
+# Run it once, explicitly: the two --skip-deps invocations at the end skip every
+# dependency, that one included, and leaning on an earlier task in this sequence
+# to have pulled it in would break the moment the order here changes.
+if ! run_mise run --skip-tools setup:scripts; then
+  rollback_with_error 'mise run --skip-tools setup:scripts failed; the setup scripts are not in place'
+fi
 if ! run_mise run --skip-tools setup:oci-plugin; then
   rollback_with_error 'mise run --skip-tools setup:oci-plugin failed; external side effects may remain'
 fi
