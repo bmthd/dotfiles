@@ -161,82 +161,82 @@ url_api = "https://api.github.com/repos/cli/cli/releases/assets/540091462"
 provenance = "github-attestations"
 
 [[tools."github:rtk-ai/rtk"]]
-version = "0.46.0"
+version = "0.47.0"
 backend = "github:rtk-ai/rtk"
 
 [tools."github:rtk-ai/rtk"."platforms.linux-arm64"]
-checksum = "sha256:e8c2e1787f46017ea7c5a711b2bc6a7f7cf61c7ad69385b4c1e4daff1135dcd1"
-url = "https://github.com/rtk-ai/rtk/releases/download/v0.46.0/rtk-aarch64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/531218976"
+checksum = "sha256:960ceb5f1f5f0b0939b32b5b1d41dec6d9a7113137b0703c68dca0d169a260fc"
+url = "https://github.com/rtk-ai/rtk/releases/download/v0.47.0/rtk-aarch64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/540806258"
 
 [tools."github:rtk-ai/rtk"."platforms.linux-arm64-musl"]
-checksum = "sha256:e8c2e1787f46017ea7c5a711b2bc6a7f7cf61c7ad69385b4c1e4daff1135dcd1"
-url = "https://github.com/rtk-ai/rtk/releases/download/v0.46.0/rtk-aarch64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/531218976"
+checksum = "sha256:960ceb5f1f5f0b0939b32b5b1d41dec6d9a7113137b0703c68dca0d169a260fc"
+url = "https://github.com/rtk-ai/rtk/releases/download/v0.47.0/rtk-aarch64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/540806258"
 
 [tools."github:rtk-ai/rtk"."platforms.linux-x64"]
-checksum = "sha256:79aa5b89c69566bbfeceb66c8a27cfbe52237fc7ee3e683115f43745a3262d21"
-url = "https://github.com/rtk-ai/rtk/releases/download/v0.46.0/rtk-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/531218973"
+checksum = "sha256:7c0175d867f96c4f8f788479af82ca8f0990ea944226268834d224a525186fb7"
+url = "https://github.com/rtk-ai/rtk/releases/download/v0.47.0/rtk-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/540806262"
 
 [tools."github:rtk-ai/rtk"."platforms.linux-x64-baseline"]
-checksum = "sha256:79aa5b89c69566bbfeceb66c8a27cfbe52237fc7ee3e683115f43745a3262d21"
-url = "https://github.com/rtk-ai/rtk/releases/download/v0.46.0/rtk-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/531218973"
+checksum = "sha256:7c0175d867f96c4f8f788479af82ca8f0990ea944226268834d224a525186fb7"
+url = "https://github.com/rtk-ai/rtk/releases/download/v0.47.0/rtk-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/540806262"
 
 [tools."github:rtk-ai/rtk"."platforms.linux-x64-musl"]
-checksum = "sha256:79aa5b89c69566bbfeceb66c8a27cfbe52237fc7ee3e683115f43745a3262d21"
-url = "https://github.com/rtk-ai/rtk/releases/download/v0.46.0/rtk-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/531218973"
+checksum = "sha256:7c0175d867f96c4f8f788479af82ca8f0990ea944226268834d224a525186fb7"
+url = "https://github.com/rtk-ai/rtk/releases/download/v0.47.0/rtk-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/540806262"
 
 [tools."github:rtk-ai/rtk"."platforms.linux-x64-musl-baseline"]
-checksum = "sha256:79aa5b89c69566bbfeceb66c8a27cfbe52237fc7ee3e683115f43745a3262d21"
-url = "https://github.com/rtk-ai/rtk/releases/download/v0.46.0/rtk-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/531218973"
+checksum = "sha256:7c0175d867f96c4f8f788479af82ca8f0990ea944226268834d224a525186fb7"
+url = "https://github.com/rtk-ai/rtk/releases/download/v0.47.0/rtk-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/540806262"
 
 [tools."github:rtk-ai/rtk"."platforms.macos-arm64"]
-checksum = "sha256:484e5dd2b4bfdbbb910727a0ba1e2d63b2e23efa922cfcc7300fd131bca3e10a"
-url = "https://github.com/rtk-ai/rtk/releases/download/v0.46.0/rtk-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/531218972"
+checksum = "sha256:3617f9a95d536e0b6bb9e2c6d121d81c3d8fd8ef04c5b2a605f5e7b0309a47d2"
+url = "https://github.com/rtk-ai/rtk/releases/download/v0.47.0/rtk-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/540806263"
 
 [[tools.hunk]]
-version = "0.20.1"
+version = "0.21.0"
 backend = "aqua:modem-dev/hunk"
 
 [tools.hunk."platforms.linux-arm64"]
-checksum = "sha256:78b0f47dcc1e848d2a24651dda7e998643c24ff893a22e7e480e9aebeea86565"
-url = "https://github.com/modem-dev/hunk/releases/download/v0.20.1/hunkdiff-linux-arm64.tar.gz"
-url_api = "https://api.github.com/repos/modem-dev/hunk/releases/assets/535228765"
+checksum = "sha256:dcbaa951113174ab7e72580848027b986d05667362ed41b6ee33e7d7dc97ee37"
+url = "https://github.com/modem-dev/hunk/releases/download/v0.21.0/hunkdiff-linux-arm64.tar.gz"
+url_api = "https://api.github.com/repos/modem-dev/hunk/releases/assets/541386487"
 
 [tools.hunk."platforms.linux-arm64-musl"]
-checksum = "sha256:78b0f47dcc1e848d2a24651dda7e998643c24ff893a22e7e480e9aebeea86565"
-url = "https://github.com/modem-dev/hunk/releases/download/v0.20.1/hunkdiff-linux-arm64.tar.gz"
-url_api = "https://api.github.com/repos/modem-dev/hunk/releases/assets/535228765"
+checksum = "sha256:dcbaa951113174ab7e72580848027b986d05667362ed41b6ee33e7d7dc97ee37"
+url = "https://github.com/modem-dev/hunk/releases/download/v0.21.0/hunkdiff-linux-arm64.tar.gz"
+url_api = "https://api.github.com/repos/modem-dev/hunk/releases/assets/541386487"
 
 [tools.hunk."platforms.linux-x64"]
-checksum = "sha256:889e338a1b0fcfdd69a5ece8d776cab58e0222b9ef4784f2fa519ade87b437c8"
-url = "https://github.com/modem-dev/hunk/releases/download/v0.20.1/hunkdiff-linux-x64.tar.gz"
-url_api = "https://api.github.com/repos/modem-dev/hunk/releases/assets/535228769"
+checksum = "sha256:7aee989da0e55465dec02fbee788e6bbe0fc1e303fae08184dabc0bd236278a4"
+url = "https://github.com/modem-dev/hunk/releases/download/v0.21.0/hunkdiff-linux-x64.tar.gz"
+url_api = "https://api.github.com/repos/modem-dev/hunk/releases/assets/541386488"
 
 [tools.hunk."platforms.linux-x64-baseline"]
-checksum = "sha256:889e338a1b0fcfdd69a5ece8d776cab58e0222b9ef4784f2fa519ade87b437c8"
-url = "https://github.com/modem-dev/hunk/releases/download/v0.20.1/hunkdiff-linux-x64.tar.gz"
-url_api = "https://api.github.com/repos/modem-dev/hunk/releases/assets/535228769"
+checksum = "sha256:7aee989da0e55465dec02fbee788e6bbe0fc1e303fae08184dabc0bd236278a4"
+url = "https://github.com/modem-dev/hunk/releases/download/v0.21.0/hunkdiff-linux-x64.tar.gz"
+url_api = "https://api.github.com/repos/modem-dev/hunk/releases/assets/541386488"
 
 [tools.hunk."platforms.linux-x64-musl"]
-checksum = "sha256:889e338a1b0fcfdd69a5ece8d776cab58e0222b9ef4784f2fa519ade87b437c8"
-url = "https://github.com/modem-dev/hunk/releases/download/v0.20.1/hunkdiff-linux-x64.tar.gz"
-url_api = "https://api.github.com/repos/modem-dev/hunk/releases/assets/535228769"
+checksum = "sha256:7aee989da0e55465dec02fbee788e6bbe0fc1e303fae08184dabc0bd236278a4"
+url = "https://github.com/modem-dev/hunk/releases/download/v0.21.0/hunkdiff-linux-x64.tar.gz"
+url_api = "https://api.github.com/repos/modem-dev/hunk/releases/assets/541386488"
 
 [tools.hunk."platforms.linux-x64-musl-baseline"]
-checksum = "sha256:889e338a1b0fcfdd69a5ece8d776cab58e0222b9ef4784f2fa519ade87b437c8"
-url = "https://github.com/modem-dev/hunk/releases/download/v0.20.1/hunkdiff-linux-x64.tar.gz"
-url_api = "https://api.github.com/repos/modem-dev/hunk/releases/assets/535228769"
+checksum = "sha256:7aee989da0e55465dec02fbee788e6bbe0fc1e303fae08184dabc0bd236278a4"
+url = "https://github.com/modem-dev/hunk/releases/download/v0.21.0/hunkdiff-linux-x64.tar.gz"
+url_api = "https://api.github.com/repos/modem-dev/hunk/releases/assets/541386488"
 
 [tools.hunk."platforms.macos-arm64"]
-checksum = "sha256:b710b121df35f9ac9ccef1bdef5e2135747be404b818710313cc3db1c90f84e6"
-url = "https://github.com/modem-dev/hunk/releases/download/v0.20.1/hunkdiff-darwin-arm64.tar.gz"
-url_api = "https://api.github.com/repos/modem-dev/hunk/releases/assets/535228768"
+checksum = "sha256:a3f053af663df0d222e550f4e64ef5455e953f03f140782c855186a6d9992bb9"
+url = "https://github.com/modem-dev/hunk/releases/download/v0.21.0/hunkdiff-darwin-arm64.tar.gz"
+url_api = "https://api.github.com/repos/modem-dev/hunk/releases/assets/541386485"
 
 [[tools.jq]]
 version = "1.8.2"
@@ -321,7 +321,7 @@ version = "30.5.0"
 backend = "npm:@antfu/ni"
 
 [[tools."npm:@openai/codex"]]
-version = "0.152.1"
+version = "0.153.0"
 backend = "npm:@openai/codex"
 
 [[tools."npm:@playwright/cli"]]
@@ -345,43 +345,43 @@ version = "3.92.0"
 backend = "vfox:oci"
 
 [[tools.opencode]]
-version = "1.18.26"
+version = "1.18.27"
 backend = "aqua:anomalyco/opencode"
 
 [tools.opencode."platforms.linux-arm64"]
-checksum = "sha256:90b99cc2356fea188d67352418ad7223559841178142f719848ca2c88a689c3e"
-url = "https://github.com/anomalyco/opencode/releases/download/v1.18.26/opencode-linux-arm64.tar.gz"
-url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/540146312"
+checksum = "sha256:8cbc134eb5e100baf61ee7196150f503e352056e703276e2d8637c38bafd2c39"
+url = "https://github.com/anomalyco/opencode/releases/download/v1.18.27/opencode-linux-arm64.tar.gz"
+url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/541770448"
 
 [tools.opencode."platforms.linux-arm64-musl"]
-checksum = "sha256:531d16c8d3a8a1a11d96bcd045640b43c84073625ce0d5ba794095cccea7cfb7"
-url = "https://github.com/anomalyco/opencode/releases/download/v1.18.26/opencode-linux-arm64-musl.tar.gz"
-url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/540146302"
+checksum = "sha256:bb366ea2311f0f1e74ea709317a2347a32a9e6ca6fb90cc7d333c67e53ddabf7"
+url = "https://github.com/anomalyco/opencode/releases/download/v1.18.27/opencode-linux-arm64-musl.tar.gz"
+url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/541770463"
 
 [tools.opencode."platforms.linux-x64"]
-checksum = "sha256:7c20c1ffa91bcca0ac903752260bcc36307dff656833baead2f5ef3b224b16c6"
-url = "https://github.com/anomalyco/opencode/releases/download/v1.18.26/opencode-linux-x64.tar.gz"
-url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/540146333"
+checksum = "sha256:4af5494f9433f59db8c1e344198f0ee72a50c06ec009fb4a8aeab4c2d4abd702"
+url = "https://github.com/anomalyco/opencode/releases/download/v1.18.27/opencode-linux-x64.tar.gz"
+url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/541770555"
 
 [tools.opencode."platforms.linux-x64-baseline"]
-checksum = "sha256:7c20c1ffa91bcca0ac903752260bcc36307dff656833baead2f5ef3b224b16c6"
-url = "https://github.com/anomalyco/opencode/releases/download/v1.18.26/opencode-linux-x64.tar.gz"
-url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/540146333"
+checksum = "sha256:4af5494f9433f59db8c1e344198f0ee72a50c06ec009fb4a8aeab4c2d4abd702"
+url = "https://github.com/anomalyco/opencode/releases/download/v1.18.27/opencode-linux-x64.tar.gz"
+url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/541770555"
 
 [tools.opencode."platforms.linux-x64-musl"]
-checksum = "sha256:c68b16b907a128974b4677fec9ed4266809995353a79324271c6f5977b3ff4b6"
-url = "https://github.com/anomalyco/opencode/releases/download/v1.18.26/opencode-linux-x64-musl.tar.gz"
-url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/540146397"
+checksum = "sha256:ca720427cc220d0e75dca6b263345fedb9e92fcaf7263fe75cc81bfdbf7c9f9d"
+url = "https://github.com/anomalyco/opencode/releases/download/v1.18.27/opencode-linux-x64-musl.tar.gz"
+url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/541770435"
 
 [tools.opencode."platforms.linux-x64-musl-baseline"]
-checksum = "sha256:c68b16b907a128974b4677fec9ed4266809995353a79324271c6f5977b3ff4b6"
-url = "https://github.com/anomalyco/opencode/releases/download/v1.18.26/opencode-linux-x64-musl.tar.gz"
-url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/540146397"
+checksum = "sha256:ca720427cc220d0e75dca6b263345fedb9e92fcaf7263fe75cc81bfdbf7c9f9d"
+url = "https://github.com/anomalyco/opencode/releases/download/v1.18.27/opencode-linux-x64-musl.tar.gz"
+url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/541770435"
 
 [tools.opencode."platforms.macos-arm64"]
-checksum = "sha256:b05d383149a5a417140e8edebd83064142fa36e74fdfcd5f791919dcb12fd33a"
-url = "https://github.com/anomalyco/opencode/releases/download/v1.18.26/opencode-darwin-arm64.zip"
-url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/540146149"
+checksum = "sha256:149b0c6d272d0059b8b5ffcd18c84b24f1d6cbf585942b10e60c601211992eb1"
+url = "https://github.com/anomalyco/opencode/releases/download/v1.18.27/opencode-darwin-arm64.zip"
+url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/541770165"
 
 [[tools.pinact]]
 version = "4.1.1"
