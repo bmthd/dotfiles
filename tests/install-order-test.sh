@@ -101,7 +101,7 @@ fi
 # arrive via a temp file, so both destinations are checked by name.
 # shellcheck disable=SC2016  # these are the literal strings grepped for in
 # install.sh, not values to expand here
-for destination in '$MISE_CONFIG_DEST' '$MISE_LOCK_DEST'; do
+for destination in '$MISE_CONFIG_DEST' '$MISE_LOCK_DEST' '$PROFILE_CONFIG_DEST'; do
   if ! grep -qF "_TMP\" \"$destination\"" "$install_sh"; then
     echo "✗ $destination is not moved into place from a temp file after a" >&2
     echo "  successful download" >&2
@@ -134,7 +134,9 @@ done
 
 for rule in dotfiles_mise_config_path dotfiles_mise_lock_path \
   dotfiles_legacy_mise_config_path dotfiles_is_repository_mise_config \
-  dotfiles_migration_is_forced; do
+  dotfiles_migration_is_forced dotfiles_profiles dotfiles_default_profile \
+  dotfiles_profile_is_known dotfiles_profile_record_path \
+  dotfiles_profile_repository_path dotfiles_profile_config_path; do
   if ! grep -q "^$rule()" "$layout_sh"; then
     echo "✗ .dotfiles/mise-layout.sh no longer defines $rule" >&2
     exit 1
@@ -151,8 +153,67 @@ if [ "$(bash -c '. "$1"; dotfiles_mise_lock_path /h' _ "$layout_sh")" != '/h/.co
   exit 1
 fi
 
+# --- profiles ----------------------------------------------------------------
+# The default profile is the whole of the common config and has no fragment of
+# its own, so it must resolve to an empty path rather than to a file name that
+# does not exist. Every other profile is a fragment sorted after 10-dotfiles.
+layout_call() {
+  bash -c '. "$1"; shift; "$@"' _ "$layout_sh" "$@"
+}
+
+default_profile="$(layout_call dotfiles_default_profile)"
+if [ -n "$(layout_call dotfiles_profile_repository_path "$default_profile")" ] ||
+  [ -n "$(layout_call dotfiles_profile_config_path /h "$default_profile")" ]; then
+  echo "✗ the default profile ($default_profile) resolves to a fragment; it is" >&2
+  echo "  the common config itself and has nothing to place" >&2
+  exit 1
+fi
+
+if [ "$(layout_call dotfiles_profile_config_path /h work)" != '/h/.config/mise/conf.d/20-dotfiles-work.toml' ] ||
+  [ "$(layout_call dotfiles_profile_repository_path work)" != '.mise.work.toml' ] ||
+  [ "$(layout_call dotfiles_profile_record_path /h)" != '/h/.config/dotfiles/profile' ]; then
+  echo "✗ the shared layout no longer places a profile fragment beside" >&2
+  echo "  conf.d/10-dotfiles.toml, or records the profile under ~/.config/dotfiles" >&2
+  exit 1
+fi
+
+# The two halves of a profile are its name in the layout list and its file in
+# the repository. Either one alone is silent: a name with no file makes
+# install.sh accept DOTFILES_PROFILE and then fail to download anything, and a
+# file no name knows about is never installed and never cleaned up on a switch.
+repo_root="$(dirname "$install_sh")"
+for profile in $(layout_call dotfiles_profiles); do
+  repository_path="$(layout_call dotfiles_profile_repository_path "$profile")"
+  [ -n "$repository_path" ] || continue
+  if [ ! -f "$repo_root/$repository_path" ]; then
+    echo "✗ profile $profile is offered by .dotfiles/mise-layout.sh but $repository_path" >&2
+    echo "  is not in the repository, so installing it would place nothing" >&2
+    exit 1
+  fi
+  # install.sh only removes a fragment it can recognise as this repository's, so
+  # one without the marker would survive every later profile switch.
+  if ! bash -c '. "$1"; dotfiles_is_repository_mise_config "$2"' _ "$layout_sh" "$repo_root/$repository_path"; then
+    echo "✗ $repository_path carries no raw.githubusercontent.com/bmthd/dotfiles marker," >&2
+    echo "  so switching away from the $profile profile would leave it in conf.d" >&2
+    exit 1
+  fi
+done
+
+for fragment in "$repo_root"/.mise.*.toml; do
+  [ -e "$fragment" ] || continue
+  profile="${fragment##*/.mise.}"
+  profile="${profile%.toml}"
+  if ! bash -c '. "$1"; dotfiles_profile_is_known "$2"' _ "$layout_sh" "$profile"; then
+    echo "✗ .mise.$profile.toml is in the repository but $profile is not a profile" >&2
+    echo "  .dotfiles/mise-layout.sh offers, so nothing ever installs it" >&2
+    exit 1
+  fi
+done
+
 # install.sh is piped into bash *or* zsh, and it sources this file, so the
-# fragment has to behave identically under both.
+# fragment has to behave identically under both. The profile helpers matter
+# most here: they are the ones written as a `case` that falls through to no
+# output, and an empty result is what tells a caller there is nothing to place.
 for shell in bash zsh; do
   command -v "$shell" > /dev/null || continue
   # shellcheck disable=SC2016  # the body is run by $shell, not expanded here
@@ -161,6 +222,30 @@ for shell in bash zsh; do
     echo "  install.sh is documented to be piped into" >&2
     exit 1
   fi
+  # shellcheck disable=SC2016  # the body is run by $shell, not expanded here
+  shell_profiles="$("$shell" -c '
+    . "$1"
+    for profile in $(dotfiles_profiles); do
+      printf "%s:%s:%s\n" "$profile" \
+        "$(dotfiles_profile_repository_path "$profile")" \
+        "$(dotfiles_profile_config_path /h "$profile")"
+      dotfiles_profile_is_known "$profile" || printf "%s is not known to itself\n" "$profile"
+    done
+    dotfiles_profile_is_known nonexistent-profile && printf "unknown profile accepted\n"
+    :' _ "$layout_sh")"
+  if [ -z "$shell_profiles" ] || [ "${shell_profiles#*not known}" != "$shell_profiles" ] ||
+    [ "${shell_profiles#*accepted}" != "$shell_profiles" ]; then
+    echo "✗ the profile rules do not resolve the same way under $shell:" >&2
+    echo "$shell_profiles" >&2
+    exit 1
+  fi
+  if [ -n "${previous_shell_profiles+set}" ] && [ "$shell_profiles" != "$previous_shell_profiles" ]; then
+    echo "✗ the profile rules resolve differently under $shell than under the" >&2
+    echo "  shell before it, so install.sh installs a different machine" >&2
+    echo "  depending on which one it was piped into" >&2
+    exit 1
+  fi
+  previous_shell_profiles="$shell_profiles"
 done
 
 # --- a partial install must not report success -------------------------------

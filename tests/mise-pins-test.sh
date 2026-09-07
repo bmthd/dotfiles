@@ -18,6 +18,9 @@
 #   8. the coverage lists in docs/supply-chain.md(.ja.md) still match the
 #      lockfile — checksum protection is a property of the backend, so the
 #      documented split is only true until a backend changes
+#   9. the profile fragments (.mise.<profile>.toml) declare no tools of their
+#      own and disable only tools that exist — a profile that took a tool out
+#      of .mise.toml would take it out of the one lockfile a machine installs
 #
 # Run it from a git hook via .githooks/pre-commit, or by hand:
 #   bash tests/mise-pins-test.sh
@@ -301,10 +304,70 @@ for relative in COVERAGE_DOCS:
         for backend in sorted(listed - expected):
             fail(f"{relative} coverage:{block} lists {backend}, which mise.lock does not put there")
 
+# 9. the profile fragments
+#
+# A profile is a second conf.d fragment placed beside the common config, and it
+# can only ever subtract. mise derives a lockfile from the config file a tool is
+# declared in, while a machine installs exactly one ~/.config/mise/mise.lock —
+# so a tool declared here instead of in .mise.toml would be a tool nothing in
+# this repository pins, resolving `latest` at install time with neither the
+# release-age gate nor a checksum. Everything above enforces that policy for
+# .mise.toml; this keeps a profile from stepping outside it.
+PROFILE_TABLES = {
+    # `settings` is where disable_tools lives, and disabling is the whole of
+    # what a fragment may do.
+    "settings",
+}
+profile_fragments = sorted(repo.glob(".mise.*.toml"))
+if not profile_fragments:
+    # The pre-commit hook judges a snapshot of the index; a fragment that was
+    # not staged leaves no file behind, and CI still covers it.
+    print("– no profile fragments present, skipping their checks")
+for fragment in profile_fragments:
+    relative = fragment.name
+    parsed = tomllib.loads(fragment.read_text())
+    for table in parsed:
+        if table not in PROFILE_TABLES:
+            fail(
+                f"{relative} declares [{table}]; a profile fragment may only "
+                f"carry {sorted(PROFILE_TABLES)}. [tools] here would not be in "
+                "mise.lock, and [tasks] would escape tests/setup-facade-test.sh"
+            )
+    disabled = parsed.get("settings", {}).get("disable_tools", [])
+    if not isinstance(disabled, list):
+        fail(f"{relative} disable_tools must be a list of tool names")
+        continue
+    # `depends` names the tool that has to be installed first, and mise does not
+    # check that it still exists once a profile has refused it: the dependent
+    # tool installs, its postinstall shells out to something that is not there,
+    # and the failure names the postinstall rather than the profile.
+    depended_on = {
+        dependency: name
+        for name, value in config["tools"].items()
+        if isinstance(value, dict)
+        for dependency in value.get("depends", [])
+    }
+    for name in disabled:
+        if name not in declared:
+            # Matched against the [tools] keys by name, so a rename upstream or
+            # a typo here disables nothing at all and says nothing about it.
+            fail(
+                f"{relative} disables {name!r}, which .mise.toml does not declare; "
+                "a name that matches no tool silently disables nothing"
+            )
+        elif name in depended_on:
+            fail(
+                f"{relative} disables {name!r}, which {depended_on[name]!r} depends on; "
+                "the dependent tool would still install and then fail its postinstall"
+            )
+
 if failures:
     print(f"\n{failures} failure(s)")
     sys.exit(1)
 
+print(
+    f"✓ {len(profile_fragments)} profile fragment(s) subtract only declared tools"
+)
 print(
     f"✓ {len(declared)} tools declared as inline tables, all locked "
     f"({len(checksummed)} with checksums, {len(version_only)} version-only, "

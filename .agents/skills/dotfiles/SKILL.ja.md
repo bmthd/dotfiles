@@ -42,6 +42,13 @@ argument-hint: pr <変更内容> | apply
   [`.dotfiles/mise-layout.sh`](../../../.dotfiles/mise-layout.sh) に一度だけ定義され、
   `install.sh` と `.dotfiles/apply.sh` の両方がそれを読む。配置する側にパスを
   書き直さないこと
+- **端末はプロファイルを持てる**。`.mise.<profile>.toml` を
+  `conf.d/20-dotfiles-<profile>.toml` に置く 2 枚目のフラグメントで、共通設定を継承し、
+  そこから引くことしかできない (`disable_tools`)。ツールの宣言をすべて `.mise.toml` に
+  残すことが、端末が入れる唯一の `mise.lock` に全ツールを載せ続ける条件だから。
+  インストール時に `DOTFILES_PROFILE` で選び、`~/.config/dotfiles/profile` がその選択を
+  覚える。`apply` は記録されたプロファイルのフラグメントを更新するだけで、切り替えは
+  `install.sh` の再実行で行う
 - **ほとんどのスキルはこのリポジトリには無い**。汎用のものは
   [`bmthd/skills`](https://github.com/bmthd/skills) に移した。`.agents/skills/` に残るのは
   このリポジトリに対してしか意味を持たない `dotfiles` スキルだけ。サードパーティのスキルは

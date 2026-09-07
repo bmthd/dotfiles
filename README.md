@@ -32,11 +32,12 @@ curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/install.sh | zs
 curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/install.sh | bash
 ```
 
+Pipe into `DOTFILES_PROFILE=work zsh` (or `bash`) on a work machine: it installs the same setup minus the Cloudflare and Oracle Cloud tools, and remembers the choice for later runs.
 Afterwards, restart the shell or run `source ~/.zshrc` (`source ~/.bashrc` for bash) to put everything on `PATH`.
 
 ## What you get
 
-- **CLI tools** — node, bun, pnpm, uv, gh, ghq, jq, wrangler, and more (see `[tools]` in [`.mise.toml`](.mise.toml))
+- **CLI tools** — node, bun, pnpm, uv, gh, ghq, jq, and more (see `[tools]` in [`.mise.toml`](.mise.toml), minus what the profile drops)
 - **Claude Code** — the binary itself, `settings.json` (merged into an existing one), and the status line
 - **Agent skills** — the same set installed for Claude Code, OpenCode, and Cursor
 - **Plugins** — Codex, plus the official plugins (TypeScript LSP)
@@ -76,7 +77,7 @@ All of the setup logic lives in mise.
 | File | Role |
 | --- | --- |
 | [`install.sh`](install.sh) | Bootstrap only: install mise, place the config files, wire up the shell |
-| [`.mise.toml`](.mise.toml) | Tool definitions (`[tools]`) and setup tasks, each delegating to a script in [`.dotfiles/setup`](.dotfiles/setup); installed to `~/.config/mise/conf.d/10-dotfiles.toml` |
+| [`.mise.toml`](.mise.toml) | Tool definitions (`[tools]`) and setup tasks, each delegating to a script in [`.dotfiles/setup`](.dotfiles/setup); installed to `~/.config/mise/conf.d/10-dotfiles.toml`, with `.mise.<profile>.toml` overlaying it at `20-dotfiles-<profile>.toml` |
 | [`mise.lock`](mise.lock) | The versions and checksums that actually get installed, installed to `~/.config/mise/mise.lock` |
 | [`.agents/skills`](.agents/skills) | Skills specific to this repository; the general-purpose ones live in [bmthd/skills](https://github.com/bmthd/skills) |
 | [`renovate.json`](renovate.json) | Update policy for GitHub Actions PRs |

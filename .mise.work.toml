@@ -1,0 +1,41 @@
+# Work profile — installed to ~/.config/mise/conf.d/20-dotfiles-work.toml by
+# install.sh when DOTFILES_PROFILE=work, and kept there by `/dotfiles apply` for
+# a machine already recorded as one. Every other machine gets .mise.toml alone.
+#
+# It inherits rather than repeats: mise merges every fragment under conf.d/, so
+# 10-dotfiles.toml supplies the tools, environment, hooks and setup tasks, and
+# this file says only where a work machine differs. Sorting after 10- is what
+# makes it the overlay; the numbers are the merge order, not a namespace.
+#
+# The difference is written as a subtraction, and that is a lockfile constraint
+# rather than a stylistic one. mise derives a lockfile from the config file that
+# declares a tool — .mise.toml pins into mise.lock, and a second config in this
+# repository would pin into a second lockfile — while a machine installs exactly
+# one ~/.config/mise/mise.lock, which then covers every fragment in conf.d/.
+# Moving a tool's declaration out of .mise.toml would therefore drop it from the
+# one lockfile the machine has, and an unlocked tool resolves `latest` at install
+# time with neither the two-day release-age gate nor a checksum. So every tool
+# stays declared, and locked, in .mise.toml; a profile only refuses the ones it
+# has no use for.
+#
+# Refusing is also all this can do. `disable_tools` removes a tool from
+# resolution and installation; there is no conf.d fragment that could add one
+# back for a single profile without taking it out of the lockfile's reach. A
+# work-only tool therefore belongs in .mise.toml too, disabled from the profiles
+# that do not want it.
+#
+# The URL https://raw.githubusercontent.com/bmthd/dotfiles is what marks this
+# file as the repository's copy rather than something written for one machine:
+# install.sh removes a fragment carrying it when the profile changes, and leaves
+# anything else in conf.d/ alone. Keep the line.
+
+[settings]
+# Cloudflare Tunnel, the Workers CLI, and the Oracle Cloud CLI: personal
+# infrastructure that a company machine has no account for, so installing them
+# there only spends time and disk.
+#
+# The names are matched against the keys of [tools] in .mise.toml, and a name
+# that matches nothing disables nothing, silently — a tool renamed upstream, or
+# a typo here, both look exactly like a working profile.
+# tests/mise-pins-test.sh checks every name below against .mise.toml.
+disable_tools = ["cloudflared", "wrangler", "oci"]

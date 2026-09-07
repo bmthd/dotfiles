@@ -142,6 +142,32 @@ local_paths=(
   "$home/.config/dotfiles/update-notice.sh"
 )
 
+# The profile fragment this machine also carries, if it carries one. Read from
+# the record install.sh writes rather than from what happens to be in conf.d/:
+# the record is the machine's stated intent, a fragment is only its residue, and
+# reading the residue would make a fragment that failed to be removed
+# indistinguishable from one that is meant to be there.
+#
+# Switching profiles is install.sh's job, not this script's. `apply` updates the
+# fragment the machine says it uses; it does not place a different one or take
+# this one away, so a machine that should change kind is re-installed with
+# DOTFILES_PROFILE set rather than edited here.
+profile="$(cat "$(dotfiles_profile_record_path "$home")" 2>/dev/null || true)"
+if [ -z "$profile" ]; then
+  profile="$(dotfiles_default_profile)"
+fi
+if ! dotfiles_profile_is_known "$profile"; then
+  printf 'unknown profile %s recorded at %s; known profiles: %s\n' \
+    "$profile" "$(dotfiles_profile_record_path "$home")" "$(dotfiles_profiles)" >&2
+  exit 1
+fi
+profile_repository_path="$(dotfiles_profile_repository_path "$profile")"
+profile_config="$(dotfiles_profile_config_path "$home" "$profile")"
+if [ -n "$profile_repository_path" ]; then
+  repository_paths+=("$profile_repository_path")
+  local_paths+=("$profile_config")
+fi
+
 for local_path in "${local_paths[@]}"; do
   if [ -L "$local_path" ] || { [ -e "$local_path" ] && [ ! -f "$local_path" ]; }; then
     printf 'managed target is not a regular file: %s\n' "$local_path" >&2
@@ -380,6 +406,11 @@ stage_paths=(
   "$stage_dir/.claude/statusline.sh"
   "$stage_dir/.config/dotfiles/update-notice.sh"
 )
+# Appended in the same order the managed paths were, so the three arrays stay
+# index-aligned; the fixed indices below name the files that are always there.
+if [ -n "$profile_repository_path" ]; then
+  stage_paths+=("$stage_dir/mise/$(basename "$profile_config")")
+fi
 mkdir -p "$stage_dir"
 for index in "${!repository_paths[@]}"; do
   repository_path="${repository_paths[$index]}"
@@ -463,6 +494,17 @@ if ! validate_files "${stage_paths[2]}" "${stage_paths[3]}" "${stage_paths[4]}" 
   ! validate_staged_mise_config "${stage_paths[0]}"; then
   printf 'staged configuration validation failed\n' >&2
   emit_apply_result 'failed' '' 'staged configuration validation failed'
+  exit 1
+fi
+
+# The fragment gets the same parse check, on its own, before it can join the
+# global config. It is the smaller file but not the harmless one: mise refuses
+# the whole global config over a single unparsable fragment, so a broken one
+# would take the common half of the setup down with it.
+if [ -n "$profile_repository_path" ] &&
+  ! validate_staged_mise_config "${stage_paths[$((${#stage_paths[@]} - 1))]}"; then
+  printf 'staged %s profile configuration validation failed\n' "$profile" >&2
+  emit_apply_result 'failed' '' "staged $profile profile configuration validation failed"
   exit 1
 fi
 

@@ -155,6 +155,43 @@ fi
 MISE_CONFIG_DEST="$(dotfiles_mise_config_path "$HOME")"
 MISE_LOCK_DEST="$(dotfiles_mise_lock_path "$HOME")"
 LEGACY_MISE_CONFIG="$(dotfiles_legacy_mise_config_path "$HOME")"
+
+# Which kind of machine this is. A profile is a second fragment placed beside
+# the config above; the config is common to every machine and the fragment says
+# where this kind differs (.mise.work.toml explains what a fragment may say).
+#
+# The environment wins, then what the machine was installed with, then the
+# default. That order is what makes the variable a one-time choice rather than
+# something to remember: `curl ... | DOTFILES_PROFILE=work bash` once, and every
+# re-run — where nobody is passing variables into a pipeline months later —
+# reads the same answer back out of the file written at the end of this block.
+# The default is the pre-profile behaviour, so a machine installed before this
+# existed keeps installing exactly what it installed before.
+#
+# The assignment goes on the shell at the *end* of the pipe, not in front of
+# curl: this script runs in that shell, and a prefix on curl would set the
+# variable for the download instead of for the thing that reads it.
+PROFILE_RECORD="$(dotfiles_profile_record_path "$HOME")"
+DOTFILES_PROFILE="${DOTFILES_PROFILE:-$(cat "$PROFILE_RECORD" 2> /dev/null)}"
+DOTFILES_PROFILE="${DOTFILES_PROFILE:-$(dotfiles_default_profile)}"
+
+# Fatal, unlike most of this script. Every other recovered failure leaves the
+# machine short of something; an unrecognised profile would instead leave it
+# fully installed as the *wrong kind of machine* — the tools the profile exists
+# to refuse, installed anyway — and record that mistake for every later run to
+# repeat. A typo in a variable name is exactly how that happens.
+if ! dotfiles_profile_is_known "$DOTFILES_PROFILE"; then
+    echo "✗ Unknown DOTFILES_PROFILE: $DOTFILES_PROFILE"
+    echo "  Aborting: no config has been placed and no tool installed yet,"
+    echo "  so this machine is exactly as it was."
+    echo "  Known profiles: $(dotfiles_profiles)"
+    exit 1
+fi
+echo "👤 Profile: $DOTFILES_PROFILE"
+
+PROFILE_CONFIG_DEST="$(dotfiles_profile_config_path "$HOME" "$DOTFILES_PROFILE")"
+PROFILE_REPOSITORY_PATH="$(dotfiles_profile_repository_path "$DOTFILES_PROFILE")"
+
 mkdir -p "$(dirname "$MISE_CONFIG_DEST")" "$(dirname "$MISE_LOCK_DEST")"
 # Downloads land in a temp file and are moved into place only once curl has
 # succeeded. `curl -f -o dest` still creates (and partially fills) dest before it
@@ -167,6 +204,68 @@ else
     rm -f "$MISE_CONFIG_TMP"
     echo "⚠ Failed to download mise config"
     record_failure "mise config download"
+fi
+
+# The profile fragment beside it, and the same temp-file dance for the same
+# reason: a truncated fragment is a config mise refuses to load, which takes the
+# whole global config — the common half included — down with it.
+PROFILE_PLACED=true
+if [ -n "$PROFILE_REPOSITORY_PATH" ]; then
+    PROFILE_CONFIG_TMP="$(mktemp)"
+    if curl -fsSL "$DOTFILES_RAW_BASE/$PROFILE_REPOSITORY_PATH" -o "$PROFILE_CONFIG_TMP"; then
+        mv "$PROFILE_CONFIG_TMP" "$PROFILE_CONFIG_DEST"
+    else
+        rm -f "$PROFILE_CONFIG_TMP"
+        PROFILE_PLACED=false
+        echo "⚠ Failed to download the $DOTFILES_PROFILE profile config"
+        record_failure "$DOTFILES_PROFILE profile config ($PROFILE_REPOSITORY_PATH) download"
+    fi
+fi
+
+# Switching profiles has to remove the previous one's fragment, not just stop
+# updating it: conf.d/ is merged by directory listing, so a fragment left behind
+# keeps applying forever, and the machine would go on refusing tools that the
+# profile it now claims installs. Removing runs on every profile including the
+# current one's own predecessors, so `personal` — which has no fragment of its
+# own — is how a machine gets back to the plain common config.
+#
+# Only after the new fragment is actually in place, so a failed download leaves
+# the machine as whatever it already was rather than halfway between two
+# profiles. The record below is skipped for the same reason, which leaves the
+# next run reading the old profile back and repairing the difference.
+#
+# Only ever this repository's copy, too. The marker is the URL the fragments
+# carry, the same one that tells a copy of this repository from a config.toml
+# written for one machine, so a conf.d fragment someone wrote here by hand is
+# not something this script deletes.
+if [ "$PROFILE_PLACED" = true ]; then
+    for PROFILE in $(dotfiles_profiles); do
+        if [ "$PROFILE" = "$DOTFILES_PROFILE" ]; then
+            continue
+        fi
+        STALE_PROFILE_CONFIG="$(dotfiles_profile_config_path "$HOME" "$PROFILE")"
+        if [ -n "$STALE_PROFILE_CONFIG" ] && dotfiles_is_repository_mise_config "$STALE_PROFILE_CONFIG"; then
+            if rm -f "$STALE_PROFILE_CONFIG"; then
+                echo "✓ Removed the $PROFILE profile config this machine no longer uses"
+            else
+                echo "⚠ Failed to remove the $PROFILE profile config at $STALE_PROFILE_CONFIG"
+                record_failure "stale $PROFILE profile config removal"
+            fi
+        fi
+    done
+fi
+
+# Record the choice, but only once the fragment it names is actually in conf.d.
+# The record is what every later run — and `/dotfiles apply`, which never sees
+# DOTFILES_PROFILE at all — reads the profile back out of, so writing it after a
+# failed download would leave the machine claiming a profile whose fragment is
+# not there, and no later run would try to fetch it again.
+if [ "$PROFILE_PLACED" = true ]; then
+    mkdir -p "$(dirname "$PROFILE_RECORD")"
+    if ! printf '%s\n' "$DOTFILES_PROFILE" > "$PROFILE_RECORD"; then
+        echo "⚠ Failed to record the $DOTFILES_PROFILE profile at $PROFILE_RECORD"
+        record_failure "profile record"
+    fi
 fi
 
 # Migrate an installation from before that split. Older runs of this script

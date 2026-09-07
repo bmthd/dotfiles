@@ -778,4 +778,118 @@ printf '%s' "$failed_fetch_apply" | jq -e \
   exit 1
 }
 
+# --- the profile fragment ----------------------------------------------------
+# A machine may carry a second conf.d fragment for its profile, and it is
+# managed exactly like the other files rather than beside them: the same
+# inventory, the same staging, the same backup and the same rollback. The three
+# path arrays are index-aligned, so appending to one and not the others would
+# back up the wrong file — which is why the rollback below is part of this and
+# not a separate concern.
+profile_dir="$test_dir/profile"
+profile_repo="$profile_dir/repo"
+profile_home="$profile_dir/home"
+profile_mise_config="$profile_home/custom/mise.toml"
+profile_mise_lock="$profile_home/custom/mise.lock"
+profile_local_config="$profile_home/.config/mise/conf.d/20-dotfiles-work.toml"
+profile_base_fragment=$'# from https://raw.githubusercontent.com/bmthd/dotfiles\n[settings]\ndisable_tools = ["oci"]'
+profile_remote_fragment=$'# from https://raw.githubusercontent.com/bmthd/dotfiles\n[settings]\ndisable_tools = ["oci", "wrangler"]'
+
+setup_profile_fixture() {
+  rm -rf "$profile_repo" "$profile_home"
+  mkdir -p "$profile_repo/.claude" "$profile_repo/.dotfiles" \
+    "$profile_home/custom" "$profile_home/.claude" "$profile_home/.config/dotfiles"
+  git -C "$profile_repo" init -q
+  git -C "$profile_repo" config user.email test@example.com
+  git -C "$profile_repo" config user.name test
+
+  printf '%s\n' "$transaction_base_mise" > "$profile_repo/.mise.toml"
+  printf '%s\n' "$profile_base_fragment" > "$profile_repo/.mise.work.toml"
+  printf '%s\n' 'base-lock' > "$profile_repo/mise.lock"
+  printf '%s\n' '{"base":true}' > "$profile_repo/.claude/settings.json"
+  printf '%s\n' '#!/usr/bin/env bash' 'echo base-statusline' > "$profile_repo/.claude/statusline.sh"
+  printf '%s\n' '#!/usr/bin/env bash' 'echo base-notice' > "$profile_repo/.dotfiles/update-notice.sh"
+  git -C "$profile_repo" add .
+  git -C "$profile_repo" commit -qm base
+  profile_base_revision="$(git -C "$profile_repo" rev-parse HEAD)"
+
+  printf '%s\n' "$profile_remote_fragment" > "$profile_repo/.mise.work.toml"
+  git -C "$profile_repo" add .
+  git -C "$profile_repo" commit -qm remote
+
+  git -C "$profile_repo" show "${profile_base_revision}:.mise.toml" > "$profile_mise_config"
+  git -C "$profile_repo" show "${profile_base_revision}:mise.lock" > "$profile_mise_lock"
+  git -C "$profile_repo" show "${profile_base_revision}:.claude/settings.json" > "$profile_home/.claude/settings.json"
+  git -C "$profile_repo" show "${profile_base_revision}:.claude/statusline.sh" > "$profile_home/.claude/statusline.sh"
+  git -C "$profile_repo" show "${profile_base_revision}:.dotfiles/update-notice.sh" > "$profile_home/.config/dotfiles/update-notice.sh"
+  printf '%s\n' "$profile_base_revision" > "$profile_home/.config/dotfiles/revision"
+}
+
+profile_plan() {
+  bash "$script" plan --home "$profile_home" --repo "$profile_repo" --remote-ref HEAD \
+    --mise-config "$profile_mise_config" --mise-lock "$profile_mise_lock" --json
+}
+
+# No record at all is every machine installed before profiles existed. It must
+# read as the default profile, which has no fragment: nothing extra is managed,
+# and no path outside the five is even mentioned.
+setup_profile_fixture
+default_profile_plan="$(profile_plan)"
+printf '%s' "$default_profile_plan" | jq -e \
+  '(.files | length == 5) and (any(.files[]; .repositoryPath == ".mise.work.toml") | not)' >/dev/null || {
+  printf 'a machine with no recorded profile was given one:\n%s\n' "$default_profile_plan" >&2
+  exit 1
+}
+
+# Recorded as `work`, the fragment joins the inventory. The machine has never
+# had one, which is what every machine looks like the first time it is applied
+# after being installed as a work machine.
+printf '%s\n' 'work' > "$profile_home/.config/dotfiles/profile"
+work_plan="$(profile_plan)"
+printf '%s' "$work_plan" | jq -e \
+  --arg local "$profile_local_config" \
+  '(.files | length == 6)
+   and any(.files[]; .repositoryPath == ".mise.work.toml"
+                       and .localPath == $local
+                       and .state == "missing-local")' >/dev/null || {
+  printf 'the work profile fragment was not managed:\n%s\n' "$work_plan" >&2
+  exit 1
+}
+
+work_apply="$(DOTFILES_APPLY_MISE_BIN="$fake_mise" MISE_LOG="$mise_log" MISE_EFFECTIVE_CONFIG="$profile_mise_config" \
+  bash "$script" apply --home "$profile_home" --repo "$profile_repo" --remote-ref HEAD \
+  --mise-config "$profile_mise_config" --mise-lock "$profile_mise_lock" --json)"
+printf '%s' "$work_apply" | jq -e '.result == "applied"' >/dev/null
+[ "$(<"$profile_local_config")" = "$profile_remote_fragment" ] || {
+  printf 'apply did not place the work profile fragment:\n%s\n' "$(cat "$profile_local_config" 2>&1)" >&2
+  exit 1
+}
+
+# A fragment created by an apply that then fails is a file the machine never
+# had, so rollback has to remove it rather than leave a profile half-applied.
+setup_profile_fixture
+printf '%s\n' 'work' > "$profile_home/.config/dotfiles/profile"
+if DOTFILES_APPLY_MISE_BIN="$fake_mise" MISE_LOG="$mise_log" MISE_EFFECTIVE_CONFIG="$profile_mise_config" \
+  MISE_FAIL_AT='install' \
+  bash "$script" apply --home "$profile_home" --repo "$profile_repo" --remote-ref HEAD \
+  --mise-config "$profile_mise_config" --mise-lock "$profile_mise_lock" --json >/dev/null 2>&1; then
+  echo 'apply accepted a failing mise install while placing a profile fragment' >&2
+  exit 1
+fi
+[ ! -e "$profile_local_config" ] || {
+  echo 'rollback left the work profile fragment behind' >&2
+  exit 1
+}
+
+# A profile nobody ships cannot be resolved to a fragment, and guessing would
+# mean applying the default while the machine claims to be something else.
+printf '%s\n' 'staging' > "$profile_home/.config/dotfiles/profile"
+if unknown_profile_plan="$(profile_plan 2>"$profile_dir/unknown.err")"; then
+  printf 'plan accepted an unknown recorded profile:\n%s\n' "$unknown_profile_plan" >&2
+  exit 1
+fi
+grep -q 'unknown profile staging' "$profile_dir/unknown.err" || {
+  printf 'plan did not name the unknown profile:\n%s\n' "$(<"$profile_dir/unknown.err")" >&2
+  exit 1
+}
+
 echo "apply tests passed"

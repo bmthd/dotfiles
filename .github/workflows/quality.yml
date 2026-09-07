@@ -38,6 +38,10 @@ jobs:
         run: |
           bash tests/mise-pins-test.sh
           bash tests/mise-pins-policy-test.sh
+      # What a profile fragment removes is mise's answer, not the file's, so
+      # this one runs where mise is rather than with the other shell tests.
+      - name: Test the profile fragments
+        run: bash tests/mise-profile-test.sh
       # The tasks are one-line delegations to .dotfiles/setup/; nothing in mise
       # checks that a task and its script still agree.
       - name: Test the setup task facade

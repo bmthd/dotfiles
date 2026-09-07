@@ -54,3 +54,57 @@ dotfiles_is_repository_mise_config() {
 dotfiles_migration_is_forced() {
     [ "${DOTFILES_MIGRATE_MISE_CONFIG:-}" = "1" ]
 }
+
+# --- profiles ---------------------------------------------------------------
+# A machine installs .mise.toml plus at most one profile fragment beside it in
+# conf.d/. The fragment inherits everything the common config declares and says
+# only where that kind of machine differs (see .mise.work.toml for why the
+# difference can only ever be a subtraction).
+
+# Every profile this repository ships, as one space-separated word list so that
+# a caller can iterate it under both shells. `personal` is the baseline and has
+# no fragment of its own: it is the whole of .mise.toml, which is what every
+# installation before profiles existed already had.
+dotfiles_profiles() {
+    printf '%s\n' 'personal work'
+}
+
+dotfiles_default_profile() {
+    printf '%s\n' 'personal'
+}
+
+dotfiles_profile_is_known() {
+    case " $(dotfiles_profiles) " in
+        *" $1 "*) return 0 ;;
+    esac
+    return 1
+}
+
+# The profile this machine was installed with. Recorded rather than inferred
+# from what is in conf.d/, so that a re-run with no DOTFILES_PROFILE in the
+# environment — which is every re-run months later, and every `/dotfiles apply`
+# — keeps installing the same profile instead of silently reverting to the
+# default.
+dotfiles_profile_record_path() {
+    printf '%s\n' "$1/.config/dotfiles/profile"
+}
+
+# The repository file holding a profile's fragment, relative to the repository
+# root, and empty for a profile that has none. Empty is not an error: it is how
+# `personal` says "the common config is the whole of it".
+dotfiles_profile_repository_path() {
+    case "$1" in
+        personal) ;;
+        *) printf '%s\n' ".mise.$1.toml" ;;
+    esac
+}
+
+# Where that fragment goes, and empty for the same reason. The 20- prefix sorts
+# it after 10-dotfiles.toml, which is what makes it the overlay rather than the
+# overlaid.
+dotfiles_profile_config_path() {
+    case "$2" in
+        personal) ;;
+        *) printf '%s\n' "$1/.config/mise/conf.d/20-dotfiles-$2.toml" ;;
+    esac
+}

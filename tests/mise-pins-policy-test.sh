@@ -8,6 +8,9 @@ fixture="$(mktemp -d)"
 trap 'rm -rf "$fixture"' EXIT
 
 write_config() {
+    # Profile fragments are discovered by globbing, so a leftover from the
+    # previous case would be judged as part of the next one.
+    rm -f "$fixture"/.mise.*.toml
     cat > "$fixture/.mise.toml" <<'EOF'
 [tools]
 node = { version = "latest" }
@@ -157,5 +160,56 @@ assert_fails_with "coverage block removed from the page" \
 
 rm -rf "$fixture/docs"
 assert_passes "page absent, coverage check skipped"
+
+# --- profile fragments -------------------------------------------------------
+# A fragment inherits the common config and may only subtract from it. The two
+# ways of getting that wrong are silent on a machine: a tool declared here is a
+# tool no lockfile in this repository pins, and a disable_tools name that
+# matches nothing disables nothing while looking exactly like a working profile.
+write_config
+write_valid_lock
+cat > "$fixture/.mise.work.toml" <<'EOF'
+[settings]
+disable_tools = ["github-cli"]
+EOF
+assert_passes "a profile fragment disabling a declared tool"
+
+write_config
+write_valid_lock
+cat > "$fixture/.mise.work.toml" <<'EOF'
+[settings]
+disable_tools = ["github-cli", "cloudflared"]
+EOF
+assert_fails_with "a profile disabling a tool that is not declared" \
+    "disables 'cloudflared', which .mise.toml does not declare"
+
+write_config
+write_valid_lock
+sed -i.bak 's/"npm:pnpm" = { version = "latest" }/"npm:pnpm" = { version = "latest", depends = ["node"] }/' "$fixture/.mise.toml"
+rm "$fixture/.mise.toml.bak"
+cat > "$fixture/.mise.work.toml" <<'EOF'
+[settings]
+disable_tools = ["node"]
+EOF
+assert_fails_with "a profile disabling something another tool depends on" \
+    "disables 'node', which 'npm:pnpm' depends on"
+
+write_config
+write_valid_lock
+cat > "$fixture/.mise.work.toml" <<'EOF'
+[tools]
+"npm:wrangler" = { version = "latest" }
+EOF
+assert_fails_with "a profile declaring its own tools" \
+    ".mise.work.toml declares [tools]"
+
+write_config
+write_valid_lock
+cat > "$fixture/.mise.work.toml" <<'EOF'
+[tasks.setup]
+run = "echo work"
+EOF
+assert_fails_with "a profile declaring its own tasks" \
+    ".mise.work.toml declares [tasks]"
 
 echo "mise backend policy tests passed"

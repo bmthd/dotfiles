@@ -19,8 +19,10 @@ set -euo pipefail
 
 repo="$(git rev-parse --show-toplevel)"
 
-# Nothing staged that these tests cover.
-if ! git diff --cached --name-only | grep -qE '^(\.mise\.toml|mise\.lock)$'; then
+# Nothing staged that these tests cover. The profile fragments are covered too:
+# what a profile may disable is decided by what .mise.toml declares, so either
+# side moving alone is what the test exists to catch.
+if ! git diff --cached --name-only | grep -qE '^(\.mise\.toml|\.mise\.[^.]+\.toml|mise\.lock)$'; then
     exit 0
 fi
 
@@ -30,6 +32,13 @@ staged="$(mktemp -d)"
 trap 'rm -rf "$staged"' EXIT
 git show :.mise.toml > "$staged/.mise.toml"
 git show :mise.lock > "$staged/mise.lock"
+
+# The profile fragments as the index has them. A fragment deleted in this commit
+# is gone from the index and so leaves no file here, which is exactly right: the
+# test globs for what is present and judges that.
+while IFS= read -r fragment; do
+    git show ":$fragment" > "$staged/$fragment"
+done < <(git ls-files -- '.mise.*.toml')
 
 # The documented-coverage check reads the supply-chain pages, so take those from
 # the index too and judge one consistent snapshot. A page missing from the index

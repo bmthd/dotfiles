@@ -42,6 +42,13 @@ Both subcommands rely on these.
   defined once in [`.dotfiles/mise-layout.sh`](../../../.dotfiles/mise-layout.sh),
   which `install.sh` and `.dotfiles/apply.sh` both read. Never write one of those
   paths out in a placer again.
+- **A machine may carry a profile**, a second fragment at
+  `conf.d/20-dotfiles-<profile>.toml` from `.mise.<profile>.toml`. It inherits the
+  common config and can only subtract from it — `disable_tools`, so that every tool
+  stays declared in `.mise.toml` and pinned by the one `mise.lock` a machine installs.
+  `DOTFILES_PROFILE` chooses it at install time and `~/.config/dotfiles/profile`
+  remembers the choice; `apply` updates the recorded profile's fragment, and
+  switching profiles means re-running `install.sh`.
 - **Most skills are no longer in this repository.** The portable ones moved to
   [`bmthd/skills`](https://github.com/bmthd/skills). What remains under
   `.agents/skills/` is this `dotfiles` skill, which only makes sense against this

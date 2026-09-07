@@ -33,11 +33,12 @@ curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/install.sh | zs
 curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/install.sh | bash
 ```
 
+仕事用の端末では `DOTFILES_PROFILE=work zsh`（または `bash`）にパイプします。Cloudflare 関係と OCI のツールを除いた同じ構成が入り、その選択は次回以降も引き継がれます。
 終わったらシェルを再起動するか、`source ~/.zshrc`（bash なら `source ~/.bashrc`）で PATH が通ります。
 
 ## 入るもの
 
-- **CLI ツール** — node, bun, pnpm, uv, gh, ghq, jq, wrangler など（一覧は [`.mise.toml`](.mise.toml) の `[tools]`）
+- **CLI ツール** — node, bun, pnpm, uv, gh, ghq, jq など（一覧は [`.mise.toml`](.mise.toml) の `[tools]` からプロファイルが外す分を引いたもの）
 - **Claude Code** — 本体、`settings.json`（既存があればマージ）、ステータスライン
 - **エージェントスキル** — Claude Code / OpenCode / Cursor の 3 つに同じものを導入
 - **プラグイン** — Codex、および公式プラグイン (TypeScript LSP)
@@ -82,7 +83,7 @@ mise の設定はもう含まれません。リポジトリ側のコピーは `~
 | ファイル | 役割 |
 | --- | --- |
 | [`install.sh`](install.sh) | ブートストラップのみ。mise の導入、設定ファイルの配置、シェル連携の追記 |
-| [`.mise.toml`](.mise.toml) | ツール定義 (`[tools]`) とセットアップタスク。各タスクは [`.dotfiles/setup`](.dotfiles/setup) のスクリプトに委譲する。`~/.config/mise/conf.d/10-dotfiles.toml` に配置される |
+| [`.mise.toml`](.mise.toml) | ツール定義 (`[tools]`) とセットアップタスク。各タスクは [`.dotfiles/setup`](.dotfiles/setup) のスクリプトに委譲する。`~/.config/mise/conf.d/10-dotfiles.toml` に配置される。`.mise.<profile>.toml` が `20-dotfiles-<profile>.toml` として上に重なる |
 | [`mise.lock`](mise.lock) | 実際に入るバージョンとチェックサム。`~/.config/mise/mise.lock` に配置される |
 | [`.agents/skills`](.agents/skills) | このリポジトリ専用のスキル。汎用のものは [bmthd/skills](https://github.com/bmthd/skills) に分離 |
 | [`renovate.json`](renovate.json) | GitHub Actions の更新 PR の方針 |

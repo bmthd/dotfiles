@@ -76,6 +76,7 @@ Read the repository facts in [SKILL.md](SKILL.md) first. In addition:
   bash tests/setup-facade-test.sh && bash tests/oci-plugin-test.sh && bash tests/revision-pinning-test.sh
   bash tests/apply-test.sh
   mise ls >/dev/null && mise tasks ls >/dev/null
+  bash tests/mise-profile-test.sh
   ```
 
 - **`mise ls` passing does not mean `.mise.toml` is correct.** Every entry in

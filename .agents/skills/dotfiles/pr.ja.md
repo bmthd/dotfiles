@@ -73,6 +73,7 @@ author であって PR を開くアカウントではない。会社の端末で
   bash tests/setup-facade-test.sh && bash tests/oci-plugin-test.sh && bash tests/revision-pinning-test.sh
   bash tests/apply-test.sh
   mise ls >/dev/null && mise tasks ls >/dev/null
+  bash tests/mise-profile-test.sh
   ```
 
 - **`mise ls` が通ることは `.mise.toml` が正しいことを意味しない。** `[tools]` の各行は
