@@ -97,6 +97,47 @@ locked_verify_provenance = true
 # Keep mise experimental features disabled
 experimental = false
 
+# --- Shell startup files ----------------------------------------------------
+# What an interactive shell needs from this repository: mise's own activation,
+# and the update notice that setup:update-notice installs. install.sh appended
+# both by hand, which made them a step of the bootstrap rather than state —
+# written once, only for the shell install.sh was piped into, and never
+# revisited. mise writes them as marker-delimited blocks instead, so
+# `mise run setup:shell` also re-writes them when the declaration below changes
+# and `mise bootstrap dotfiles unapply` takes them back out.
+#
+# Both shells, not just the one that ran the installer: the block is inert in a
+# shell nobody starts, while "activated in bash because that is what the
+# installer happened to be piped into" is the per-machine drift this repository
+# exists to remove.
+[bootstrap.mise_shell_activate]
+zshrc = "activate"
+bashrc = "activate"
+
+# Edit entries are keyed by target path plus an id naming the block inside that
+# file, and mise owns only what is between the markers it writes. Sub-tables
+# rather than inline ones because the block spans lines: a multi-line inline
+# table is TOML 1.1, which mise reads and no TOML 1.0 parser does — the same
+# rule the [tools] entries above follow, for the same reason.
+#
+# The guard is what makes the block safe to write ahead of the file it sources.
+# setup:shell runs after setup:update-notice, but the rc file outlives both, and
+# a machine whose notice was removed should get a prompt rather than a "no such
+# file or directory" on every shell start.
+[dotfiles."~/.zshrc/dotfiles-update-notice"]
+block = '''
+if [ -r "$HOME/.config/dotfiles/update-notice.sh" ]; then
+    . "$HOME/.config/dotfiles/update-notice.sh"
+fi
+'''
+
+[dotfiles."~/.bashrc/dotfiles-update-notice"]
+block = '''
+if [ -r "$HOME/.config/dotfiles/update-notice.sh" ]; then
+    . "$HOME/.config/dotfiles/update-notice.sh"
+fi
+'''
+
 # --- Setup tasks ------------------------------------------------------------
 # Everything below used to live in install.sh, then here as inline shell. Now
 # each task carries only its name, description and dependencies, and
@@ -137,6 +178,7 @@ depends = [
   "setup:claude-plugins",
   "setup:git-hooks",
   "setup:update-notice",
+  "setup:shell",
 ]
 
 [tasks."setup:scripts"]
@@ -153,7 +195,7 @@ SETUP_DIR="$HOME/.cache/dotfiles/setup"
 # Every task below by name: `setup:<name>` runs `<name>.sh`. A task added
 # without its name here would point at a script that never arrives, which is
 # what tests/setup-facade-test.sh exists to catch.
-SCRIPTS=(npm-registry oci-plugin claude skills codex claude-plugins git-hooks update-notice)
+SCRIPTS=(npm-registry oci-plugin claude skills codex claude-plugins git-hooks update-notice shell)
 mkdir -p "$SETUP_DIR"
 failures=0
 for name in "${SCRIPTS[@]}"; do
@@ -200,6 +242,14 @@ run = "$HOME/.cache/dotfiles/setup/git-hooks.sh"
 description = "Install the shell-startup dotfiles update notification"
 depends = ["setup:scripts"]
 run = "$HOME/.cache/dotfiles/setup/update-notice.sh"
+
+[tasks."setup:shell"]
+description = "Write the mise activation and update-notice blocks into ~/.zshrc and ~/.bashrc"
+# The update notice is what the block it writes into the rc files sources, so
+# install it first rather than trusting the order of the parent task's depends
+# list — mise runs those in parallel.
+depends = ["setup:scripts", "setup:update-notice"]
+run = "$HOME/.cache/dotfiles/setup/shell.sh"
 
 [tasks."setup:claude"]
 description = "Install Claude Code plus its settings.json and status line"

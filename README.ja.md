@@ -23,8 +23,6 @@
 
 ## Install
 
-パイプ先のシェルを検出して、対応する設定ファイル (`~/.zshrc` / `~/.bashrc`) に mise の有効化を追記します。
-
 ```zsh
 curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/install.sh | zsh
 ```
@@ -43,6 +41,7 @@ curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/install.sh | ba
 - **プラグイン** — Codex、および公式プラグイン (TypeScript LSP)
 - **npm レジストリ** — マルウェアを遮断する [Takumi Guard](https://npm.flatt.tech/) プロキシ経由に変更
 - **グローバル git フック** — 新しい worktree の mise config を trust し、repository hook と部分 stage を維持したまま、commit 前に staged GitHub Actions 参照を pin する ([`.dotfiles/git-hooks`](.dotfiles/git-hooks))
+- **シェルの起動ファイル** — mise の有効化と更新通知を、mise が所有し書き換えられるブロックとして `~/.zshrc` と `~/.bashrc` に書き込む（[`.mise.toml`](.mise.toml) の `[bootstrap.mise_shell_activate]` と `[dotfiles]`）
 
 セットアップはいつでも mise タスクとして再実行できます。
 

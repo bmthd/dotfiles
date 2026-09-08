@@ -313,36 +313,12 @@ if command -v mise &> /dev/null; then
     }
 fi
 
-# Setup shell integration for the detected shell
-if [ -n "$SHELL_CONFIG" ]; then
-    if ! grep -q 'mise activate' "$SHELL_CONFIG" 2>/dev/null; then
-        {
-            echo ""
-            echo "# mise activation"
-            echo "eval \"\$(mise activate $CURRENT_SHELL)\""
-        } >> "$SHELL_CONFIG"
-        echo "✓ Added mise activation to $SHELL_CONFIG"
-    else
-        echo "✓ mise activation already in $SHELL_CONFIG"
-    fi
-
-    UPDATE_NOTICE="$HOME/.config/dotfiles/update-notice.sh"
-    mkdir -p "$HOME/.config/dotfiles"
-    if curl -fsSL "$DOTFILES_RAW_BASE/.dotfiles/update-notice.sh" -o "$UPDATE_NOTICE"; then
-        if ! grep -q 'dotfiles/update-notice.sh' "$SHELL_CONFIG" 2>/dev/null; then
-            {
-                echo ""
-                echo "# dotfiles update notification"
-                echo "source \"$UPDATE_NOTICE\""
-            } >> "$SHELL_CONFIG"
-            echo "✓ Added dotfiles update notification to $SHELL_CONFIG"
-        fi
-        bash "$UPDATE_NOTICE" install
-    else
-        echo "⚠ Failed to install dotfiles update notification"
-        record_failure "dotfiles update notification"
-    fi
-fi
+# The shell startup files are not written here any more. `mise run setup` above
+# covers them: setup:update-notice places the notice and records the revision
+# this machine installed, and setup:shell writes the activation and notice
+# blocks that .mise.toml declares — into both rc files, as blocks mise can
+# rewrite later, rather than the append-once lines this script used to add to
+# whichever shell it was piped into.
 
 echo ""
 if [ "$FAILURES" -eq 0 ]; then

@@ -66,7 +66,7 @@ done
 # shellcheck disable=SC2016  # the literal text "$DOTFILES_RAW_BASE" is what is searched for
 downloads="$(grep -c 'curl .*\$DOTFILES_RAW_BASE/' "$install_sh" || true)"
 [[ "$downloads" -ge 3 ]] ||
-  fail "install.sh fetches only $downloads file(s) through \$DOTFILES_RAW_BASE; expected the mise config, the lockfile and the update notice"
+  fail "install.sh fetches only $downloads file(s) through \$DOTFILES_RAW_BASE; expected the layout rules, the mise config and the lockfile"
 
 # The setup tasks run under install.sh's environment, but also stand alone.
 # .mise.toml is a facade now, so it holds exactly one of these fallbacks — in

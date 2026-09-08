@@ -42,6 +42,11 @@ argument-hint: pr <変更内容> | apply
   [`.dotfiles/mise-layout.sh`](../../../.dotfiles/mise-layout.sh) に一度だけ定義され、
   `install.sh` と `.dotfiles/apply.sh` の両方がそれを読む。配置する側にパスを
   書き直さないこと
+- **シェルの起動ファイルも mise が持つ**。`~/.zshrc` と `~/.bashrc` には mise の
+  有効化と更新通知の読み込みが、マーカーで囲まれたブロックとして入る。宣言は
+  `.mise.toml` の `[bootstrap.mise_shell_activate]` と `[dotfiles]`、書き込むのは
+  `setup:shell`。`install.sh` はもうシェルの設定ファイルに追記しない。シェルに
+  何を入れるかを変えるのはこの宣言であって、スクリプトにシェルを足すことではない
 - **ほとんどのスキルはこのリポジトリには無い**。汎用のものは
   [`bmthd/skills`](https://github.com/bmthd/skills) に移した。`.agents/skills/` に残るのは
   このリポジトリに対してしか意味を持たない `dotfiles` スキルだけ。サードパーティのスキルは

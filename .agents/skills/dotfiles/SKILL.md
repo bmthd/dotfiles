@@ -42,6 +42,12 @@ Both subcommands rely on these.
   defined once in [`.dotfiles/mise-layout.sh`](../../../.dotfiles/mise-layout.sh),
   which `install.sh` and `.dotfiles/apply.sh` both read. Never write one of those
   paths out in a placer again.
+- **The shell startup files are mise's too.** `~/.zshrc` and `~/.bashrc` get the
+  mise activation and the update-notice source line as marker-delimited blocks,
+  declared in `.mise.toml` under `[bootstrap.mise_shell_activate]` and
+  `[dotfiles]` and written by `setup:shell`. install.sh no longer appends
+  anything to a shell config; changing what a shell gets means changing that
+  declaration, not adding shell to a script.
 - **Most skills are no longer in this repository.** The portable ones moved to
   [`bmthd/skills`](https://github.com/bmthd/skills). What remains under
   `.agents/skills/` is this `dotfiles` skill, which only makes sense against this
