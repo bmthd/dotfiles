@@ -53,6 +53,14 @@ install_skills "mathbullet" mathbullet/skills -s html -s explain
 install_skills "orca" stablyai/orca -s '*'
 # hunk ships four skills; only hunk-review drives a review session from an agent
 install_skills "hunk" modem-dev/hunk -s hunk-review
+# show-me teaches an agent to answer with a diagram, a call tree or a small HTML
+# view instead of a wall of prose. humanlayer publishes it as a Claude Code
+# plugin — the repository is a marketplace and each skill sits at
+# plugins/<name>/skills/<name>/ — but the skills CLI finds it from the
+# repository root all the same, so the plain owner/repo source works and every
+# agent gets it, not just Claude Code. The selector is what matters here: the
+# marketplace carries several unrelated plugins.
+install_skills "show-me" humanlayer/skills -s show-me
 # pstack ships as a Cursor plugin — `/add-plugin pstack` — which is not
 # installable here: the repository carries .cursor-plugin/plugin.json and no
 # .claude-plugin/marketplace.json, so `claude plugin marketplace add` has
