@@ -661,6 +661,13 @@ fi
 if ! run_mise run --skip-deps setup:claude-plugins; then
   rollback_with_error 'mise run --skip-deps setup:claude-plugins failed; external side effects may remain'
 fi
+# Last, and after the staged update notice is already in place: this rewrites
+# the blocks mise owns in ~/.zshrc and ~/.bashrc from the config just applied,
+# which is the only way a change to those declarations reaches a machine that
+# updates with `apply` rather than by re-running install.sh.
+if ! run_mise run --skip-deps setup:shell; then
+  rollback_with_error 'mise run --skip-deps setup:shell failed; external side effects may remain'
+fi
 
 write_revision() {
   local revision_dir revision_temp
