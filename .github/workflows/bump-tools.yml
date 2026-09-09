@@ -78,15 +78,7 @@ jobs:
         env:
           APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
         run: |
-          if git diff --quiet -- mise.lock; then
-            echo "No tool updates eligible today."
-            exit 0
-          fi
-          git config user.name "$APP_SLUG[bot]"
-          git config user.email "$APP_SLUG[bot]@users.noreply.github.com"
-          git add mise.lock
-          git commit -m "chore(deps): bump locked tool versions" \
-                     -m "Resolved by mise lock --bump --minimum-release-age 2d."
+          .github/workflows/bump-tools.commit.sh
           git push
           echo "### Tool updates" >> "$GITHUB_STEP_SUMMARY"
           git show --stat --oneline HEAD >> "$GITHUB_STEP_SUMMARY"
