@@ -22,8 +22,6 @@ The mechanisms below — a lockfile, checksums, a release-age delay, immutable r
 
 ## Install
 
-The installer detects the shell it is piped into and appends the mise activation to the matching config file (`~/.zshrc` or `~/.bashrc`).
-
 ```zsh
 curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/install.sh | zsh
 ```
@@ -42,6 +40,7 @@ Afterwards, restart the shell or run `source ~/.zshrc` (`source ~/.bashrc` for b
 - **Plugins** — Codex, plus the official plugins (TypeScript LSP)
 - **npm registry** — routed through [Takumi Guard](https://npm.flatt.tech/), a proxy that refuses known-malicious packages
 - **Global git hooks** — trust mise configs in new worktrees and pin staged GitHub Actions references before commit, while preserving repository hooks and partial staging ([`.dotfiles/git-hooks`](.dotfiles/git-hooks))
+- **Shell startup** — the mise activation and the update notice, written into `~/.zshrc` and `~/.bashrc` as blocks mise owns and can rewrite (`[bootstrap.mise_shell_activate]` and `[dotfiles]` in [`.mise.toml`](.mise.toml))
 
 The setup can be re-run at any time as a mise task.
 

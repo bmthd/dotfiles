@@ -377,6 +377,9 @@ else:
 fatal_task_modes = {
     "setup:oci-plugin": "set -eo pipefail",
     "setup:npm-registry": "set -e",
+    # This one edits the machine's own rc files; stopping at the first failure
+    # is what keeps a half-rewritten ~/.zshrc from being applied over.
+    "setup:shell": "set -euo pipefail",
 }
 for task_name, mode in fatal_task_modes.items():
     # The shebang and the header comment come first in a script; the mode has
@@ -395,6 +398,9 @@ fatal_messages = (
     ("setup:update-notice", "Failed to install dotfiles update notification"),
     ("setup:claude", "Failed to download Claude Code settings"),
     ("setup:claude", "Failed to download Claude Code status line"),
+    # A mise too old to apply the blocks must stop rather than report success
+    # for rc files it never wrote.
+    ("setup:shell", "Managing the shell startup files needs mise"),
 )
 for task_name, message in fatal_messages:
     script = setup_script(task_name)

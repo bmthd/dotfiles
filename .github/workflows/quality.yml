@@ -88,6 +88,10 @@ jobs:
         run: bash tests/oci-plugin-test.sh
       - name: Test global git hooks
         run: bash tests/git-hooks-test.sh
+      # setup:shell edits the machine's own ~/.zshrc and ~/.bashrc; the suite
+      # stubs mise out and needs none on this runner.
+      - name: Test shell startup files
+        run: bash tests/shell-rc-test.sh
       # apply.sh drives `mise run` through the DOTFILES_APPLY_MISE_BIN seam, so
       # the suite stubs it out and needs no mise on this runner.
       - name: Test dotfiles apply

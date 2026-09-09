@@ -71,7 +71,7 @@ author であって PR を開くアカウントではない。会社の端末で
   bash tests/update-notice-test.sh && bash tests/statusline-test.sh
   bash tests/mise-pins-test.sh && bash tests/install-order-test.sh && bash tests/git-hooks-test.sh
   bash tests/setup-facade-test.sh && bash tests/oci-plugin-test.sh && bash tests/revision-pinning-test.sh
-  bash tests/apply-test.sh
+  bash tests/apply-test.sh && bash tests/shell-rc-test.sh
   mise ls >/dev/null && mise tasks ls >/dev/null
   ```
 
