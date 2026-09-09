@@ -67,6 +67,7 @@ jobs:
           bash -n .dotfiles/git-hooks/dispatch
           bash -n .dotfiles/git-hooks/install.sh
           bash -n .dotfiles/apply.sh
+          bash -n .github/workflows/bump-tools.commit.sh
           # The setup task bodies. They are only shell once they are files —
           # inline in .mise.toml nothing here could have parsed them.
           for script in .dotfiles/setup/*.sh; do bash -n "$script"; done
