@@ -52,7 +52,7 @@ mise の公式仕様では aqua と github が full asset tracking に対応し�
 
 <!-- coverage:no-checksum:start -->
 - `cargo:similarity-ts`：cargo の lock entry は version-only です。
-- `npm:@antfu/ni`、`npm:@openai/codex`、`npm:@playwright/cli`、`npm:ctx7`、`npm:difit`、`npm:pnpm`、`npm:wrangler`：npm の lock entry は version-only です。
+- `npm:@antfu/ni`、`npm:@google/gemini-cli`、`npm:@openai/codex`、`npm:@playwright/cli`、`npm:ctx7`、`npm:difit`、`npm:pnpm`、`npm:wrangler`：npm の lock entry は version-only です。
 - `vfox:oci`：この vfox backend plugin は現在 version だけを記録します。
 <!-- coverage:no-checksum:end -->
 
@@ -74,7 +74,7 @@ policy が必須とし、下のチェックが検証するのもこの 2 つで�
 version と backend しか記録していないもの。上の補集合であり、許可リストの例外と同じ集合です:
 
 <!-- coverage:version-only:start -->
-`cargo:similarity-ts`, `npm:@antfu/ni`, `npm:@openai/codex`, `npm:@playwright/cli`, `npm:ctx7`, `npm:difit`, `npm:pnpm`, `npm:wrangler`, `vfox:oci`
+`cargo:similarity-ts`, `npm:@antfu/ni`, `npm:@google/gemini-cli`, `npm:@openai/codex`, `npm:@playwright/cli`, `npm:ctx7`, `npm:difit`, `npm:pnpm`, `npm:wrangler`, `vfox:oci`
 <!-- coverage:version-only:end -->
 
 さらに検証済みの provenance を lockfile に持つもの:

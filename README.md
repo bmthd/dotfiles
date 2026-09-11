@@ -3,7 +3,7 @@
 English | [日本語](README.ja.md)
 
 Dotfiles for setting up development machines and keeping them that way.
-One command installs the CLI toolchain and configures Claude Code, Codex, OpenCode, and Cursor.
+One command installs the CLI toolchain and configures Claude Code, Codex, OpenCode, Cursor, and Gemini CLI.
 
 ## Why
 
@@ -36,7 +36,7 @@ Afterwards, restart the shell or run `source ~/.zshrc` (`source ~/.bashrc` for b
 
 - **CLI tools** — node, bun, pnpm, uv, gh, ghq, jq, wrangler, and more (see `[tools]` in [`.mise.toml`](.mise.toml))
 - **Claude Code** — the binary itself, `settings.json` (merged into an existing one), and the status line
-- **Agent skills** — the same set installed for Claude Code, OpenCode, and Cursor
+- **Agent skills** — the same set installed for Claude Code, OpenCode, Cursor, Codex, and Gemini CLI
 - **Plugins** — Codex, plus the official plugins (TypeScript LSP)
 - **npm registry** — routed through [Takumi Guard](https://npm.flatt.tech/), a proxy that refuses known-malicious packages
 - **Global git hooks** — trust mise configs in new worktrees and pin staged GitHub Actions references before commit, while preserving repository hooks and partial staging ([`.dotfiles/git-hooks`](.dotfiles/git-hooks))

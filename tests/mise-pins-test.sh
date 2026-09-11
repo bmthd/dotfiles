@@ -119,6 +119,7 @@ REQUIRED_PLATFORMS = ("linux-x64", "macos-arm64")
 VERSION_ONLY_ALLOWLIST = {
     "cargo:similarity-ts": ("cargo:similarity-ts", "cargo lock entries record versions only"),
     "npm:@antfu/ni": ("npm:@antfu/ni", "npm lock entries record versions only"),
+    "npm:@google/gemini-cli": ("npm:@google/gemini-cli", "npm lock entries record versions only"),
     "npm:@openai/codex": ("npm:@openai/codex", "npm lock entries record versions only"),
     "npm:@playwright/cli": ("npm:@playwright/cli", "npm lock entries record versions only"),
     "npm:ctx7": ("npm:ctx7", "npm lock entries record versions only"),

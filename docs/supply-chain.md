@@ -50,7 +50,7 @@ The following exceptions are exact tool/backend pairs with reasons, rather than 
 
 <!-- coverage:no-checksum:start -->
 - `cargo:similarity-ts`: cargo lock entries are version-only.
-- `npm:@antfu/ni`, `npm:@openai/codex`, `npm:@playwright/cli`, `npm:ctx7`, `npm:difit`, `npm:pnpm`, and `npm:wrangler`: npm lock entries are version-only.
+- `npm:@antfu/ni`, `npm:@google/gemini-cli`, `npm:@openai/codex`, `npm:@playwright/cli`, `npm:ctx7`, `npm:difit`, `npm:pnpm`, and `npm:wrangler`: npm lock entries are version-only.
 - `vfox:oci`: this vfox backend plugin currently records only the version.
 <!-- coverage:no-checksum:end -->
 
@@ -70,7 +70,7 @@ That is the pair the policy requires and the pair the check below verifies; the 
 These record nothing but a version and a backend — the list above's complement, and the same set as the allowlisted exceptions:
 
 <!-- coverage:version-only:start -->
-`cargo:similarity-ts`, `npm:@antfu/ni`, `npm:@openai/codex`, `npm:@playwright/cli`, `npm:ctx7`, `npm:difit`, `npm:pnpm`, `npm:wrangler`, `vfox:oci`
+`cargo:similarity-ts`, `npm:@antfu/ni`, `npm:@google/gemini-cli`, `npm:@openai/codex`, `npm:@playwright/cli`, `npm:ctx7`, `npm:difit`, `npm:pnpm`, `npm:wrangler`, `vfox:oci`
 <!-- coverage:version-only:end -->
 
 And these additionally carry verified provenance in the lockfile:

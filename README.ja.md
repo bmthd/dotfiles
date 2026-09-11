@@ -3,7 +3,7 @@
 [English](README.md) | 日本語
 
 開発マシンの環境を作り、そのまま維持し続けるための dotfiles。
-コマンド 1 本で CLI ツール一式と、Claude Code / Codex / OpenCode / Cursor の設定が揃います。
+コマンド 1 本で CLI ツール一式と、Claude Code / Codex / OpenCode / Cursor / Gemini CLI の設定が揃います。
 
 ## Why
 
@@ -37,7 +37,7 @@ curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/install.sh | ba
 
 - **CLI ツール** — node, bun, pnpm, uv, gh, ghq, jq, wrangler など（一覧は [`.mise.toml`](.mise.toml) の `[tools]`）
 - **Claude Code** — 本体、`settings.json`（既存があればマージ）、ステータスライン
-- **エージェントスキル** — Claude Code / OpenCode / Cursor の 3 つに同じものを導入
+- **エージェントスキル** — Claude Code / OpenCode / Cursor / Codex / Gemini CLI の 5 つに同じものを導入
 - **プラグイン** — Codex、および公式プラグイン (TypeScript LSP)
 - **npm レジストリ** — マルウェアを遮断する [Takumi Guard](https://npm.flatt.tech/) プロキシ経由に変更
 - **グローバル git フック** — 新しい worktree の mise config を trust し、repository hook と部分 stage を維持したまま、commit 前に staged GitHub Actions 参照を pin する ([`.dotfiles/git-hooks`](.dotfiles/git-hooks))
