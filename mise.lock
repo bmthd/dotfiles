@@ -320,6 +320,10 @@ url = "https://nodejs.org/dist/v26.8.2/node-v26.8.2-darwin-arm64.tar.gz"
 version = "30.5.0"
 backend = "npm:@antfu/ni"
 
+[[tools."npm:@google/gemini-cli"]]
+version = "0.59.0"
+backend = "npm:@google/gemini-cli"
+
 [[tools."npm:@openai/codex"]]
 version = "0.153.4"
 backend = "npm:@openai/codex"

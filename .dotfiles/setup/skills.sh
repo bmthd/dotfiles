@@ -1,16 +1,18 @@
 #!/usr/bin/env bash
-# `setup:skills`: install agent skills for Claude Code, OpenCode, Cursor, and
-# Codex.
+# `setup:skills`: install agent skills for Claude Code, OpenCode, Cursor,
+# Codex, and Gemini CLI.
 # Placed by the setup:scripts task in .mise.toml; see the comment there.
 #
 # The `npx skills add` calls below must resolve through the Takumi Guard proxy,
 # which is why the task declares setup:npm-registry as a dependency rather than
 # relying on the order of the parent task's depends list.
 
-# Skill directories for each agent CLI. Cursor and Codex are "universal" agents
-# to the skills CLI: both read ~/.agents/skills, which is also where it puts a
-# skill for OpenCode, so the one directory covers all three and only Claude Code
-# gets a tree of its own (symlinks into ~/.agents/skills).
+# Skill directories for each agent CLI. Cursor, Codex and Gemini CLI are
+# "universal" agents to the skills CLI: they all read ~/.agents/skills, which is
+# also where it puts a skill for OpenCode, so the one directory covers all four
+# and only Claude Code gets a tree of its own (symlinks into ~/.agents/skills).
+# That is why adding gemini-cli below needs no new mkdir: nothing lands in
+# ~/.gemini.
 mkdir -p "$HOME/.claude/skills" "$HOME/.config/opencode/skills" "$HOME/.agents/skills"
 
 # Install skills via the `skills` CLI — one mechanism for every source.
@@ -35,7 +37,7 @@ mkdir -p "$HOME/.claude/skills" "$HOME/.config/opencode/skills" "$HOME/.agents/s
 echo "📦 Installing skills..."
 install_skills() {
     local label="$1"; shift
-    npx skills add "$@" -y -g -a claude-code -a opencode -a cursor -a codex 2>/dev/null \
+    npx skills add "$@" -y -g -a claude-code -a opencode -a cursor -a codex -a gemini-cli 2>/dev/null \
       && echo "✓ $label skills installed" \
       || echo "⚠ $label skills installation failed (continuing)"
 }
