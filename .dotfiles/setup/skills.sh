@@ -63,6 +63,14 @@ install_skills "hunk" modem-dev/hunk -s hunk-review
 # agent gets it, not just Claude Code. The selector is what matters here: the
 # marketplace carries several unrelated plugins.
 install_skills "show-me" humanlayer/skills -s show-me
+# eli5 answers a question with an HTML picture explainer — big visuals, few
+# words, no assumed background. Anthropic publishes it in the community plugin
+# marketplace, which is a marketplace of references first: its manifest lists a
+# few thousand plugins that live in other repositories, and only a handful,
+# eli5 among them, are vendored in the repository itself. Source the plugin's
+# own skills directory rather than the repository root, so what is installed is
+# that one plugin and not whatever else the marketplace happens to carry.
+install_skills "eli5" https://github.com/anthropics/claude-plugins-community/tree/main/eli5/skills -s eli5
 # pstack ships as a Cursor plugin — `/add-plugin pstack` — which is not
 # installable here: the repository carries .cursor-plugin/plugin.json and no
 # .claude-plugin/marketplace.json, so `claude plugin marketplace add` has
