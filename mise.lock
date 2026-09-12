@@ -37,43 +37,43 @@ version = "0.5.0"
 backend = "cargo:similarity-ts"
 
 [[tools.cloudflared]]
-version = "2026.8.3"
+version = "2026.9.0"
 backend = "aqua:cloudflare/cloudflared"
 
 [tools.cloudflared."platforms.linux-arm64"]
-checksum = "sha256:4bcfd35521a7cbc545ebfd5d57334a71ee180e2a64874981f374c81472118391"
-url = "https://github.com/cloudflare/cloudflared/releases/download/2026.8.3/cloudflared-linux-arm64"
-url_api = "https://api.github.com/repos/cloudflare/cloudflared/releases/assets/537806074"
+checksum = "sha256:98aca3173f73248fad6180fc75dade2d186a6e54fa807e088108cb4345de8efe"
+url = "https://github.com/cloudflare/cloudflared/releases/download/2026.9.0/cloudflared-linux-arm64"
+url_api = "https://api.github.com/repos/cloudflare/cloudflared/releases/assets/553348969"
 
 [tools.cloudflared."platforms.linux-arm64-musl"]
-checksum = "sha256:4bcfd35521a7cbc545ebfd5d57334a71ee180e2a64874981f374c81472118391"
-url = "https://github.com/cloudflare/cloudflared/releases/download/2026.8.3/cloudflared-linux-arm64"
-url_api = "https://api.github.com/repos/cloudflare/cloudflared/releases/assets/537806074"
+checksum = "sha256:98aca3173f73248fad6180fc75dade2d186a6e54fa807e088108cb4345de8efe"
+url = "https://github.com/cloudflare/cloudflared/releases/download/2026.9.0/cloudflared-linux-arm64"
+url_api = "https://api.github.com/repos/cloudflare/cloudflared/releases/assets/553348969"
 
 [tools.cloudflared."platforms.linux-x64"]
-checksum = "sha256:f29324fe934d1e100617484c78deef803c4dc2cd351d645bbde42e96b4fccc5e"
-url = "https://github.com/cloudflare/cloudflared/releases/download/2026.8.3/cloudflared-linux-amd64"
-url_api = "https://api.github.com/repos/cloudflare/cloudflared/releases/assets/537805921"
+checksum = "sha256:53b7a7a5420d188758d24341294acb0d1bca54296548ac05e38811a694ac6134"
+url = "https://github.com/cloudflare/cloudflared/releases/download/2026.9.0/cloudflared-linux-amd64"
+url_api = "https://api.github.com/repos/cloudflare/cloudflared/releases/assets/553348584"
 
 [tools.cloudflared."platforms.linux-x64-baseline"]
-checksum = "sha256:f29324fe934d1e100617484c78deef803c4dc2cd351d645bbde42e96b4fccc5e"
-url = "https://github.com/cloudflare/cloudflared/releases/download/2026.8.3/cloudflared-linux-amd64"
-url_api = "https://api.github.com/repos/cloudflare/cloudflared/releases/assets/537805921"
+checksum = "sha256:53b7a7a5420d188758d24341294acb0d1bca54296548ac05e38811a694ac6134"
+url = "https://github.com/cloudflare/cloudflared/releases/download/2026.9.0/cloudflared-linux-amd64"
+url_api = "https://api.github.com/repos/cloudflare/cloudflared/releases/assets/553348584"
 
 [tools.cloudflared."platforms.linux-x64-musl"]
-checksum = "sha256:f29324fe934d1e100617484c78deef803c4dc2cd351d645bbde42e96b4fccc5e"
-url = "https://github.com/cloudflare/cloudflared/releases/download/2026.8.3/cloudflared-linux-amd64"
-url_api = "https://api.github.com/repos/cloudflare/cloudflared/releases/assets/537805921"
+checksum = "sha256:53b7a7a5420d188758d24341294acb0d1bca54296548ac05e38811a694ac6134"
+url = "https://github.com/cloudflare/cloudflared/releases/download/2026.9.0/cloudflared-linux-amd64"
+url_api = "https://api.github.com/repos/cloudflare/cloudflared/releases/assets/553348584"
 
 [tools.cloudflared."platforms.linux-x64-musl-baseline"]
-checksum = "sha256:f29324fe934d1e100617484c78deef803c4dc2cd351d645bbde42e96b4fccc5e"
-url = "https://github.com/cloudflare/cloudflared/releases/download/2026.8.3/cloudflared-linux-amd64"
-url_api = "https://api.github.com/repos/cloudflare/cloudflared/releases/assets/537805921"
+checksum = "sha256:53b7a7a5420d188758d24341294acb0d1bca54296548ac05e38811a694ac6134"
+url = "https://github.com/cloudflare/cloudflared/releases/download/2026.9.0/cloudflared-linux-amd64"
+url_api = "https://api.github.com/repos/cloudflare/cloudflared/releases/assets/553348584"
 
 [tools.cloudflared."platforms.macos-arm64"]
-checksum = "sha256:40c9144d86df8937c5b43293a1f7d2d2107029aa74725023dd46b1b27154352f"
-url = "https://github.com/cloudflare/cloudflared/releases/download/2026.8.3/cloudflared-darwin-arm64.tgz"
-url_api = "https://api.github.com/repos/cloudflare/cloudflared/releases/assets/537806530"
+checksum = "sha256:c0eccb3758420d1f4e46cbf2b8ecde01d9802a154232a817f25133340009fcc7"
+url = "https://github.com/cloudflare/cloudflared/releases/download/2026.9.0/cloudflared-darwin-arm64.tgz"
+url_api = "https://api.github.com/repos/cloudflare/cloudflared/releases/assets/553347590"
 
 [[tools.ghq]]
 version = "1.10.1"
@@ -325,7 +325,7 @@ version = "0.59.0"
 backend = "npm:@google/gemini-cli"
 
 [[tools."npm:@openai/codex"]]
-version = "0.153.4"
+version = "0.154.0"
 backend = "npm:@openai/codex"
 
 [[tools."npm:@playwright/cli"]]
@@ -341,7 +341,7 @@ version = "5.0.12"
 backend = "npm:difit"
 
 [[tools."npm:pnpm"]]
-version = "12.3.4"
+version = "12.4.0"
 backend = "npm:pnpm"
 
 [[tools.oci]]
@@ -349,43 +349,43 @@ version = "3.92.1"
 backend = "vfox:oci"
 
 [[tools.opencode]]
-version = "1.18.29"
+version = "1.18.30"
 backend = "aqua:anomalyco/opencode"
 
 [tools.opencode."platforms.linux-arm64"]
-checksum = "sha256:70baf769395ca4e7a68924026530c390eace194f3b7e4919d4efcb2aa2eed3c0"
-url = "https://github.com/anomalyco/opencode/releases/download/v1.18.29/opencode-linux-arm64.tar.gz"
-url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/545047606"
+checksum = "sha256:4111a55c2a02c0fac314bd51e9a2330280e6d29d2b85b9554fff6d62612566ed"
+url = "https://github.com/anomalyco/opencode/releases/download/v1.18.30/opencode-linux-arm64.tar.gz"
+url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/551875363"
 
 [tools.opencode."platforms.linux-arm64-musl"]
-checksum = "sha256:9b9044ede6449dc34888b85f0a51be5777a5886fe5e1cbd67898b13f8a5bec04"
-url = "https://github.com/anomalyco/opencode/releases/download/v1.18.29/opencode-linux-arm64-musl.tar.gz"
-url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/545047667"
+checksum = "sha256:7a4dc1171ca78426a4611f9a1e15c0168dc0408475d24aab32bb51187e1865ad"
+url = "https://github.com/anomalyco/opencode/releases/download/v1.18.30/opencode-linux-arm64-musl.tar.gz"
+url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/551875409"
 
 [tools.opencode."platforms.linux-x64"]
-checksum = "sha256:ea800b7ff56226b70952126c9fc1e2517ca4c4b5682fd9d3f9e87449697a1194"
-url = "https://github.com/anomalyco/opencode/releases/download/v1.18.29/opencode-linux-x64.tar.gz"
-url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/545047604"
+checksum = "sha256:55007246858165496ff85ba1c2b648f7421e8e2013bf4189a680c9ff8e699d17"
+url = "https://github.com/anomalyco/opencode/releases/download/v1.18.30/opencode-linux-x64.tar.gz"
+url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/551875364"
 
 [tools.opencode."platforms.linux-x64-baseline"]
-checksum = "sha256:ea800b7ff56226b70952126c9fc1e2517ca4c4b5682fd9d3f9e87449697a1194"
-url = "https://github.com/anomalyco/opencode/releases/download/v1.18.29/opencode-linux-x64.tar.gz"
-url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/545047604"
+checksum = "sha256:55007246858165496ff85ba1c2b648f7421e8e2013bf4189a680c9ff8e699d17"
+url = "https://github.com/anomalyco/opencode/releases/download/v1.18.30/opencode-linux-x64.tar.gz"
+url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/551875364"
 
 [tools.opencode."platforms.linux-x64-musl"]
-checksum = "sha256:294bfa0f4647e0fc5d3edceed94e8dc1047757975689f4269aadb91d6774f9ed"
-url = "https://github.com/anomalyco/opencode/releases/download/v1.18.29/opencode-linux-x64-musl.tar.gz"
-url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/545047608"
+checksum = "sha256:a4eb84374d4f262ac46fe8b25c9e193a54a6f40f44bbe155a29c9c6309a34a5e"
+url = "https://github.com/anomalyco/opencode/releases/download/v1.18.30/opencode-linux-x64-musl.tar.gz"
+url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/551875359"
 
 [tools.opencode."platforms.linux-x64-musl-baseline"]
-checksum = "sha256:294bfa0f4647e0fc5d3edceed94e8dc1047757975689f4269aadb91d6774f9ed"
-url = "https://github.com/anomalyco/opencode/releases/download/v1.18.29/opencode-linux-x64-musl.tar.gz"
-url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/545047608"
+checksum = "sha256:a4eb84374d4f262ac46fe8b25c9e193a54a6f40f44bbe155a29c9c6309a34a5e"
+url = "https://github.com/anomalyco/opencode/releases/download/v1.18.30/opencode-linux-x64-musl.tar.gz"
+url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/551875359"
 
 [tools.opencode."platforms.macos-arm64"]
-checksum = "sha256:fe764f7f360c584a83e18dd5f23fb1a6b2725f5ee8854b0252fe558f7798e946"
-url = "https://github.com/anomalyco/opencode/releases/download/v1.18.29/opencode-darwin-arm64.zip"
-url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/545047483"
+checksum = "sha256:a5e43d6887386efc7d68ce49ae28e3bbdfdee3dfd1d7169b612c3ce67e53b1e8"
+url = "https://github.com/anomalyco/opencode/releases/download/v1.18.30/opencode-darwin-arm64.zip"
+url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/551875293"
 
 [[tools.pinact]]
 version = "4.1.1"
@@ -434,49 +434,49 @@ url_api = "https://api.github.com/repos/suzuki-shunsuke/pinact/releases/assets/4
 provenance = "github-attestations"
 
 [[tools.uv]]
-version = "0.12.11"
+version = "0.12.12"
 backend = "aqua:astral-sh/uv"
 
 [tools.uv."platforms.linux-arm64"]
-checksum = "sha256:e9933d907fb9cd27d606d819bbded419f2844c0e2efc98225ecfa409288eb28d"
-url = "https://github.com/astral-sh/uv/releases/download/0.12.11/uv-aarch64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/551278504"
+checksum = "sha256:fe08db50cc1b56cd1da7801065ed1103d27ed3f9571cd122386cfc7faf1b8df5"
+url = "https://github.com/astral-sh/uv/releases/download/0.12.12/uv-aarch64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/553169214"
 provenance = "github-attestations"
 
 [tools.uv."platforms.linux-arm64-musl"]
-checksum = "sha256:de99cafdeb5ee6f61ac3acd6d9dc6a1ef166f9398fa5623c436246ee1ecea099"
-url = "https://github.com/astral-sh/uv/releases/download/0.12.11/uv-aarch64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/551278510"
+checksum = "sha256:82e59fff633cbd96fb675f37c7a748c056d909a59ecf476f8ff0e5bee76b9b23"
+url = "https://github.com/astral-sh/uv/releases/download/0.12.12/uv-aarch64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/553169225"
 provenance = "github-attestations"
 
 [tools.uv."platforms.linux-x64"]
-checksum = "sha256:4ae93e0f148a18434cc094072547cec88912fc4a72b984183c7d0d0e9586cb5e"
-url = "https://github.com/astral-sh/uv/releases/download/0.12.11/uv-x86_64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/551278642"
+checksum = "sha256:ab9b309d4586403f024e100abaceb396616e178a553e2500c36087d180f09509"
+url = "https://github.com/astral-sh/uv/releases/download/0.12.12/uv-x86_64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/553169491"
 provenance = "github-attestations"
 
 [tools.uv."platforms.linux-x64-baseline"]
-checksum = "sha256:4ae93e0f148a18434cc094072547cec88912fc4a72b984183c7d0d0e9586cb5e"
-url = "https://github.com/astral-sh/uv/releases/download/0.12.11/uv-x86_64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/551278642"
+checksum = "sha256:ab9b309d4586403f024e100abaceb396616e178a553e2500c36087d180f09509"
+url = "https://github.com/astral-sh/uv/releases/download/0.12.12/uv-x86_64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/553169491"
 provenance = "github-attestations"
 
 [tools.uv."platforms.linux-x64-musl"]
-checksum = "sha256:3343303ad6b4f9537ae0abfb36f1926a90c0445ba8f23d0e0a840a66a124cffd"
-url = "https://github.com/astral-sh/uv/releases/download/0.12.11/uv-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/551278646"
+checksum = "sha256:0b0bbd7144f91d9b694e29c920fca3a060322bd134e8507e5eb92049a3e2edf0"
+url = "https://github.com/astral-sh/uv/releases/download/0.12.12/uv-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/553169515"
 provenance = "github-attestations"
 
 [tools.uv."platforms.linux-x64-musl-baseline"]
-checksum = "sha256:3343303ad6b4f9537ae0abfb36f1926a90c0445ba8f23d0e0a840a66a124cffd"
-url = "https://github.com/astral-sh/uv/releases/download/0.12.11/uv-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/551278646"
+checksum = "sha256:0b0bbd7144f91d9b694e29c920fca3a060322bd134e8507e5eb92049a3e2edf0"
+url = "https://github.com/astral-sh/uv/releases/download/0.12.12/uv-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/553169515"
 provenance = "github-attestations"
 
 [tools.uv."platforms.macos-arm64"]
-checksum = "sha256:e01b69ee15e81918d5e8fc9cf39b3db7f59c5576e5e306cd9b7aeb2c7b7321c3"
-url = "https://github.com/astral-sh/uv/releases/download/0.12.11/uv-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/551278468"
+checksum = "sha256:46740540b63fdee9a6cb2e19baf3f1f475b850c440a33e63455087a6871263f1"
+url = "https://github.com/astral-sh/uv/releases/download/0.12.12/uv-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/553169165"
 provenance = "github-attestations"
 
 [[tools.wrangler]]
