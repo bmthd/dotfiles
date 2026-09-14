@@ -37,43 +37,43 @@ version = "0.5.0"
 backend = "cargo:similarity-ts"
 
 [[tools.cloudflared]]
-version = "2026.9.0"
+version = "2026.9.1"
 backend = "aqua:cloudflare/cloudflared"
 
 [tools.cloudflared."platforms.linux-arm64"]
-checksum = "sha256:98aca3173f73248fad6180fc75dade2d186a6e54fa807e088108cb4345de8efe"
-url = "https://github.com/cloudflare/cloudflared/releases/download/2026.9.0/cloudflared-linux-arm64"
-url_api = "https://api.github.com/repos/cloudflare/cloudflared/releases/assets/553348969"
+checksum = "sha256:3d97437c71848bd8df68041e12436b484a661d95073ea1937f01a845ce88faa3"
+url = "https://github.com/cloudflare/cloudflared/releases/download/2026.9.1/cloudflared-linux-arm64"
+url_api = "https://api.github.com/repos/cloudflare/cloudflared/releases/assets/557330419"
 
 [tools.cloudflared."platforms.linux-arm64-musl"]
-checksum = "sha256:98aca3173f73248fad6180fc75dade2d186a6e54fa807e088108cb4345de8efe"
-url = "https://github.com/cloudflare/cloudflared/releases/download/2026.9.0/cloudflared-linux-arm64"
-url_api = "https://api.github.com/repos/cloudflare/cloudflared/releases/assets/553348969"
+checksum = "sha256:3d97437c71848bd8df68041e12436b484a661d95073ea1937f01a845ce88faa3"
+url = "https://github.com/cloudflare/cloudflared/releases/download/2026.9.1/cloudflared-linux-arm64"
+url_api = "https://api.github.com/repos/cloudflare/cloudflared/releases/assets/557330419"
 
 [tools.cloudflared."platforms.linux-x64"]
-checksum = "sha256:53b7a7a5420d188758d24341294acb0d1bca54296548ac05e38811a694ac6134"
-url = "https://github.com/cloudflare/cloudflared/releases/download/2026.9.0/cloudflared-linux-amd64"
-url_api = "https://api.github.com/repos/cloudflare/cloudflared/releases/assets/553348584"
+checksum = "sha256:03f1f25d1cc93b9ad6c60569d44060bc4f17ed97075760ed8cfca4b12dcd68cc"
+url = "https://github.com/cloudflare/cloudflared/releases/download/2026.9.1/cloudflared-linux-amd64"
+url_api = "https://api.github.com/repos/cloudflare/cloudflared/releases/assets/557330171"
 
 [tools.cloudflared."platforms.linux-x64-baseline"]
-checksum = "sha256:53b7a7a5420d188758d24341294acb0d1bca54296548ac05e38811a694ac6134"
-url = "https://github.com/cloudflare/cloudflared/releases/download/2026.9.0/cloudflared-linux-amd64"
-url_api = "https://api.github.com/repos/cloudflare/cloudflared/releases/assets/553348584"
+checksum = "sha256:03f1f25d1cc93b9ad6c60569d44060bc4f17ed97075760ed8cfca4b12dcd68cc"
+url = "https://github.com/cloudflare/cloudflared/releases/download/2026.9.1/cloudflared-linux-amd64"
+url_api = "https://api.github.com/repos/cloudflare/cloudflared/releases/assets/557330171"
 
 [tools.cloudflared."platforms.linux-x64-musl"]
-checksum = "sha256:53b7a7a5420d188758d24341294acb0d1bca54296548ac05e38811a694ac6134"
-url = "https://github.com/cloudflare/cloudflared/releases/download/2026.9.0/cloudflared-linux-amd64"
-url_api = "https://api.github.com/repos/cloudflare/cloudflared/releases/assets/553348584"
+checksum = "sha256:03f1f25d1cc93b9ad6c60569d44060bc4f17ed97075760ed8cfca4b12dcd68cc"
+url = "https://github.com/cloudflare/cloudflared/releases/download/2026.9.1/cloudflared-linux-amd64"
+url_api = "https://api.github.com/repos/cloudflare/cloudflared/releases/assets/557330171"
 
 [tools.cloudflared."platforms.linux-x64-musl-baseline"]
-checksum = "sha256:53b7a7a5420d188758d24341294acb0d1bca54296548ac05e38811a694ac6134"
-url = "https://github.com/cloudflare/cloudflared/releases/download/2026.9.0/cloudflared-linux-amd64"
-url_api = "https://api.github.com/repos/cloudflare/cloudflared/releases/assets/553348584"
+checksum = "sha256:03f1f25d1cc93b9ad6c60569d44060bc4f17ed97075760ed8cfca4b12dcd68cc"
+url = "https://github.com/cloudflare/cloudflared/releases/download/2026.9.1/cloudflared-linux-amd64"
+url_api = "https://api.github.com/repos/cloudflare/cloudflared/releases/assets/557330171"
 
 [tools.cloudflared."platforms.macos-arm64"]
-checksum = "sha256:c0eccb3758420d1f4e46cbf2b8ecde01d9802a154232a817f25133340009fcc7"
-url = "https://github.com/cloudflare/cloudflared/releases/download/2026.9.0/cloudflared-darwin-arm64.tgz"
-url_api = "https://api.github.com/repos/cloudflare/cloudflared/releases/assets/553347590"
+checksum = "sha256:c27ab8fd0aa489449e3d201eb02f957ef460a13b613662928b1b23394bf1bcfe"
+url = "https://github.com/cloudflare/cloudflared/releases/download/2026.9.1/cloudflared-darwin-arm64.tgz"
+url_api = "https://api.github.com/repos/cloudflare/cloudflared/releases/assets/557329375"
 
 [[tools.ghq]]
 version = "1.10.1"
@@ -161,43 +161,43 @@ url_api = "https://api.github.com/repos/cli/cli/releases/assets/542974295"
 provenance = "github-attestations"
 
 [[tools."github:rtk-ai/rtk"]]
-version = "0.48.0"
+version = "0.49.0"
 backend = "github:rtk-ai/rtk"
 
 [tools."github:rtk-ai/rtk"."platforms.linux-arm64"]
-checksum = "sha256:5ed65486a96077bd6bba7c87fdc9d0e4a1918d19619be3c87380888389a30c7c"
-url = "https://github.com/rtk-ai/rtk/releases/download/v0.48.0/rtk-aarch64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/544473446"
+checksum = "sha256:c8ea4b6560841e73157c134fd4a3293914c6ede42e786ee985cf491fde691ba7"
+url = "https://github.com/rtk-ai/rtk/releases/download/v0.49.0/rtk-aarch64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/556881345"
 
 [tools."github:rtk-ai/rtk"."platforms.linux-arm64-musl"]
-checksum = "sha256:5ed65486a96077bd6bba7c87fdc9d0e4a1918d19619be3c87380888389a30c7c"
-url = "https://github.com/rtk-ai/rtk/releases/download/v0.48.0/rtk-aarch64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/544473446"
+checksum = "sha256:c8ea4b6560841e73157c134fd4a3293914c6ede42e786ee985cf491fde691ba7"
+url = "https://github.com/rtk-ai/rtk/releases/download/v0.49.0/rtk-aarch64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/556881345"
 
 [tools."github:rtk-ai/rtk"."platforms.linux-x64"]
-checksum = "sha256:e4e650fa1677c0de2f6839a6040d7b17f312d32f163c402b75af70e9e5af1a91"
-url = "https://github.com/rtk-ai/rtk/releases/download/v0.48.0/rtk-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/544473450"
+checksum = "sha256:7278231dfd7e6a730a4ab7f847b195bcf02289c2d57622b0dab75a6411100c8f"
+url = "https://github.com/rtk-ai/rtk/releases/download/v0.49.0/rtk-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/556881350"
 
 [tools."github:rtk-ai/rtk"."platforms.linux-x64-baseline"]
-checksum = "sha256:e4e650fa1677c0de2f6839a6040d7b17f312d32f163c402b75af70e9e5af1a91"
-url = "https://github.com/rtk-ai/rtk/releases/download/v0.48.0/rtk-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/544473450"
+checksum = "sha256:7278231dfd7e6a730a4ab7f847b195bcf02289c2d57622b0dab75a6411100c8f"
+url = "https://github.com/rtk-ai/rtk/releases/download/v0.49.0/rtk-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/556881350"
 
 [tools."github:rtk-ai/rtk"."platforms.linux-x64-musl"]
-checksum = "sha256:e4e650fa1677c0de2f6839a6040d7b17f312d32f163c402b75af70e9e5af1a91"
-url = "https://github.com/rtk-ai/rtk/releases/download/v0.48.0/rtk-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/544473450"
+checksum = "sha256:7278231dfd7e6a730a4ab7f847b195bcf02289c2d57622b0dab75a6411100c8f"
+url = "https://github.com/rtk-ai/rtk/releases/download/v0.49.0/rtk-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/556881350"
 
 [tools."github:rtk-ai/rtk"."platforms.linux-x64-musl-baseline"]
-checksum = "sha256:e4e650fa1677c0de2f6839a6040d7b17f312d32f163c402b75af70e9e5af1a91"
-url = "https://github.com/rtk-ai/rtk/releases/download/v0.48.0/rtk-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/544473450"
+checksum = "sha256:7278231dfd7e6a730a4ab7f847b195bcf02289c2d57622b0dab75a6411100c8f"
+url = "https://github.com/rtk-ai/rtk/releases/download/v0.49.0/rtk-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/556881350"
 
 [tools."github:rtk-ai/rtk"."platforms.macos-arm64"]
-checksum = "sha256:4fa025cc93a744b6963f4e53a008e5ba3f74b6a38061f4a47c639e1c3023e0db"
-url = "https://github.com/rtk-ai/rtk/releases/download/v0.48.0/rtk-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/544473444"
+checksum = "sha256:bbbfebabb22686993a80da731aa4d5d35116fb8ae24abb00608efa028e13ae01"
+url = "https://github.com/rtk-ai/rtk/releases/download/v0.49.0/rtk-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/556881349"
 
 [[tools.hunk]]
 version = "0.22.0"
@@ -480,7 +480,7 @@ url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/555670160"
 provenance = "github-attestations"
 
 [[tools.wrangler]]
-version = "4.131.0"
+version = "4.131.1"
 backend = "npm:wrangler"
 
 [tools.wrangler.options]
