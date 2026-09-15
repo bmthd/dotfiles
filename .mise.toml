@@ -63,7 +63,16 @@ github-cli = { version = "latest", postinstall = "gh extension install github/gh
 # playwright-cli is deprecated; use @playwright/cli. Note that the version
 # series restarted with the rename, so the current 0.1.x is newer than the
 # 0.262.0 that the old playwright-cli package left behind on some machines.
-"npm:@playwright/cli" = { version = "latest", depends = ["node"], postinstall = "npx skills add microsoft/playwright-cli -y -g -a claude-code -a opencode -a cursor -a codex -a gemini-cli" }
+#
+# `trust_policy_excludes`: 0.1.19 publishes without provenance, which the
+# no-downgrade trust policy reads as a downgrade and refuses to install. It is a
+# publishing change rather than a sign of tampering — the release moved to
+# Microsoft's 1ES pipeline, so the publisher is `microsoft1es` and the source
+# repository is still `microsoft/playwright-cli`. The exclusion names that one
+# version rather than relaxing the policy for the package, so a later release
+# that is genuinely unsigned still fails. Drop it once a version with provenance
+# ships and the lockfile has moved past 0.1.19.
+"npm:@playwright/cli" = { version = "latest", depends = ["node"], trust_policy_excludes = ["@playwright/cli@0.1.19"], postinstall = "npx skills add microsoft/playwright-cli -y -g -a claude-code -a opencode -a cursor -a codex -a gemini-cli" }
 "npm:difit" = { version = "latest", depends = ["node"], postinstall = "npx skills add yoshiko-pg/difit -y -g -a claude-code -a opencode -a cursor -a codex -a gemini-cli" }
 # rtk init writes into each agent's config dir and fails outright if the dir is
 # missing, so create all three up front. On a fresh machine (and in CI) nothing

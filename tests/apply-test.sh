@@ -173,19 +173,35 @@ cat > "$fake_mise" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 
-printf 'HOME=%s XDG=%s CONFIG=%s ARGS=%s\n' \
-  "$HOME" "${XDG_CONFIG_HOME:-<none>}" "${MISE_GLOBAL_CONFIG_FILE:-<none>}" "$*" >> "$MISE_LOG"
+printf 'HOME=%s XDG=%s PWD=%s CONFIG=%s ARGS=%s\n' \
+  "$HOME" "${XDG_CONFIG_HOME:-<none>}" "$PWD" "${MISE_GLOBAL_CONFIG_FILE:-<none>}" "$*" >> "$MISE_LOG"
 config="${MISE_GLOBAL_CONFIG_FILE:-${MISE_EFFECTIVE_CONFIG:-}}"
 [ -n "$config" ] && [ -f "$config" ]
 if grep -q 'invalid-toml' "$config"; then
   exit 2
+fi
+# A real mise merges the config files of the current directory and its parents
+# on top of the global config. This double does not implement that; it refuses
+# to run where such a file would be picked up instead, so a working directory
+# the script failed to pin surfaces here as the failure it causes on a machine
+# whose config.toml the checkout's .mise.toml would have overridden.
+if [ "${MISE_REJECT_LOCAL_CONFIG:-}" = true ] && [ -f "$PWD/.mise.toml" ]; then
+  exit 45
 fi
 if [ "${MISE_FAIL_POST_VALIDATE:-}" = true ] && [ "$*" = 'tasks ls' ] \
   && [ -z "${MISE_GLOBAL_CONFIG_FILE:-}" ]; then
   exit 33
 fi
 if [ "${MISE_SIGNAL_AT:-}" = "$*" ]; then
-  kill -TERM "$PPID"
+  # The script under test, whose PID the caller wrote to this file — not
+  # $PPID. apply.sh runs mise from a subshell, so its own parent is not the
+  # process holding the transaction and its signal handlers, and an interrupt
+  # that only reached the subshell would be an ordinary command failure rather
+  # than the interrupt this is emulating. A terminal's Ctrl-C reaches the
+  # script itself, which is what this does.
+  signal_target="$(cat "$MISE_SIGNAL_PID_FILE")"
+  [ -n "$signal_target" ]
+  kill -TERM "$signal_target"
 fi
 if [ "${MISE_FAIL_AT:-}" = "$*" ]; then
   exit 42
@@ -398,15 +414,32 @@ printf '%s' "$post_validation_result" | jq -e \
 
 # This fails if an interrupt during a long-running setup task bypasses the
 # transaction cleanup and leaves managed files applied with the old revision.
+#
+# Started in the background rather than captured through a command substitution
+# so that the PID the signal must reach is known: the double signals the script
+# itself, the way a terminal's Ctrl-C does, instead of whatever process happens
+# to have spawned mise.
 setup_transaction_fixture
 rm "$transaction_home/.config/dotfiles/update-notice.sh"
 before_interrupt="$(snapshot_transaction_targets)"
-if interrupt_result="$(DOTFILES_APPLY_MISE_BIN="$fake_mise" MISE_LOG="$mise_log" MISE_EFFECTIVE_CONFIG="$transaction_mise_config" MISE_SIGNAL_AT='install' \
-  bash "$script" apply --home "$transaction_home" --repo "$transaction_repo" --remote-ref HEAD \
-  --mise-config "$transaction_mise_config" --mise-lock "$transaction_mise_lock" --json 2>"$transaction_dir/interrupt.err")"; then
+interrupt_pid_file="$transaction_dir/interrupt.pid"
+interrupt_output="$transaction_dir/interrupt.json"
+rm -f "$interrupt_pid_file"
+# The PID is written by the shell that then `exec`s the script, so it is on disk
+# before apply can reach the call the double signals at — writing it from here
+# would be a race against a fast apply.
+DOTFILES_APPLY_MISE_BIN="$fake_mise" MISE_LOG="$mise_log" MISE_EFFECTIVE_CONFIG="$transaction_mise_config" \
+  MISE_SIGNAL_AT='install' MISE_SIGNAL_PID_FILE="$interrupt_pid_file" \
+  bash -c 'printf "%s\n" "$$" > "$1"; shift; exec bash "$@"' _ "$interrupt_pid_file" \
+  "$script" apply --home "$transaction_home" --repo "$transaction_repo" --remote-ref HEAD \
+  --mise-config "$transaction_mise_config" --mise-lock "$transaction_mise_lock" --json \
+  >"$interrupt_output" 2>"$transaction_dir/interrupt.err" &
+interrupt_apply_pid=$!
+if wait "$interrupt_apply_pid"; then
   echo 'apply accepted an interrupt during mise install' >&2
   exit 1
 fi
+interrupt_result="$(<"$interrupt_output")"
 printf '%s' "$interrupt_result" | jq -e \
   '.result == "rolled-back" and (.error | contains("interrupted"))' >/dev/null
 [ "$(snapshot_transaction_targets)" = "$before_interrupt" ] || {
@@ -562,6 +595,43 @@ expected_staged_mise_args=$'tasks ls\nls'
 expected_post_mise_args=$'tasks ls\nls\nrun --skip-tools setup:scripts\nrun --skip-tools setup:oci-plugin\ninstall\nrun setup:skills\nrun --skip-deps setup:codex\nrun --skip-deps setup:claude-plugins\nrun --skip-deps setup:shell'
 [ "$(grep -F 'CONFIG=<none> ' "$mise_log" | sed 's/^.* ARGS=//')" = "$expected_post_mise_args" ] || {
   printf 'post-apply mise calls did not resolve the real global config:\n%s\n' "$(<"$mise_log")" >&2
+  exit 1
+}
+
+# --- the working directory mise runs in --------------------------------------
+# mise merges the config files of the current directory and its parents on top
+# of the global config, so a cwd that is not pinned is a config source that is
+# not pinned either. The one that matters is the checkout: `apply` is documented
+# to be run from inside it, and the repository's own .mise.toml — the file this
+# script installs *as* the global conf.d fragment — then applies as a *local*
+# config, which outranks ~/.config/mise/config.toml. A machine whose config.toml
+# carries a local pin or a trust-policy exclusion loses it that way, and `mise
+# install` fails on a policy the machine had already settled; the same run from
+# $HOME with --repo pointing at the checkout succeeds.
+#
+# This fails if any mise invocation inherits the caller's working directory: the
+# double refuses to run anywhere a local config would be picked up, so the apply
+# rolls back exactly as it does on such a machine.
+setup_transaction_fixture
+[ -f "$transaction_repo/.mise.toml" ] || {
+  echo 'fixture checkout has no .mise.toml to be shadowed by' >&2
+  exit 1
+}
+if ! cwd_result="$(cd "$transaction_repo" && DOTFILES_APPLY_MISE_BIN="$fake_mise" MISE_LOG="$mise_log" \
+  MISE_EFFECTIVE_CONFIG="$transaction_mise_config" MISE_REJECT_LOCAL_CONFIG=true \
+  bash "$script" apply --home "$transaction_home" --repo "$transaction_repo" --remote-ref HEAD \
+  --mise-config "$transaction_mise_config" --mise-lock "$transaction_mise_lock" --json \
+  2>"$transaction_dir/cwd.err")"; then
+  printf 'apply run from inside the checkout failed:\n%s\n%s\n' \
+    "$(<"$transaction_dir/cwd.err")" "$cwd_result" >&2
+fi
+printf '%s' "$cwd_result" | jq -e '.result == "applied"' >/dev/null || {
+  printf 'apply run from inside the checkout did not keep mise clear of its local config:\n%s\n%s\n' \
+    "$cwd_result" "$(<"$mise_log")" >&2
+  exit 1
+}
+grep -vF "PWD=$transaction_home " "$mise_log" >/dev/null && {
+  printf 'mise inherited a working directory other than --home:\n%s\n' "$(<"$mise_log")" >&2
   exit 1
 }
 
