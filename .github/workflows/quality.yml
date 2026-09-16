@@ -43,7 +43,7 @@ jobs:
       - name: Test the setup task facade
         run: bash tests/setup-facade-test.sh
       - name: Verify immutable GitHub Actions references
-        run: mise x pinact -- pinact run -check -verify-comment
+        run: mise x pinact -- pinact run --check --verify-comment
         env:
           GITHUB_TOKEN: ${{ github.token }}
 

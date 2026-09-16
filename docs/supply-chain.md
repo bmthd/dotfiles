@@ -96,7 +96,7 @@ Every `uses:` reference under [`.github/workflows`](../.github/workflows) is pin
 The release tag remains in an end-of-line comment, so a review still shows the recognizable version without trusting that mutable tag at run time.
 
 `pinact` performs both enforcement paths.
-CI runs `pinact run -check -verify-comment`, which rejects an unpinned reference and a SHA whose version comment no longer matches.
+CI runs `pinact run --check --verify-comment`, which rejects an unpinned reference and a SHA whose version comment no longer matches.
 The global pre-commit dispatcher runs pinact first for staged workflow files, then forwards to the repository's own pre-commit hook as before.
 It pins a temporary copy of the index and writes the resulting blobs back to the index, so unrelated unstaged edits and partial staging do not leak into the commit.
 When the same fix applies cleanly to the working tree, the hook mirrors it there; a conflicting unstaged edit is left untouched.

@@ -175,6 +175,7 @@ for name in declared:
 # TOML and ignored by mise, so postinstall/depends would just never run.
 tool_options = {
     "version", "postinstall", "depends", "os", "install_env", "tools", "backend",
+    "trust_policy_excludes",
 }
 for name, value in config["tools"].items():
     if not isinstance(value, dict):
