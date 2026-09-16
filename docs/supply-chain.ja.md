@@ -103,7 +103,7 @@ checksum しかない tool や、明示した version-only の例外に provenan
 行末には release tag をコメントとして残すため、実行時に可変な tag を信頼せず、レビューでは元のバージョンを読めます。
 
 二つの経路で `pinact` がこの状態を維持します。
-CI の `pinact run -check -verify-comment` は、未固定の参照に加えて、SHA とバージョンコメントの不整合も拒否します。
+CI の `pinact run --check --verify-comment` は、未固定の参照に加えて、SHA とバージョンコメントの不整合も拒否します。
 global pre-commit dispatcher は staged workflow に pinact を実行してから、従来どおり repository 固有の pre-commit hook へ処理を渡します。
 pinact は index の一時コピーを修正し、生成した blob だけを index に戻すため、未 stage の編集や部分 stage の内容が commit に混ざりません。
 同じ修正を working tree へ安全に適用できる場合は反映し、競合する未 stage 編集は変更せずに残します。
