@@ -421,14 +421,43 @@ done
 
 mise_bin="${DOTFILES_APPLY_MISE_BIN:-mise}"
 
+# Every mise invocation in this script goes through one of the two wrappers
+# below, so that all of them run under the same conditions rather than under
+# whichever ones the caller happened to have.
+#
 # Run mise the way this machine runs it: the global config is config.toml plus
 # every fragment in conf.d/, with the lockfile beside them in the config
 # directory. XDG_CONFIG_HOME is pinned alongside HOME because mise resolves that
 # directory from XDG_CONFIG_HOME, and every path this script manages is under
 # $home/.config — without it a machine with XDG_CONFIG_HOME set elsewhere would
 # have its files updated here and its tools installed from a config over there.
+#
+# The working directory is pinned for the same reason, and it is the one that
+# bites in normal use: mise merges the config files of the current directory and
+# its parents on top of the global config, and `apply` is documented to be run
+# from inside the dotfiles checkout. The checkout's own .mise.toml — the very
+# file this script installs *as* a global fragment — then comes back as a
+# *local* config, which outranks config.toml, so a machine-local pin or
+# exclusion in ~/.config/mise/config.toml is silently overridden and `mise
+# install` fails on a policy that machine had already settled. "How this machine
+# runs mise" never includes a checkout's local config, so run from $home, where
+# only the global config applies. A subshell rather than `mise --cd` so the
+# directory holds for anything mise itself spawns, and for any mise old enough
+# not to have the flag.
+#
+# The two wrappers differ only in where mise's own stdout goes, and each carries
+# its redirection *inside* the subshell rather than on the call. A redirection
+# written on a function call stays in effect for the whole function body, which
+# includes the moment bash runs a pending signal trap: an interrupt during
+# `mise install` then emits this script's JSON result down the redirection,
+# onto stderr, and the caller reads an empty stdout.
 run_mise() {
-  HOME="$home" XDG_CONFIG_HOME="$home/.config" "$mise_bin" "$@" >&2
+  (cd "$home" && HOME="$home" XDG_CONFIG_HOME="$home/.config" "$mise_bin" "$@" >&2)
+}
+
+# For the checks below, whose only product is an exit status.
+check_mise() {
+  (cd "$home" && HOME="$home" XDG_CONFIG_HOME="$home/.config" "$mise_bin" "$@" >/dev/null)
 }
 
 # Parse-check one staged fragment on its own, before anything is written.
@@ -437,16 +466,22 @@ run_mise() {
 # installs may use it: it also moves the lockfile mise looks for next to the
 # named file, so pointing it at conf.d/10-dotfiles.toml would send mise looking
 # for conf.d/mise.lock.
+#
+# Exported inside a subshell rather than written as a `VAR=value check_mise`
+# prefix: bash does not agree with itself across versions on whether such an
+# assignment survives a *function* call, and one that leaked would pin every
+# later call — `mise install` included — to this single file.
 validate_staged_mise_config() {
-  HOME="$home" XDG_CONFIG_HOME="$home/.config" MISE_GLOBAL_CONFIG_FILE="$1" "$mise_bin" tasks ls >/dev/null &&
-    HOME="$home" XDG_CONFIG_HOME="$home/.config" MISE_GLOBAL_CONFIG_FILE="$1" "$mise_bin" ls >/dev/null
+  (
+    export MISE_GLOBAL_CONFIG_FILE="$1"
+    check_mise tasks ls && check_mise ls
+  )
 }
 
 # The same two commands against the machine's real global config, once the
 # staged files are in place.
 validate_applied_mise_config() {
-  HOME="$home" XDG_CONFIG_HOME="$home/.config" "$mise_bin" tasks ls >/dev/null &&
-    HOME="$home" XDG_CONFIG_HOME="$home/.config" "$mise_bin" ls >/dev/null
+  check_mise tasks ls && check_mise ls
 }
 
 validate_files() {
