@@ -37,6 +37,7 @@ The top-level fields are:
 - `baseRevision` and `remoteRevision`: revisions used for this inventory.
 - `files`: entries with `repositoryPath`, `localPath`, and `state`.
 - `legacyMiseConfig`: `path` and `state` for `~/.config/mise/config.toml`, the pre-`conf.d` location of this repository's mise config.
+- `skillsTask`: `run` or `skip` — whether `apply` will run `setup:skills`, the slow step that re-clones every skill source. It is `skip` only when the update touches neither `.dotfiles/setup/skills.sh` nor `.agents/skills/` and `bmthd/skills` is provably still at the revision this machine recorded; anything unprovable is `run`. It needs no decision; state it in the summary so the user knows how long the apply will take.
 
 A `fetch` other than `ok` means the inventory describes whatever this checkout last
 fetched, not the current remote.
@@ -85,6 +86,6 @@ Read the result JSON:
 
 ## 5. Report
 
-Report the script result, the applied revision when available, the backup path, every local decision and its reason, and any unresolved user question or failure.
+Report the script result, the applied revision when available, the backup path, whether `setup:skills` ran (`skillsTask`), every local decision and its reason, and any unresolved user question or failure.
 
 This procedure is complete only when the final report reflects the JSON returned by the last command and states no successful apply unless `result` is `applied`.

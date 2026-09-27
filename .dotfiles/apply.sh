@@ -280,6 +280,31 @@ else
   mode='no-base'
 fi
 
+# Whether this apply has to run setup:skills. That task is the slow part of an
+# apply — every source is a fresh clone through `npx skills add`, which has no
+# "already installed" check — and for most updates (a lockfile bump, a settings
+# change) it would reinstall exactly what is already there.
+#
+# It still runs whenever it could change anything: the repository changed which
+# skills it installs or how (setup/skills.sh, or its own skill under
+# .agents/skills/), or bmthd/skills has moved past the revision this machine
+# recorded. The latter matters because the update notice sends a machine on
+# which both repositories moved here alone, promising one pass covers both.
+# Third-party sources are deliberately not a reason: setup/skills.sh treats
+# refreshing them as a change to review, not one to run unattended.
+#
+# The notice script is read from this script's directory, like mise-layout.sh,
+# so the query comes from the checkout being run. Anything it cannot prove —
+# offline, no recorded revision — counts as "run".
+skills_task='run'
+skills_notice="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/update-notice.sh"
+if [ "$has_base" = true ] &&
+  git -C "$repo" diff --quiet "$base_revision" "$remote_revision" -- \
+    .dotfiles/setup/skills.sh .agents/skills &&
+  DOTFILES_CONFIG_DIR="$home/.config/dotfiles" bash "$skills_notice" is-current skills; then
+  skills_task='skip'
+fi
+
 emit_inventory() {
 if "$json"; then
   jq -n \
@@ -290,10 +315,12 @@ if "$json"; then
     --arg remote_revision "$remote_revision" \
     --arg legacy_path "$legacy_mise_config" \
     --arg legacy_state "$legacy_state" \
+    --arg skills_task "$skills_task" \
     --argjson files "$files" \
     '{mode: $mode, fetch: $fetch, fetchError: $fetch_error, baseRevision: $base_revision,
       remoteRevision: $remote_revision, files: $files,
-      legacyMiseConfig: {path: $legacy_path, state: $legacy_state}}'
+      legacyMiseConfig: {path: $legacy_path, state: $legacy_state},
+      skillsTask: $skills_task}'
 else
   printf 'mode: %s\nfetch: %s\nbase revision: %s\nremote revision: %s\n' \
     "$mode" "$fetch_state" "${base_revision:-<none>}" "$remote_revision"
@@ -302,6 +329,7 @@ else
   fi
   jq -r '.[] | "\(.state): \(.repositoryPath) -> \(.localPath)"' <<<"$files"
   printf 'legacy mise config: %s (%s)\n' "$legacy_mise_config" "$legacy_state"
+  printf 'setup:skills: %s\n' "$skills_task"
 fi
 }
 
@@ -322,11 +350,13 @@ emit_apply_result() {
       --arg error "$error" \
       --arg legacy_path "$legacy_mise_config" \
       --arg legacy_state "$legacy_state" \
+      --arg skills_task "$skills_task" \
       --argjson files "$files" \
       '{mode: $mode, fetch: $fetch, fetchError: $fetch_error, baseRevision: $base_revision,
         remoteRevision: $remote_revision, files: $files, result: $result,
         backupPath: $backup_path, error: $error,
-        legacyMiseConfig: {path: $legacy_path, state: $legacy_state}}'
+        legacyMiseConfig: {path: $legacy_path, state: $legacy_state},
+        skillsTask: $skills_task}'
   else
     printf 'result: %s\nbackup: %s\n' "$result" "${backup_path:-<none>}"
     if [ -n "$error" ]; then
@@ -687,8 +717,15 @@ fi
 if ! run_mise install; then
   rollback_with_error 'mise install failed; external side effects may remain'
 fi
-if ! run_mise run setup:skills; then
-  rollback_with_error 'mise run setup:skills failed; external side effects may remain'
+# setup:npm-registry reaches this machine only as a dependency of setup:skills,
+# so a skipped setup:skills runs it on its own: a change to the registry
+# configuration must not wait for the next change to the skills.
+if [ "$skills_task" = run ]; then
+  if ! run_mise run setup:skills; then
+    rollback_with_error 'mise run setup:skills failed; external side effects may remain'
+  fi
+elif ! run_mise run --skip-deps setup:npm-registry; then
+  rollback_with_error 'mise run --skip-deps setup:npm-registry failed; external side effects may remain'
 fi
 if ! run_mise run --skip-deps setup:codex; then
   rollback_with_error 'mise run --skip-deps setup:codex failed; external side effects may remain'

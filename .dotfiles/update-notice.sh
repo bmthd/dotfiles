@@ -107,6 +107,26 @@ EOF
     return 0
 }
 
+# Succeed only when the named watched repository is provably still at the
+# revision this machine recorded: the file exists and the remote head matches it.
+# Everything else — no record, no network, an API error — fails, because the
+# caller uses success to skip reinstalling, and skipping on a guess would leave a
+# machine behind without anything telling it so.
+dotfiles_update_notice_is_current() {
+    local want="$1" name slug revision_file policy installed remote
+
+    while IFS='|' read -r name slug revision_file policy; do
+        [ "$name" = "$want" ] || continue
+        installed="$(cat "$revision_file" 2>/dev/null)" || return 1
+        remote="$(dotfiles_update_notice_remote_revision "$slug")" || return 1
+        [ -n "$installed" ] && [ "$installed" = "$remote" ]
+        return
+    done <<EOF
+$(dotfiles_update_notice_watchlist)
+EOF
+    return 1
+}
+
 # List the commit subjects between the installed revision and the remote head,
 # newest first. main only ever gains squash merges, so one subject is one PR and
 # the subject line alone says what changed.
@@ -228,6 +248,10 @@ case "${1:-}" in
         ;;
     record)
         dotfiles_update_notice_record "${2:-}"
+        exit $?
+        ;;
+    is-current)
+        dotfiles_update_notice_is_current "${2:-}"
         exit $?
         ;;
 esac
