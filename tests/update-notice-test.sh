@@ -154,6 +154,32 @@ DOTFILES_TEST_REV_SKILLS="<html>rate limited</html>" bash "$notice" record skill
 printf '%s\n' "$DOTFILES_TEST_REV_SKILLS" > "$skills_revision_file"
 printf '%s\n' "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" > "$config_dir/revision"
 
+# `is-current <name>` succeeds only when the recorded revision provably matches
+# the remote head; apply.sh skips reinstalling the skills on that alone, so every
+# case it cannot prove has to fail.
+bash "$notice" is-current skills || {
+  echo "is-current failed although the recorded revision is the remote head" >&2
+  exit 1
+}
+if DOTFILES_TEST_REV_SKILLS="9999999999999999999999999999999999999999" bash "$notice" is-current skills; then
+  echo "is-current succeeded although bmthd/skills had moved" >&2
+  exit 1
+fi
+if DOTFILES_CURL_BIN=false bash "$notice" is-current skills; then
+  echo "is-current succeeded without reaching the remote" >&2
+  exit 1
+fi
+mv "$skills_revision_file" "$skills_revision_file.bak"
+if bash "$notice" is-current skills; then
+  echo "is-current succeeded with no recorded revision" >&2
+  exit 1
+fi
+mv "$skills_revision_file.bak" "$skills_revision_file"
+if bash "$notice" is-current nosuchrepo; then
+  echo "is-current succeeded for a repository that is not watched" >&2
+  exit 1
+fi
+
 # A name that is not on the watch list is a typo, not a silent no-op.
 if bash "$notice" record nosuchrepo 2>/dev/null; then
   echo "record accepted an unknown repository" >&2

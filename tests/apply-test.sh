@@ -7,6 +7,22 @@ merge_settings="$(dirname "$script")/merge-settings.jq"
 test_dir="$(mktemp -d)"
 trap 'rm -rf "$test_dir"' EXIT
 
+# apply.sh asks update-notice.sh whether bmthd/skills has moved, which is a
+# GitHub API call. This double answers it without a network: it prints
+# DOTFILES_TEST_SKILLS_HEAD as the head of main, and with that unset it fails
+# the way curl does offline — which apply must read as "cannot prove the skills
+# are current", so every test that does not set it expects setup:skills to run.
+export DOTFILES_CURL_BIN="$test_dir/curl"
+cat > "$DOTFILES_CURL_BIN" <<'EOF'
+#!/usr/bin/env bash
+[ -n "${DOTFILES_TEST_SKILLS_HEAD:-}" ] || exit 6
+case "$*" in
+  *bmthd/skills/commits/main*) printf '%s\n' "$DOTFILES_TEST_SKILLS_HEAD" ;;
+  *) exit 22 ;;
+esac
+EOF
+chmod +x "$DOTFILES_CURL_BIN"
+
 repo="$test_dir/repo"
 home="$test_dir/home"
 mise_config="$home/custom/mise.toml"
@@ -597,6 +613,78 @@ expected_post_mise_args=$'tasks ls\nls\nrun --skip-tools setup:scripts\nrun --sk
   printf 'post-apply mise calls did not resolve the real global config:\n%s\n' "$(<"$mise_log")" >&2
   exit 1
 }
+
+# --- skipping setup:skills --------------------------------------------------
+# setup:skills re-clones every skill source, so an apply that cannot change the
+# installed skills must not run it. It is skipped only when both are provable:
+# the update does not touch the skill declarations, and bmthd/skills is still at
+# the revision this machine recorded. Each case below breaks exactly one of
+# those and fails if apply skips anyway, or — in the first — if it runs.
+skills_head='5555555555555555555555555555555555555555'
+record_skills_revision() {
+  mkdir -p "$transaction_home/.config/dotfiles/revisions"
+  printf '%s\n' "$1" > "$transaction_home/.config/dotfiles/revisions/bmthd-skills"
+}
+apply_with_skills_head() {
+  DOTFILES_TEST_SKILLS_HEAD="$1" DOTFILES_APPLY_MISE_BIN="$fake_mise" MISE_LOG="$mise_log" \
+    MISE_EFFECTIVE_CONFIG="$transaction_mise_config" \
+    bash "$script" apply --home "$transaction_home" --repo "$transaction_repo" --remote-ref HEAD \
+    --mise-config "$transaction_mise_config" --mise-lock "$transaction_mise_lock" --json
+}
+mise_tasks_run() { sed 's/^.* ARGS=//' "$mise_log"; }
+
+# Nothing skill-related changed and bmthd/skills has not moved: skipped, and
+# setup:npm-registry — which otherwise arrives only as its dependency — still runs.
+setup_transaction_fixture
+record_skills_revision "$skills_head"
+skip_result="$(apply_with_skills_head "$skills_head")"
+printf '%s' "$skip_result" | jq -e '.result == "applied" and .skillsTask == "skip"' >/dev/null || {
+  printf 'an apply that changes no skill did not skip setup:skills:\n%s\n' "$skip_result" >&2
+  exit 1
+}
+if mise_tasks_run | grep -qx 'run setup:skills'; then
+  printf 'setup:skills ran although skillsTask was skip:\n%s\n' "$(<"$mise_log")" >&2
+  exit 1
+fi
+mise_tasks_run | grep -qx 'run --skip-deps setup:npm-registry' || {
+  printf 'skipping setup:skills also dropped setup:npm-registry:\n%s\n' "$(<"$mise_log")" >&2
+  exit 1
+}
+
+# bmthd/skills moved: the update notice sends this machine to apply alone, so
+# apply has to be what brings the skills up to date.
+setup_transaction_fixture
+record_skills_revision '4444444444444444444444444444444444444444'
+apply_with_skills_head "$skills_head" | jq -e '.skillsTask == "run"' >/dev/null || {
+  echo 'apply skipped setup:skills although bmthd/skills had moved' >&2
+  exit 1
+}
+mise_tasks_run | grep -qx 'run setup:skills' || {
+  printf 'setup:skills did not run although bmthd/skills had moved:\n%s\n' "$(<"$mise_log")" >&2
+  exit 1
+}
+
+# No recorded revision: nothing to compare against, so nothing is proven.
+setup_transaction_fixture
+apply_with_skills_head "$skills_head" | jq -e '.skillsTask == "run"' >/dev/null || {
+  echo 'apply skipped setup:skills with no recorded bmthd/skills revision' >&2
+  exit 1
+}
+
+# The update changes which skills are installed, in either place that declares
+# them.
+for skill_path in .dotfiles/setup/skills.sh .agents/skills/dotfiles/SKILL.md; do
+  setup_transaction_fixture
+  record_skills_revision "$skills_head"
+  mkdir -p "$transaction_repo/$(dirname "$skill_path")"
+  printf '%s\n' 'changed' > "$transaction_repo/$skill_path"
+  git -C "$transaction_repo" add .
+  git -C "$transaction_repo" commit -qm "change $skill_path"
+  apply_with_skills_head "$skills_head" | jq -e '.skillsTask == "run"' >/dev/null || {
+    printf 'apply skipped setup:skills although the update changed %s\n' "$skill_path" >&2
+    exit 1
+  }
+done
 
 # --- the working directory mise runs in --------------------------------------
 # mise merges the config files of the current directory and its parents on top

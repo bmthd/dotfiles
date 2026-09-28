@@ -35,6 +35,7 @@ top-level の field は次のとおりである。
 - `baseRevision` と `remoteRevision`：この inventory に使った revision。
 - `files`：`repositoryPath`、`localPath`、`state` を持つ entry。
 - `legacyMiseConfig`：`~/.config/mise/config.toml`（conf.d 移行前の配置先）の `path` と `state`。
+- `skillsTask`：`run` または `skip`。`apply` が `setup:skills`（すべてのスキル取得元を clone し直す、時間のかかる手順）を実行するかどうか。更新が `.dotfiles/setup/skills.sh` と `.agents/skills/` のどちらにも触れず、かつ `bmthd/skills` がこの端末の記録した revision のままだと確かめられたときだけ `skip` になり、確かめられないものはすべて `run` になる。判断は不要だが、apply にかかる時間がわかるよう要約で伝える。
 
 `fetch` が `ok` でない inventory は、現在の remote ではなく、この checkout が最後に fetch した内容を表している。
 その inventory を現在のものとして報告せず、その事実をユーザーへ伝える。古い `origin/main` に対する inventory は、error ではなく「更新は無い」に見える形で失敗する。
@@ -80,6 +81,6 @@ result JSON は次のように読む。
 
 ## 5. 報告する
 
-script result、利用可能な場合の適用 revision、backup path、すべてのローカル判断とその理由、未解決のユーザー確認事項または失敗を報告する。
+script result、利用可能な場合の適用 revision、backup path、`setup:skills` を実行したか（`skillsTask`）、すべてのローカル判断とその理由、未解決のユーザー確認事項または失敗を報告する。
 
 最後に実行した command の JSON を反映し、`result` が `applied` でない限り更新成功と書かないとき、この手順は完了する。
