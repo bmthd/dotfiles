@@ -80,6 +80,35 @@ expect_missing "hides the gauge without any usage source" \
   "{$base,\"transcript_path\":\"$test_dir/missing.jsonl\"}" \
   "%"
 
+# --- fitting to COLUMNS -----------------------------------------------------
+# render_at <columns> <payload>
+render_at() {
+  printf '%s' "$2" | COLUMNS="$1" bash "$statusline" | sed $'s/\033\\[[0-9;]*m//g'
+}
+
+expect_at() { # label columns payload needle [missing]
+  local output
+  output="$(render_at "$2" "$3")"
+  if { [ -z "${5:-}" ] && [[ "$output" == *"$4"* ]]; } \
+    || { [ -n "${5:-}" ] && [[ "$output" != *"$4"* ]]; }; then
+    echo "✓ $1"
+  else
+    echo "✗ $1: '$4' ${5:+un}expected in '$output'" >&2
+    failures=$((failures + 1))
+  fi
+}
+
+long="{\"workspace\":{\"current_dir\":\"/a/b/c/a-very-long-directory-name-that-goes-on\"},\"model\":{\"display_name\":\"Opus 5.5 (1M context)\"},\"context_window\":{\"used_percentage\":42}}"
+
+expect_at "prints in full when it fits" 200 "$long" "…/c/a-very-long-directory-name-that-goes-on"
+expect_at "keeps only the last path component first" 90 "$long" "📁 a-very-long-directory-name-that-goes-on ·"
+expect_at "trims the directory before touching the gauge" 60 "$long" "████░░░░░░ 42% · 🧠 Opus 5.5 (1M context)"
+expect_at "marks a trimmed directory with an ellipsis" 60 "$long" "📁 a-very-long…"
+expect_at "drops the bar before the percentage" 45 "$long" "░" missing
+expect_at "keeps the percentage and model when narrow" 35 "$long" "42% · 🧠 Opus 5.5 (1M context)"
+expect_at "trims the model name as a last resort" 20 "$long" "42% · 🧠 Opus 5.5 …"
+expect_at "leaves output alone without COLUMNS" "" "$long" "…/c/a-very-long-directory-name-that-goes-on"
+
 if [ "$failures" -ne 0 ]; then
   echo "$failures statusline test(s) failed" >&2
   exit 1

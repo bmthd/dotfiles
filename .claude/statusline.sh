@@ -93,10 +93,95 @@ if [[ "${pct:-}" =~ ^[0-9]+$ ]]; then
   pct_label="${col}${pct}%${RESET}"
 fi
 
-# ---- compose --------------------------------------------------------------
-line="${CYAN}📁 ${short_dir}${RESET}"
-[ -n "$worktree" ] && line+="${SEP}${MAGENTA}🌿 ${worktree}${RESET}"
-[ -n "$gauge" ]    && line+="${SEP}${gauge} ${pct_label}"
-line+="${SEP}${BOLD}🧠 ${model}${RESET}"
+# ---- fit to width ---------------------------------------------------------
+# Claude Code clips an over-long status line from the right, so in a narrow pane
+# the gauge and model — the parts worth watching — are what disappear. Instead,
+# give the cwd and worktree names only the room left after the gauge and model,
+# shortening them in stages. COLUMNS is the only width source: Claude Code
+# captures stdout, so tput cannot see the terminal. Without it, print in full.
+#
+# Display width: every non-ASCII character counts as 2 columns. That is right
+# for the emoji and CJK names, and merely conservative for "…".
+vis_width() {
+  # C collation makes " -~" the ASCII range; under en_US.UTF-8 bash 3.2 (macOS
+  # /bin/bash) collates it to match nearly everything.
+  local LC_COLLATE=C
+  local ascii="${1//[^ -~]/}"
+  printf '%s' $(( ${#ascii} + (${#1} - ${#ascii}) * 2 ))
+}
+# Trim $1 to at most $2 columns, marking the cut with "…".
+fit() {
+  local s="$1" max="$2"
+  [ "$(vis_width "$s")" -le "$max" ] && { printf '%s' "$s"; return; }
+  while [ -n "$s" ] && [ $(( $(vis_width "$s") + 2 )) -gt "$max" ]; do s="${s%?}"; done
+  printf '%s…' "$s"
+}
 
+# Columns taken by the parts that are never shortened: separators (3 each),
+# the gauge ("<bar> <pct>%") and "🧠 <model>". The bar is counted apart from
+# vis_width because its block characters are 1 column, not 2.
+gauge_width() {
+  if   [ -z "$pct_label" ]; then printf 0
+  elif [ -n "$gauge" ];     then printf '%s' $(( ${#bar} + 1 + ${#pct} + 1 + 3 ))
+  else                           printf '%s' $(( ${#pct} + 1 + 3 )); fi
+}
+budget() { # columns left for "📁 <dir>" and "🌿 <worktree>" together
+  local b=$(( ${COLUMNS:-0} - $(gauge_width) - $(vis_width "🧠 $model") - 3 ))
+  [ -n "$worktree" ] && b=$(( b - 3 ))
+  printf '%s' "$b"
+}
+names_width() {
+  local w; w=$(vis_width "📁 $short_dir")
+  [ -n "$worktree" ] && w=$(( w + $(vis_width "🌿 $worktree") ))
+  printf '%s' "$w"
+}
+
+if [[ "${COLUMNS:-}" =~ ^[0-9]+$ ]] && [ "$COLUMNS" -gt 0 ]; then
+  min_name=10 # "📁 " plus a few characters: still recognisable
+  # 1. Keep only the last path component.
+  [ "$(names_width)" -gt "$(budget)" ] && short_dir="${dir##*/}"
+  # 2. Split what is left evenly between the two names; a name shorter than
+  #    its half hands the rest to the other. Neither goes below min_name.
+  if [ "$(names_width)" -gt "$(budget)" ]; then
+    avail=$(budget)
+    dir_w=$(vis_width "📁 $short_dir")
+    if [ -z "$worktree" ]; then
+      dir_room=$avail
+    else
+      wt_w=$(vis_width "🌿 $worktree"); half=$(( avail / 2 ))
+      if   [ "$dir_w" -le "$half" ]; then dir_room=$dir_w;           wt_room=$(( avail - dir_w ))
+      elif [ "$wt_w" -le "$half" ];  then dir_room=$(( avail - wt_w )); wt_room=$wt_w
+      else                                dir_room=$half;            wt_room=$(( avail - half )); fi
+      [ "$wt_room" -lt "$min_name" ] && wt_room=$min_name
+      worktree="$(fit "$worktree" $(( wt_room - 3 )))" # 3 = "🌿 "
+    fi
+    [ "$dir_room" -lt "$min_name" ] && dir_room=$min_name
+    short_dir="$(fit "$short_dir" $(( dir_room - 3 )))" # 3 = "📁 "
+  fi
+  # 3. Drop the bar, keeping the percentage.
+  if [ "$(names_width)" -gt "$(budget)" ] && [ -n "$gauge" ]; then
+    bar=""; gauge=""
+  fi
+  # 4. Drop the names outright, worktree first.
+  [ "$(names_width)" -gt "$(budget)" ] && worktree=""
+  [ "$(names_width)" -gt "$(budget)" ] && short_dir=""
+  # 5. Last resort: trim the model name so the percentage before it survives.
+  if [ "$(budget)" -lt 0 ]; then
+    room=$(( COLUMNS - $(gauge_width) - 3 )) # 3 = "🧠 "
+    [ "$room" -lt 6 ] && room=6
+    model="$(fit "$model" "$room")"
+  fi
+fi
+
+# ---- compose --------------------------------------------------------------
+parts=()
+[ -n "$short_dir" ] && parts+=("${CYAN}📁 ${short_dir}${RESET}")
+[ -n "$worktree" ]  && parts+=("${MAGENTA}🌿 ${worktree}${RESET}")
+if [ -n "$pct_label" ]; then
+  if [ -n "$gauge" ]; then parts+=("${gauge} ${pct_label}"); else parts+=("$pct_label"); fi
+fi
+parts+=("${BOLD}🧠 ${model}${RESET}")
+
+line="${parts[0]}"
+for part in "${parts[@]:1}"; do line+="${SEP}${part}"; done
 printf '%s' "$line"
