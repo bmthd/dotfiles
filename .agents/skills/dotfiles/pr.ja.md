@@ -49,8 +49,9 @@ author であって PR を開くアカウントではない。会社の端末で
 
 - **サードパーティのスキルを追加するとき**: スキルをこのリポジトリにコピーするのではなく、
   [`.dotfiles/setup/skills.sh`](../../../.dotfiles/setup/skills.sh) に `install_skills` の
-  行を足す。gist も `.git` の clone URL を使えば動く — ページ URL が失敗する理由は
-  `japanese-tech-writing` の行を参照
+  行を足す。gist も `.git` の clone URL（`https://gist.github.com/<id>.git`）を使えば
+  動く。skills CLI のソース解析は `gist.github.com` を `github.com` と取り違えるため、
+  ページ URL では 404 になる
 - **セットアップタスクの中身を変えるとき**は `.mise.toml` ではなく
   `.dotfiles/setup/<name>.sh` を編集する。`.mise.toml` のタスクはスクリプトへの 1 行の
   委譲であり、そのまま保つ。タスクを *新設* するときは同じコミットで 3 つ必要 —

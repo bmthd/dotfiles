@@ -21,11 +21,10 @@ mkdir -p "$HOME/.claude/skills" "$HOME/.config/opencode/skills" "$HOME/.agents/s
 # what does not belong anywhere else: the dotfiles skill, which only makes sense
 # against it. Third-party skills come from their upstream repos. productivity
 # pulls all skills from Matt Pocock's upstream productivity skills folder.
-# mathbullet contributes html and explain, the two skills html's SKILL.md
-# recommends using together. The other two it recommends, japanese-tech-writing
-# and cognitive-rhythm-writing, are published as gists and are fetched from
-# there directly. Skills cross-reference each other by name, so all four
-# resolve once they share an agent's skills directory.
+# mathbullet contributes html and explain, two of the skills html's SKILL.md
+# recommends using together. The other two it recommends, k16shikano's
+# japanese-tech-writing and cognitive-rhythm-writing gists, are deliberately not
+# installed; see the yomiyasu line below.
 # Update any of them later with `npx skills update`.
 #
 # SECURITY: these are the one dependency here that nothing checks. A skill is
@@ -80,23 +79,18 @@ install_skills "eli5" https://github.com/anthropics/claude-plugins-community/tre
 # Principles index navigates to the 21 principle-* skills by name, so a subset
 # leaves it pointing at skills that are not there.
 install_skills "pstack" https://github.com/cursor/plugins/tree/main/pstack/skills -s '*'
-# japanese-tech-writing and cognitive-rhythm-writing are Keiichiro Shikano's
-# (k16shikano) gists:
-# https://gist.github.com/k16shikano/fd287c3133457c4fd8f5601d34aa817d
-# https://gist.github.com/k16shikano/eb2929f13ed19c97188393d297be8432
-# Use the .git clone URL, not the page URL: the skills CLI source parser
-# mistakes gist.github.com for github.com and the page URL 404s.
-install_skills "japanese-tech-writing" https://gist.github.com/fd287c3133457c4fd8f5601d34aa817d.git
-install_skills "cognitive-rhythm-writing" https://gist.github.com/eb2929f13ed19c97188393d297be8432.git
 # yomiyasu rewrites AI-flavoured Japanese by restoring who-did-what sentence
 # structure rather than swapping banned words:
 # https://zenn.dev/algoartis/articles/0b1c731881b25c
 # The repository carries the same SKILL.md twice, at its root and under
-# skills/yomiyasu/, so select it by name to get one copy. Its SKILL.md warns
-# that other Japanese style skills active at the same time can interfere with
-# its output; japanese-tech-writing and cognitive-rhythm-writing above are such
-# skills, so when a rewrite comes out muddled, invoke yomiyasu on its own.
+# skills/yomiyasu/, so select it by name to get one copy.
 install_skills "yomiyasu" nanaism/yomiyasu -s yomiyasu
+# yomiyasu's SKILL.md warns that other Japanese style skills active alongside it
+# make its output erratic, so it replaces the two that used to be installed
+# here, japanese-tech-writing and cognitive-rhythm-writing. Dropping their
+# install lines does not take them off a machine that already has them, so
+# remove them explicitly; on a machine without them this is a no-op.
+npx skills remove japanese-tech-writing cognitive-rhythm-writing -g -y >/dev/null 2>&1 || true
 
 # pstack's plugin manifest also declares `agents`, which the skills CLI has no
 # concept of and therefore skips. The two it names are not optional extras:
