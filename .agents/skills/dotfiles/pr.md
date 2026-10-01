@@ -52,8 +52,9 @@ Read the repository facts in [SKILL.md](SKILL.md) first. In addition:
 
 - **Adding a third-party skill**: add an `install_skills` line to
   [`.dotfiles/setup/skills.sh`](../../../.dotfiles/setup/skills.sh) rather than copying
-  the skill into this repository. Gists work too, via their `.git` clone URL — see the
-  `japanese-tech-writing` line for why the page URL fails.
+  the skill into this repository. Gists work too, via their `.git` clone URL
+  (`https://gist.github.com/<id>.git`): the skills CLI source parser mistakes
+  `gist.github.com` for `github.com`, so the page URL 404s.
 - **Changing what a setup task does** means editing `.dotfiles/setup/<name>.sh`, not
   `.mise.toml`: a task there is a one-line delegation to its script and stays that way.
   A *new* task needs three things in the same commit — the script, the task, and the
