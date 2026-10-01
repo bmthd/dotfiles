@@ -88,6 +88,15 @@ install_skills "pstack" https://github.com/cursor/plugins/tree/main/pstack/skill
 # mistakes gist.github.com for github.com and the page URL 404s.
 install_skills "japanese-tech-writing" https://gist.github.com/fd287c3133457c4fd8f5601d34aa817d.git
 install_skills "cognitive-rhythm-writing" https://gist.github.com/eb2929f13ed19c97188393d297be8432.git
+# yomiyasu rewrites AI-flavoured Japanese by restoring who-did-what sentence
+# structure rather than swapping banned words:
+# https://zenn.dev/algoartis/articles/0b1c731881b25c
+# The repository carries the same SKILL.md twice, at its root and under
+# skills/yomiyasu/, so select it by name to get one copy. Its SKILL.md warns
+# that other Japanese style skills active at the same time can interfere with
+# its output; japanese-tech-writing and cognitive-rhythm-writing above are such
+# skills, so when a rewrite comes out muddled, invoke yomiyasu on its own.
+install_skills "yomiyasu" nanaism/yomiyasu -s yomiyasu
 
 # pstack's plugin manifest also declares `agents`, which the skills CLI has no
 # concept of and therefore skips. The two it names are not optional extras:
