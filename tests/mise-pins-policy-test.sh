@@ -12,7 +12,7 @@ write_config() {
 [tools]
 node = { version = "latest" }
 github-cli = { version = "latest" }
-"npm:pnpm" = { version = "latest" }
+"npm:ctx7" = { version = "latest" }
 
 [settings]
 locked_verify_provenance = true
@@ -43,9 +43,9 @@ provenance = "github-attestations"
 checksum = "sha256:4444444444444444444444444444444444444444444444444444444444444444"
 provenance = "github-attestations"
 
-[[tools."npm:pnpm"]]
-version = "10.0.0"
-backend = "npm:pnpm"
+[[tools."npm:ctx7"]]
+version = "1.0.0"
+backend = "npm:ctx7"
 EOF
 }
 
@@ -129,10 +129,10 @@ cat > "$fixture/docs/supply-chain.md" <<'EOF'
 `aqua:cli/cli`
 <!-- coverage:checksum:end -->
 <!-- coverage:version-only:start -->
-`npm:pnpm`
+`npm:ctx7`
 <!-- coverage:version-only:end -->
 <!-- coverage:no-checksum:start -->
-`npm:pnpm`
+`npm:ctx7`
 <!-- coverage:no-checksum:end -->
 <!-- coverage:provenance:start -->
 `aqua:cli/cli`

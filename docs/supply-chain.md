@@ -50,7 +50,7 @@ The following exceptions are exact tool/backend pairs with reasons, rather than 
 
 <!-- coverage:no-checksum:start -->
 - `cargo:similarity-ts`: cargo lock entries are version-only.
-- `npm:@antfu/ni`, `npm:@google/gemini-cli`, `npm:@openai/codex`, `npm:@playwright/cli`, `npm:ctx7`, `npm:difit`, `npm:pnpm`, and `npm:wrangler`: npm lock entries are version-only.
+- `npm:@antfu/ni`, `npm:@google/gemini-cli`, `npm:@openai/codex`, `npm:@playwright/cli`, `npm:ctx7`, `npm:difit`, and `npm:wrangler`: npm lock entries are version-only.
 - `vfox:oci`: this vfox backend plugin currently records only the version.
 <!-- coverage:no-checksum:end -->
 
@@ -64,26 +64,26 @@ These record a checksum for the two platforms this repository installs on, `linu
 That is the pair the policy requires and the pair the check below verifies; the other platform variants in the lockfile are left intact and are not asserted here:
 
 <!-- coverage:checksum:start -->
-`aqua:anomalyco/opencode`, `aqua:astral-sh/uv`, `aqua:cli/cli`, `aqua:cloudflare/cloudflared`, `aqua:jqlang/jq`, `aqua:modem-dev/hunk`, `aqua:suzuki-shunsuke/pinact`, `aqua:x-motemen/ghq`, `core:bun`, `core:node`, `github:rtk-ai/rtk`
+`aqua:anomalyco/opencode`, `aqua:astral-sh/uv`, `aqua:cli/cli`, `aqua:cloudflare/cloudflared`, `aqua:jqlang/jq`, `aqua:modem-dev/hunk`, `aqua:pnpm/pnpm`, `aqua:suzuki-shunsuke/pinact`, `aqua:x-motemen/ghq`, `core:bun`, `core:node`, `github:rtk-ai/rtk`
 <!-- coverage:checksum:end -->
 
 These record nothing but a version and a backend — the list above's complement, and the same set as the allowlisted exceptions:
 
 <!-- coverage:version-only:start -->
-`cargo:similarity-ts`, `npm:@antfu/ni`, `npm:@google/gemini-cli`, `npm:@openai/codex`, `npm:@playwright/cli`, `npm:ctx7`, `npm:difit`, `npm:pnpm`, `npm:wrangler`, `vfox:oci`
+`cargo:similarity-ts`, `npm:@antfu/ni`, `npm:@google/gemini-cli`, `npm:@openai/codex`, `npm:@playwright/cli`, `npm:ctx7`, `npm:difit`, `npm:wrangler`, `vfox:oci`
 <!-- coverage:version-only:end -->
 
 And these additionally carry verified provenance in the lockfile:
 
 <!-- coverage:provenance:start -->
-`aqua:astral-sh/uv`, `aqua:cli/cli`, `aqua:jqlang/jq`, `aqua:suzuki-shunsuke/pinact`
+`aqua:astral-sh/uv`, `aqua:cli/cli`, `aqua:jqlang/jq`, `aqua:pnpm/pnpm`, `aqua:suzuki-shunsuke/pinact`
 <!-- coverage:provenance:end -->
 
 [`tests/mise-pins-test.sh`](../tests/mise-pins-test.sh) checks these four lists against `mise.lock` on every CI run, so a backend that gains or loses a checksum fails here rather than quietly making this page a lie.
 
 A checksum establishes integrity relative to the value in `mise.lock`; it does not establish who built or published those bytes.
 For authenticity, mise records verified provenance when a backend and release provide it.
-The policy currently requires `github-attestations` on every recorded platform asset for `github-cli`, `jq`, `pinact`, and `uv`, because those tools already provide that provenance.
+The policy currently requires `github-attestations` on every recorded platform asset for `github-cli`, `jq`, `pinact`, `pnpm`, and `uv`, because those tools already provide that provenance.
 Each expectation is also bound to its current exact aqua backend, so switching the upstream identity requires policy review.
 Removing or changing one of those entries is treated as a regression.
 

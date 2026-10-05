@@ -52,7 +52,7 @@ mise の公式仕様では aqua と github が full asset tracking に対応し�
 
 <!-- coverage:no-checksum:start -->
 - `cargo:similarity-ts`：cargo の lock entry は version-only です。
-- `npm:@antfu/ni`、`npm:@google/gemini-cli`、`npm:@openai/codex`、`npm:@playwright/cli`、`npm:ctx7`、`npm:difit`、`npm:pnpm`、`npm:wrangler`：npm の lock entry は version-only です。
+- `npm:@antfu/ni`、`npm:@google/gemini-cli`、`npm:@openai/codex`、`npm:@playwright/cli`、`npm:ctx7`、`npm:difit`、`npm:wrangler`：npm の lock entry は version-only です。
 - `vfox:oci`：この vfox backend plugin は現在 version だけを記録します。
 <!-- coverage:no-checksum:end -->
 
@@ -68,19 +68,19 @@ checksum による保護は mise ではなく backend の性質です。
 policy が必須とし、下のチェックが検証するのもこの 2 つです。lockfile にあるほかの platform variation はそのまま残し、ここでは主張しません:
 
 <!-- coverage:checksum:start -->
-`aqua:anomalyco/opencode`, `aqua:astral-sh/uv`, `aqua:cli/cli`, `aqua:cloudflare/cloudflared`, `aqua:jqlang/jq`, `aqua:modem-dev/hunk`, `aqua:suzuki-shunsuke/pinact`, `aqua:x-motemen/ghq`, `core:bun`, `core:node`, `github:rtk-ai/rtk`
+`aqua:anomalyco/opencode`, `aqua:astral-sh/uv`, `aqua:cli/cli`, `aqua:cloudflare/cloudflared`, `aqua:jqlang/jq`, `aqua:modem-dev/hunk`, `aqua:pnpm/pnpm`, `aqua:suzuki-shunsuke/pinact`, `aqua:x-motemen/ghq`, `core:bun`, `core:node`, `github:rtk-ai/rtk`
 <!-- coverage:checksum:end -->
 
 version と backend しか記録していないもの。上の補集合であり、許可リストの例外と同じ集合です:
 
 <!-- coverage:version-only:start -->
-`cargo:similarity-ts`, `npm:@antfu/ni`, `npm:@google/gemini-cli`, `npm:@openai/codex`, `npm:@playwright/cli`, `npm:ctx7`, `npm:difit`, `npm:pnpm`, `npm:wrangler`, `vfox:oci`
+`cargo:similarity-ts`, `npm:@antfu/ni`, `npm:@google/gemini-cli`, `npm:@openai/codex`, `npm:@playwright/cli`, `npm:ctx7`, `npm:difit`, `npm:wrangler`, `vfox:oci`
 <!-- coverage:version-only:end -->
 
 さらに検証済みの provenance を lockfile に持つもの:
 
 <!-- coverage:provenance:start -->
-`aqua:astral-sh/uv`, `aqua:cli/cli`, `aqua:jqlang/jq`, `aqua:suzuki-shunsuke/pinact`
+`aqua:astral-sh/uv`, `aqua:cli/cli`, `aqua:jqlang/jq`, `aqua:pnpm/pnpm`, `aqua:suzuki-shunsuke/pinact`
 <!-- coverage:provenance:end -->
 
 この 4 つのリストは、CI のたびに [`tests/mise-pins-test.sh`](../tests/mise-pins-test.sh) が `mise.lock` と突き合わせます。
@@ -89,7 +89,7 @@ backend が checksum を得たり失ったりしたときに、この文書が�
 checksum が保証するのは、`mise.lock` の値を基準とした完全性です。
 そのバイト列を誰が build または publish したかという真正性までは保証しません。
 真正性については、backend と upstream release が対応する場合に mise が検証済み provenance を記録します。
-現在は、すでにその provenance を提供している `github-cli`、`jq`、`pinact`、`uv` について、記録されたすべての platform 成果物に `github-attestations` を必須とします。
+現在は、すでにその provenance を提供している `github-cli`、`jq`、`pinact`、`pnpm`、`uv` について、記録されたすべての platform 成果物に `github-attestations` を必須とします。
 各期待値は現在の正確な aqua backend にも結び付けるため、upstream identity の変更には policy の再審査が必要です。
 これらの記録が消えるか別の値へ変わると、後退として検出します。
 
