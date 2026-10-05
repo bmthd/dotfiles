@@ -124,7 +124,6 @@ VERSION_ONLY_ALLOWLIST = {
     "npm:@playwright/cli": ("npm:@playwright/cli", "npm lock entries record versions only"),
     "npm:ctx7": ("npm:ctx7", "npm lock entries record versions only"),
     "npm:difit": ("npm:difit", "npm lock entries record versions only"),
-    "npm:pnpm": ("npm:pnpm", "npm lock entries record versions only"),
     "oci": ("vfox:oci", "this vfox backend plugin records versions only"),
     "wrangler": ("npm:wrangler", "npm lock entries record versions only"),
 }
@@ -136,6 +135,7 @@ PROVENANCE_REQUIRED = {
     "github-cli": ("aqua:cli/cli", "github-attestations"),
     "jq": ("aqua:jqlang/jq", "github-attestations"),
     "pinact": ("aqua:suzuki-shunsuke/pinact", "github-attestations"),
+    "pnpm": ("aqua:pnpm/pnpm", "github-attestations"),
     "uv": ("aqua:astral-sh/uv", "github-attestations"),
 }
 

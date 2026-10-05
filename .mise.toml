@@ -35,7 +35,11 @@
 # delegated to a script that a task downloads.
 [tools]
 node = { version = "latest" }
-"npm:pnpm" = { version = "latest" }
+# pnpm from its native release binary, not `npm:pnpm`. Since pnpm 12 the npm
+# package's install script swaps in the native binary, and mise skips install
+# scripts for npm: tools — the result is a launcher that hands the ELF binary to
+# node, and every `pnpm` fails with a SyntaxError.
+pnpm = { version = "latest" }
 bun = { version = "latest" }
 ghq = { version = "latest" }
 jq = { version = "latest" }
