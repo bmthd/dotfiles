@@ -63,9 +63,17 @@ conflict は機械的に片側を選ばず、設定の意味に基づいて解�
 ユーザーが確認したローカル変更だけを行い、新しい plan を作成する。
 この手順は、`mode` が `inventory` であり、どの file の state も `conflict` と `needs-decision` ではなく、`legacyMiseConfig.state` が `needs-review` でもなくなったときに完了する。
 
-## 4. 確認して適用する
+## 4. 適用する
 
-安全な plan と解決済みの判断をユーザーへ要約し、この端末を更新する明示的な確認を得る。
+確認すべきことが残っていなければ、尋ねずに `apply` を実行する。backup、validation、rollback はスクリプトが担っており、判断を伴わない確認は往復を増やすだけである。
+次のすべてを満たすとき、確認すべきことは残っていない。
+
+- `fetch` が `ok` であり、inventory が現在の remote を表している。
+- 最初の plan の `conflict`、`needs-decision`、`needs-review` が、どれも無かったか、手順 3 でユーザーが決めたものである（エージェントの推測だけで決めたものではない）。
+
+その場合も、更新を始めることと `setup:skills` を実行するかどうかを一行でユーザーへ伝える。時間のかかる apply が停止と誤解されないようにするためである。
+
+そうでなければ、安全な plan とユーザーがまだ見ていないすべての判断を要約し、この端末を更新する明示的な確認を得る。
 
 ```bash
 .dotfiles/apply.sh apply --json

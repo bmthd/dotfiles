@@ -67,9 +67,21 @@ The other states need nothing: `migratable` is the script's to move aside into t
 Make only a user-confirmed local change, then create a fresh plan.
 This step is complete only when `mode` is `inventory`, no file has state `conflict` or `needs-decision`, and `legacyMiseConfig.state` is not `needs-review`.
 
-## 4. Confirm and apply
+## 4. Apply
 
-Summarize the safe plan and the resolved decisions for the user, then obtain explicit confirmation to update this machine.
+When nothing is left to confirm, run `apply` without asking: the script already owns
+backup, validation, and rollback, so a confirmation that carries no decision only
+adds a round trip. Nothing is left to confirm when all of these hold:
+
+- `fetch` is `ok`, so the inventory describes the current remote.
+- Every `conflict`, `needs-decision`, and `needs-review` from the first plan was
+  either absent or settled by the user in step 3 — not by your own inference alone.
+
+In that case, still tell the user in one line that the update is starting and whether
+`setup:skills` will run, so a slow apply is not mistaken for a hang.
+
+Otherwise, summarize the safe plan and every decision the user has not yet seen,
+then obtain explicit confirmation to update this machine.
 
 ```bash
 .dotfiles/apply.sh apply --json
