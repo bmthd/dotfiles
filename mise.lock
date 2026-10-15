@@ -344,7 +344,7 @@ version = "5.0.12"
 backend = "npm:difit"
 
 [[tools.oci]]
-version = "3.94.2"
+version = "3.95.0"
 backend = "vfox:oci"
 
 [[tools.opencode]]
