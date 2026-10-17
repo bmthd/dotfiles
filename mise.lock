@@ -161,43 +161,43 @@ url_api = "https://api.github.com/repos/cli/cli/releases/assets/599854720"
 provenance = "github-attestations"
 
 [[tools."github:rtk-ai/rtk"]]
-version = "1.0.0"
+version = "1.0.1"
 backend = "github:rtk-ai/rtk"
 
 [tools."github:rtk-ai/rtk"."platforms.linux-arm64"]
-checksum = "sha256:9438c2c99d428fa6fbe7f4d1c01a87babd5feec17ee6d7bb3372a613a21db7d3"
-url = "https://github.com/rtk-ai/rtk/releases/download/v1.0.0/rtk-aarch64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/638121344"
+checksum = "sha256:cd627c4091ad90b5e5aca83ca5af66ee4b8aa8537a736533fa90544f461f1c2b"
+url = "https://github.com/rtk-ai/rtk/releases/download/v1.0.1/rtk-aarch64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/640517537"
 
 [tools."github:rtk-ai/rtk"."platforms.linux-arm64-musl"]
-checksum = "sha256:9438c2c99d428fa6fbe7f4d1c01a87babd5feec17ee6d7bb3372a613a21db7d3"
-url = "https://github.com/rtk-ai/rtk/releases/download/v1.0.0/rtk-aarch64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/638121344"
+checksum = "sha256:cd627c4091ad90b5e5aca83ca5af66ee4b8aa8537a736533fa90544f461f1c2b"
+url = "https://github.com/rtk-ai/rtk/releases/download/v1.0.1/rtk-aarch64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/640517537"
 
 [tools."github:rtk-ai/rtk"."platforms.linux-x64"]
-checksum = "sha256:b0b69fbed72f55d8eae18587c0b6bc140a8a8b39d5b7c6e6df33795249940926"
-url = "https://github.com/rtk-ai/rtk/releases/download/v1.0.0/rtk-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/638121323"
+checksum = "sha256:5b919c3bccb799b67a61866d0e617410a4fcdf173e2614440e59de2fa2003436"
+url = "https://github.com/rtk-ai/rtk/releases/download/v1.0.1/rtk-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/640517543"
 
 [tools."github:rtk-ai/rtk"."platforms.linux-x64-baseline"]
-checksum = "sha256:b0b69fbed72f55d8eae18587c0b6bc140a8a8b39d5b7c6e6df33795249940926"
-url = "https://github.com/rtk-ai/rtk/releases/download/v1.0.0/rtk-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/638121323"
+checksum = "sha256:5b919c3bccb799b67a61866d0e617410a4fcdf173e2614440e59de2fa2003436"
+url = "https://github.com/rtk-ai/rtk/releases/download/v1.0.1/rtk-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/640517543"
 
 [tools."github:rtk-ai/rtk"."platforms.linux-x64-musl"]
-checksum = "sha256:b0b69fbed72f55d8eae18587c0b6bc140a8a8b39d5b7c6e6df33795249940926"
-url = "https://github.com/rtk-ai/rtk/releases/download/v1.0.0/rtk-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/638121323"
+checksum = "sha256:5b919c3bccb799b67a61866d0e617410a4fcdf173e2614440e59de2fa2003436"
+url = "https://github.com/rtk-ai/rtk/releases/download/v1.0.1/rtk-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/640517543"
 
 [tools."github:rtk-ai/rtk"."platforms.linux-x64-musl-baseline"]
-checksum = "sha256:b0b69fbed72f55d8eae18587c0b6bc140a8a8b39d5b7c6e6df33795249940926"
-url = "https://github.com/rtk-ai/rtk/releases/download/v1.0.0/rtk-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/638121323"
+checksum = "sha256:5b919c3bccb799b67a61866d0e617410a4fcdf173e2614440e59de2fa2003436"
+url = "https://github.com/rtk-ai/rtk/releases/download/v1.0.1/rtk-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/640517543"
 
 [tools."github:rtk-ai/rtk"."platforms.macos-arm64"]
-checksum = "sha256:6f3c50e9a9a0333b29cc2a2244782f6ac2052ec7e5b036c65d2116d35e1bc2c7"
-url = "https://github.com/rtk-ai/rtk/releases/download/v1.0.0/rtk-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/638121342"
+checksum = "sha256:4aae2f60cfc49c9e81b8c8c57020aa0cb824da608c78b4f0cf5c0988e19e824e"
+url = "https://github.com/rtk-ai/rtk/releases/download/v1.0.1/rtk-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/640517530"
 
 [[tools.hunk]]
 version = "0.23.0"
@@ -433,49 +433,49 @@ url_api = "https://api.github.com/repos/suzuki-shunsuke/pinact/releases/assets/5
 provenance = "github-attestations"
 
 [[tools.pnpm]]
-version = "12.11.2"
+version = "12.13.0"
 backend = "aqua:pnpm/pnpm"
 
 [tools.pnpm."platforms.linux-arm64"]
-checksum = "sha256:ad444fa06d7ff344d74ba1e4933f2ed71cc6357cc2d33707a5c60958b7d83085"
-url = "https://github.com/pnpm/pnpm/releases/download/v12.11.2/pnpm-linux-arm64.tar.gz"
-url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/625613171"
+checksum = "sha256:1e1b4d7ddef2577d7b50444a30b76bf4f62dcb45039ef0c4454a377384a36618"
+url = "https://github.com/pnpm/pnpm/releases/download/v12.13.0/pnpm-linux-arm64.tar.gz"
+url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/636319805"
 provenance = "github-attestations"
 
 [tools.pnpm."platforms.linux-arm64-musl"]
-checksum = "sha256:abf111d90e1ab8bc1485f853bf83f6e86b028ab5badc393203014e50c4a1cf7d"
-url = "https://github.com/pnpm/pnpm/releases/download/v12.11.2/pnpm-linux-arm64-musl.tar.gz"
-url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/625613170"
+checksum = "sha256:948d410fe403f1cd87d70d618480dc8b97429cd2287c6fb9777ec77f17a851c3"
+url = "https://github.com/pnpm/pnpm/releases/download/v12.13.0/pnpm-linux-arm64-musl.tar.gz"
+url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/636319802"
 provenance = "github-attestations"
 
 [tools.pnpm."platforms.linux-x64"]
-checksum = "sha256:358f30541b42371360c0d48a8daddc0c0850a90c36fcbea598032a9850e2c9ab"
-url = "https://github.com/pnpm/pnpm/releases/download/v12.11.2/pnpm-linux-x64.tar.gz"
-url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/625613177"
+checksum = "sha256:7a796532f2b8801e7fab92389cb02c7ada0cdfbaaded5d291052d83e52c06047"
+url = "https://github.com/pnpm/pnpm/releases/download/v12.13.0/pnpm-linux-x64.tar.gz"
+url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/636319815"
 provenance = "github-attestations"
 
 [tools.pnpm."platforms.linux-x64-baseline"]
-checksum = "sha256:358f30541b42371360c0d48a8daddc0c0850a90c36fcbea598032a9850e2c9ab"
-url = "https://github.com/pnpm/pnpm/releases/download/v12.11.2/pnpm-linux-x64.tar.gz"
-url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/625613177"
+checksum = "sha256:7a796532f2b8801e7fab92389cb02c7ada0cdfbaaded5d291052d83e52c06047"
+url = "https://github.com/pnpm/pnpm/releases/download/v12.13.0/pnpm-linux-x64.tar.gz"
+url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/636319815"
 provenance = "github-attestations"
 
 [tools.pnpm."platforms.linux-x64-musl"]
-checksum = "sha256:64e35fe0854494dc56c24311d97f13cfe73fcfd8e3cb65b7c0f5c359da6a0fd8"
-url = "https://github.com/pnpm/pnpm/releases/download/v12.11.2/pnpm-linux-x64-musl.tar.gz"
-url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/625613182"
+checksum = "sha256:402f3df5c7ae51271a13f34bfbdb97ef5aaab0ae359d8ef825574307dc59db13"
+url = "https://github.com/pnpm/pnpm/releases/download/v12.13.0/pnpm-linux-x64-musl.tar.gz"
+url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/636319800"
 provenance = "github-attestations"
 
 [tools.pnpm."platforms.linux-x64-musl-baseline"]
-checksum = "sha256:64e35fe0854494dc56c24311d97f13cfe73fcfd8e3cb65b7c0f5c359da6a0fd8"
-url = "https://github.com/pnpm/pnpm/releases/download/v12.11.2/pnpm-linux-x64-musl.tar.gz"
-url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/625613182"
+checksum = "sha256:402f3df5c7ae51271a13f34bfbdb97ef5aaab0ae359d8ef825574307dc59db13"
+url = "https://github.com/pnpm/pnpm/releases/download/v12.13.0/pnpm-linux-x64-musl.tar.gz"
+url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/636319800"
 provenance = "github-attestations"
 
 [tools.pnpm."platforms.macos-arm64"]
-checksum = "sha256:2f4701dbd4a7b81827789e94225272355fcc17c4eb9f5add08ed26f943003b67"
-url = "https://github.com/pnpm/pnpm/releases/download/v12.11.2/pnpm-darwin-arm64.tar.gz"
-url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/625613178"
+checksum = "sha256:697961ea2f337fff60bd59ed25991d6165826751bc75ee4b7fad6923b7584c6e"
+url = "https://github.com/pnpm/pnpm/releases/download/v12.13.0/pnpm-darwin-arm64.tar.gz"
+url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/636319811"
 provenance = "github-attestations"
 
 [[tools.uv]]
