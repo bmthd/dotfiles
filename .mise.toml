@@ -289,6 +289,6 @@ depends = ["setup:scripts", "setup:claude"]
 run = "$HOME/.cache/dotfiles/setup/codex.sh"
 
 [tasks."setup:claude-plugins"]
-description = "Install official Anthropic plugins for Claude Code (TypeScript LSP)"
+description = "Install Claude Code plugins (TypeScript LSP, pstack)"
 depends = ["setup:scripts", "setup:claude"]
 run = "$HOME/.cache/dotfiles/setup/claude-plugins.sh"

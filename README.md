@@ -37,7 +37,7 @@ Afterwards, restart the shell or run `source ~/.zshrc` (`source ~/.bashrc` for b
 - **CLI tools** — node, bun, pnpm, uv, gh, ghq, jq, wrangler, and more (see `[tools]` in [`.mise.toml`](.mise.toml))
 - **Claude Code** — the binary itself, `settings.json` (merged into an existing one), and the status line
 - **Agent skills** — the same set installed for Claude Code, OpenCode, Cursor, Codex, and Gemini CLI
-- **Plugins** — Codex, plus the official plugins (TypeScript LSP)
+- **Plugins** — Codex, pstack, plus the official plugins (TypeScript LSP)
 - **npm registry** — routed through [Takumi Guard](https://npm.flatt.tech/), a proxy that refuses known-malicious packages
 - **Global git hooks** — trust mise configs in new worktrees and pin staged GitHub Actions references before commit, while preserving repository hooks and partial staging ([`.dotfiles/git-hooks`](.dotfiles/git-hooks))
 - **Shell startup** — the mise activation and the update notice, written into `~/.zshrc` and `~/.bashrc` as blocks mise owns and can rewrite (`[bootstrap.mise_shell_activate]` and `[dotfiles]` in [`.mise.toml`](.mise.toml))

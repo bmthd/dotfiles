@@ -70,15 +70,17 @@ install_skills "show-me" humanlayer/skills -s show-me
 # own skills directory rather than the repository root, so what is installed is
 # that one plugin and not whatever else the marketplace happens to carry.
 install_skills "eli5" https://github.com/anthropics/claude-plugins-community/tree/main/eli5/skills -s eli5
-# pstack ships as a Cursor plugin — `/add-plugin pstack` — which is not
-# installable here: the repository carries .cursor-plugin/plugin.json and no
-# .claude-plugin/marketplace.json, so `claude plugin marketplace add` has
-# nothing to read. That manifest's `skills` key points at a plain directory of
-# SKILL.md files, so the skills CLI installs the same set from the subpath for
-# every agent. Take all of them: poteto-mode is the entry point and its inline
-# Principles index navigates to the 21 principle-* skills by name, so a subset
-# leaves it pointing at skills that are not there.
-install_skills "pstack" https://github.com/cursor/plugins/tree/main/pstack/skills -s '*'
+# pstack: Claude Code gets it as a plugin (setup:claude-plugins installs it
+# from the cursor/plugins marketplace, agents included), so the skills CLI
+# installs it for every other agent only — linking it into ~/.claude/skills
+# as well would show Claude Code each skill twice, once bare and once as
+# /pstack:<name>. Take all of them: poteto-mode is the entry point and its
+# inline Principles index navigates to the 21 principle-* skills by name, so a
+# subset leaves it pointing at skills that are not there.
+npx skills add https://github.com/cursor/plugins/tree/main/pstack/skills -s '*' \
+    -y -g -a opencode -a cursor -a codex -a gemini-cli 2>/dev/null \
+  && echo "✓ pstack skills installed" \
+  || echo "⚠ pstack skills installation failed (continuing)"
 # yomiyasu rewrites AI-flavoured Japanese by restoring who-did-what sentence
 # structure rather than swapping banned words:
 # https://zenn.dev/algoartis/articles/0b1c731881b25c
@@ -91,36 +93,6 @@ install_skills "yomiyasu" nanaism/yomiyasu -s yomiyasu
 # install lines does not take them off a machine that already has them, so
 # remove them explicitly; on a machine without them this is a no-op.
 npx skills remove japanese-tech-writing cognitive-rhythm-writing -g -y >/dev/null 2>&1 || true
-
-# pstack's plugin manifest also declares `agents`, which the skills CLI has no
-# concept of and therefore skips. The two it names are not optional extras:
-# poteto-mode spawns `subagent_type: "poteto-agent"` for every delegate inside
-# a playbook step, and no-comments spawns "Comment Sicko", so both skills stop
-# at their first delegation without these files. Claude Code reads
-# ~/.claude/agents/*.md and takes the subagent_type from the frontmatter
-# `name` verbatim, so "Comment Sicko" resolves as published and the files need
-# no rewriting. Claude Code is the only target: on Cursor the plugin installs
-# itself and brings its own agents, OpenCode's agent frontmatter is a different
-# schema these files do not satisfy, and Codex has no user-defined subagents to
-# install them as at all.
-#
-# SECURITY: same trust boundary as the skills above, and pinned no harder —
-# this is Markdown that goes straight into an agent's context.
-echo "📦 Installing pstack subagents for Claude Code..."
-PSTACK_AGENTS="https://raw.githubusercontent.com/cursor/plugins/main/pstack/agents"
-mkdir -p "$HOME/.claude/agents"
-for agent in poteto-agent comment-sicko; do
-    # Download to a temporary file so a failed fetch leaves any previously
-    # installed copy in place rather than truncating it.
-    tmp="$(mktemp)"
-    if curl -fsSL --max-time 30 "$PSTACK_AGENTS/$agent.md" -o "$tmp"; then
-        mv "$tmp" "$HOME/.claude/agents/$agent.md"
-        echo "✓ pstack $agent subagent installed"
-    else
-        rm -f "$tmp"
-        echo "⚠ pstack $agent subagent installation failed (continuing)"
-    fi
-done
 
 # Record which revision of bmthd/skills this machine now carries, so the
 # shell-startup notice can tell when that repository has moved on. `skills add`
