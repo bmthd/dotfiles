@@ -38,7 +38,7 @@ curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/install.sh | ba
 - **CLI ツール** — node, bun, pnpm, uv, gh, ghq, jq, wrangler など（一覧は [`.mise.toml`](.mise.toml) の `[tools]`）
 - **Claude Code** — 本体、`settings.json`（既存があればマージ）、ステータスライン
 - **エージェントスキル** — Claude Code / OpenCode / Cursor / Codex / Gemini CLI の 5 つに同じものを導入
-- **プラグイン** — Codex、および公式プラグイン (TypeScript LSP)
+- **プラグイン** — Codex、pstack、および公式プラグイン (TypeScript LSP)
 - **npm レジストリ** — マルウェアを遮断する [Takumi Guard](https://npm.flatt.tech/) プロキシ経由に変更
 - **グローバル git フック** — 新しい worktree の mise config を trust し、repository hook と部分 stage を維持したまま、commit 前に staged GitHub Actions 参照を pin する ([`.dotfiles/git-hooks`](.dotfiles/git-hooks))
 - **シェルの起動ファイル** — mise の有効化と更新通知を、mise が所有し書き換えられるブロックとして `~/.zshrc` と `~/.bashrc` に書き込む（[`.mise.toml`](.mise.toml) の `[bootstrap.mise_shell_activate]` と `[dotfiles]`）
