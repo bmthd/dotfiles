@@ -336,7 +336,7 @@ backend = "npm:@playwright/cli"
 trust_policy_excludes = '["@playwright/cli@0.1.19"]'
 
 [[tools."npm:ctx7"]]
-version = "0.6.1"
+version = "0.8.0"
 backend = "npm:ctx7"
 
 [[tools."npm:difit"]]
@@ -348,43 +348,43 @@ version = "3.95.0"
 backend = "vfox:oci"
 
 [[tools.opencode]]
-version = "1.19.2"
+version = "1.19.3"
 backend = "aqua:anomalyco/opencode"
 
 [tools.opencode."platforms.linux-arm64"]
-checksum = "sha256:3f73a474065b4b7c4a64cef2395a6123ae1039c2e41f0acbe29ae6521b50df66"
-url = "https://github.com/anomalyco/opencode/releases/download/v1.19.2/opencode-linux-arm64.tar.gz"
-url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/645848407"
+checksum = "sha256:7900818a6a98881edbbadab4b7525940eff3b9750040c200481f9f56cacee405"
+url = "https://github.com/anomalyco/opencode/releases/download/v1.19.3/opencode-linux-arm64.tar.gz"
+url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/647209228"
 
 [tools.opencode."platforms.linux-arm64-musl"]
-checksum = "sha256:3f73a474065b4b7c4a64cef2395a6123ae1039c2e41f0acbe29ae6521b50df66"
-url = "https://github.com/anomalyco/opencode/releases/download/v1.19.2/opencode-linux-arm64.tar.gz"
-url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/645848407"
+checksum = "sha256:7900818a6a98881edbbadab4b7525940eff3b9750040c200481f9f56cacee405"
+url = "https://github.com/anomalyco/opencode/releases/download/v1.19.3/opencode-linux-arm64.tar.gz"
+url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/647209228"
 
 [tools.opencode."platforms.linux-x64"]
-checksum = "sha256:4eff8d2cf8614ead97eadf1123d46033dc975eadeac3df04644a64bae0f9e819"
-url = "https://github.com/anomalyco/opencode/releases/download/v1.19.2/opencode-linux-x64.tar.gz"
-url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/645848510"
+checksum = "sha256:13a8fb2978302071b86f9d7e00da9c8895f9cd846978379c3bdc6a5333536c9b"
+url = "https://github.com/anomalyco/opencode/releases/download/v1.19.3/opencode-linux-x64.tar.gz"
+url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/647209173"
 
 [tools.opencode."platforms.linux-x64-baseline"]
-checksum = "sha256:4eff8d2cf8614ead97eadf1123d46033dc975eadeac3df04644a64bae0f9e819"
-url = "https://github.com/anomalyco/opencode/releases/download/v1.19.2/opencode-linux-x64.tar.gz"
-url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/645848510"
+checksum = "sha256:13a8fb2978302071b86f9d7e00da9c8895f9cd846978379c3bdc6a5333536c9b"
+url = "https://github.com/anomalyco/opencode/releases/download/v1.19.3/opencode-linux-x64.tar.gz"
+url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/647209173"
 
 [tools.opencode."platforms.linux-x64-musl"]
-checksum = "sha256:4eff8d2cf8614ead97eadf1123d46033dc975eadeac3df04644a64bae0f9e819"
-url = "https://github.com/anomalyco/opencode/releases/download/v1.19.2/opencode-linux-x64.tar.gz"
-url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/645848510"
+checksum = "sha256:13a8fb2978302071b86f9d7e00da9c8895f9cd846978379c3bdc6a5333536c9b"
+url = "https://github.com/anomalyco/opencode/releases/download/v1.19.3/opencode-linux-x64.tar.gz"
+url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/647209173"
 
 [tools.opencode."platforms.linux-x64-musl-baseline"]
-checksum = "sha256:4eff8d2cf8614ead97eadf1123d46033dc975eadeac3df04644a64bae0f9e819"
-url = "https://github.com/anomalyco/opencode/releases/download/v1.19.2/opencode-linux-x64.tar.gz"
-url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/645848510"
+checksum = "sha256:13a8fb2978302071b86f9d7e00da9c8895f9cd846978379c3bdc6a5333536c9b"
+url = "https://github.com/anomalyco/opencode/releases/download/v1.19.3/opencode-linux-x64.tar.gz"
+url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/647209173"
 
 [tools.opencode."platforms.macos-arm64"]
-checksum = "sha256:1c9da110bbf3e13c480e0a2e55f61b09ebdb33cfc67029b61ffbb9f8566d67cd"
-url = "https://github.com/anomalyco/opencode/releases/download/v1.19.2/opencode-darwin-arm64.zip"
-url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/645856068"
+checksum = "sha256:c2d0fecd27acf6e08be02c1f5d384614d07495587766bcc4a6bff3971749bb64"
+url = "https://github.com/anomalyco/opencode/releases/download/v1.19.3/opencode-darwin-arm64.zip"
+url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/647222664"
 
 [[tools.pinact]]
 version = "5.0.0"
@@ -525,7 +525,7 @@ url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/639312976"
 provenance = "github-attestations"
 
 [[tools.wrangler]]
-version = "4.151.0"
+version = "4.151.1"
 backend = "npm:wrangler"
 
 [tools.wrangler.options]
