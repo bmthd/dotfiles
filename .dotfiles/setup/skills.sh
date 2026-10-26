@@ -70,6 +70,13 @@ install_skills "show-me" humanlayer/skills -s show-me
 # own skills directory rather than the repository root, so what is installed is
 # that one plugin and not whatever else the marketplace happens to carry.
 install_skills "eli5" https://github.com/anthropics/claude-plugins-community/tree/main/eli5/skills -s eli5
+# security-audit is Cloudflare's source-first audit workflow (recon, coverage
+# ledger, isolated hunters, independent verifiers). It stays in guidance mode
+# unless a full audit is explicitly asked for, so loading it on an ordinary
+# security question does not start writing report files. Its two validators
+# are zero-dependency Node scripts (fs/path only) that run from the skill
+# directory.
+install_skills "security-audit" cloudflare/security-audit-skill -s security-audit
 # pstack: Claude Code gets it as a plugin (setup:claude-plugins installs it
 # from the cursor/plugins marketplace, agents included), so the skills CLI
 # installs it for every other agent only — linking it into ~/.claude/skills
