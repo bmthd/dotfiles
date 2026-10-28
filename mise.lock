@@ -175,50 +175,50 @@ url_api = "https://api.github.com/repos/cli/cli/releases/assets/670305145"
 provenance = "github-attestations"
 
 [[tools."github:rtk-ai/rtk"]]
-version = "1.0.1"
+version = "1.1.0"
 backend = "github:rtk-ai/rtk"
 
 [tools."github:rtk-ai/rtk"."platforms.linux-arm64"]
-checksum = "sha256:cd627c4091ad90b5e5aca83ca5af66ee4b8aa8537a736533fa90544f461f1c2b"
+checksum = "sha256:a5c00c3ab0129884bcb757d348afc1a650efa0f4f0769da97c341f28f89719ed"
 checksum_source = "mise-versions"
-url = "https://github.com/rtk-ai/rtk/releases/download/v1.0.1/rtk-aarch64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/640517537"
+url = "https://github.com/rtk-ai/rtk/releases/download/v1.1.0/rtk-aarch64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/675762787"
 
 [tools."github:rtk-ai/rtk"."platforms.linux-arm64-musl"]
-checksum = "sha256:cd627c4091ad90b5e5aca83ca5af66ee4b8aa8537a736533fa90544f461f1c2b"
+checksum = "sha256:a5c00c3ab0129884bcb757d348afc1a650efa0f4f0769da97c341f28f89719ed"
 checksum_source = "mise-versions"
-url = "https://github.com/rtk-ai/rtk/releases/download/v1.0.1/rtk-aarch64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/640517537"
+url = "https://github.com/rtk-ai/rtk/releases/download/v1.1.0/rtk-aarch64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/675762787"
 
 [tools."github:rtk-ai/rtk"."platforms.linux-x64"]
-checksum = "sha256:5b919c3bccb799b67a61866d0e617410a4fcdf173e2614440e59de2fa2003436"
+checksum = "sha256:9454ad1b9489daa57ab0a9f4ebe2faaf4dc82b8a0f26c9e5135151abd7c9378d"
 checksum_source = "mise-versions"
-url = "https://github.com/rtk-ai/rtk/releases/download/v1.0.1/rtk-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/640517543"
+url = "https://github.com/rtk-ai/rtk/releases/download/v1.1.0/rtk-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/675762778"
 
 [tools."github:rtk-ai/rtk"."platforms.linux-x64-baseline"]
-checksum = "sha256:5b919c3bccb799b67a61866d0e617410a4fcdf173e2614440e59de2fa2003436"
+checksum = "sha256:9454ad1b9489daa57ab0a9f4ebe2faaf4dc82b8a0f26c9e5135151abd7c9378d"
 checksum_source = "mise-versions"
-url = "https://github.com/rtk-ai/rtk/releases/download/v1.0.1/rtk-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/640517543"
+url = "https://github.com/rtk-ai/rtk/releases/download/v1.1.0/rtk-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/675762778"
 
 [tools."github:rtk-ai/rtk"."platforms.linux-x64-musl"]
-checksum = "sha256:5b919c3bccb799b67a61866d0e617410a4fcdf173e2614440e59de2fa2003436"
+checksum = "sha256:9454ad1b9489daa57ab0a9f4ebe2faaf4dc82b8a0f26c9e5135151abd7c9378d"
 checksum_source = "mise-versions"
-url = "https://github.com/rtk-ai/rtk/releases/download/v1.0.1/rtk-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/640517543"
+url = "https://github.com/rtk-ai/rtk/releases/download/v1.1.0/rtk-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/675762778"
 
 [tools."github:rtk-ai/rtk"."platforms.linux-x64-musl-baseline"]
-checksum = "sha256:5b919c3bccb799b67a61866d0e617410a4fcdf173e2614440e59de2fa2003436"
+checksum = "sha256:9454ad1b9489daa57ab0a9f4ebe2faaf4dc82b8a0f26c9e5135151abd7c9378d"
 checksum_source = "mise-versions"
-url = "https://github.com/rtk-ai/rtk/releases/download/v1.0.1/rtk-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/640517543"
+url = "https://github.com/rtk-ai/rtk/releases/download/v1.1.0/rtk-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/675762778"
 
 [tools."github:rtk-ai/rtk"."platforms.macos-arm64"]
-checksum = "sha256:4aae2f60cfc49c9e81b8c8c57020aa0cb824da608c78b4f0cf5c0988e19e824e"
+checksum = "sha256:8da773b0954cf90b115ec95c4e4eb420f04c39de233c5db102246a6caf073ba7"
 checksum_source = "mise-versions"
-url = "https://github.com/rtk-ai/rtk/releases/download/v1.0.1/rtk-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/640517530"
+url = "https://github.com/rtk-ai/rtk/releases/download/v1.1.0/rtk-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/675762802"
 
 [[tools.hunk]]
 version = "0.24.1"
@@ -408,49 +408,49 @@ checksum = "sha256:f9edc1dded080e39aa61db94270a51af66772ac572be7d6b15fa6f87251a3
 url = "https://opencode.ai/files/bin/2.1.4/opencode-darwin-arm64.zip"
 
 [[tools.pinact]]
-version = "5.0.1"
+version = "5.0.2"
 backend = "aqua:suzuki-shunsuke/pinact"
 
 [tools.pinact."platforms.linux-arm64"]
-checksum = "sha256:fc1432004f378ae51d549a356195b4d2e3ee05935dbd20e3bbca66db1cdf6590"
-url = "https://github.com/suzuki-shunsuke/pinact/releases/download/v5.0.1/pinact_linux_arm64.tar.gz"
-url_api = "https://api.github.com/repos/suzuki-shunsuke/pinact/releases/assets/664460182"
+checksum = "sha256:326e27f5b3b5fca21e6a169b2785ba2023df3dd9ee82dd0f4e438cb1220b68d7"
+url = "https://github.com/suzuki-shunsuke/pinact/releases/download/v5.0.2/pinact_linux_arm64.tar.gz"
+url_api = "https://api.github.com/repos/suzuki-shunsuke/pinact/releases/assets/675205656"
 provenance = "github-attestations"
 
 [tools.pinact."platforms.linux-arm64-musl"]
-checksum = "sha256:fc1432004f378ae51d549a356195b4d2e3ee05935dbd20e3bbca66db1cdf6590"
-url = "https://github.com/suzuki-shunsuke/pinact/releases/download/v5.0.1/pinact_linux_arm64.tar.gz"
-url_api = "https://api.github.com/repos/suzuki-shunsuke/pinact/releases/assets/664460182"
+checksum = "sha256:326e27f5b3b5fca21e6a169b2785ba2023df3dd9ee82dd0f4e438cb1220b68d7"
+url = "https://github.com/suzuki-shunsuke/pinact/releases/download/v5.0.2/pinact_linux_arm64.tar.gz"
+url_api = "https://api.github.com/repos/suzuki-shunsuke/pinact/releases/assets/675205656"
 provenance = "github-attestations"
 
 [tools.pinact."platforms.linux-x64"]
-checksum = "sha256:12500c0fff5db94a0155e2e76ed959d1dc0e899056ee168d8fb7b4840e7c04f0"
-url = "https://github.com/suzuki-shunsuke/pinact/releases/download/v5.0.1/pinact_linux_amd64.tar.gz"
-url_api = "https://api.github.com/repos/suzuki-shunsuke/pinact/releases/assets/664460175"
+checksum = "sha256:7f003d8f51e984c2264d2009d430e3e0e87ae404a0e2dc2a9a277b0f731bf5b7"
+url = "https://github.com/suzuki-shunsuke/pinact/releases/download/v5.0.2/pinact_linux_amd64.tar.gz"
+url_api = "https://api.github.com/repos/suzuki-shunsuke/pinact/releases/assets/675205650"
 provenance = "github-attestations"
 
 [tools.pinact."platforms.linux-x64-baseline"]
-checksum = "sha256:12500c0fff5db94a0155e2e76ed959d1dc0e899056ee168d8fb7b4840e7c04f0"
-url = "https://github.com/suzuki-shunsuke/pinact/releases/download/v5.0.1/pinact_linux_amd64.tar.gz"
-url_api = "https://api.github.com/repos/suzuki-shunsuke/pinact/releases/assets/664460175"
+checksum = "sha256:7f003d8f51e984c2264d2009d430e3e0e87ae404a0e2dc2a9a277b0f731bf5b7"
+url = "https://github.com/suzuki-shunsuke/pinact/releases/download/v5.0.2/pinact_linux_amd64.tar.gz"
+url_api = "https://api.github.com/repos/suzuki-shunsuke/pinact/releases/assets/675205650"
 provenance = "github-attestations"
 
 [tools.pinact."platforms.linux-x64-musl"]
-checksum = "sha256:12500c0fff5db94a0155e2e76ed959d1dc0e899056ee168d8fb7b4840e7c04f0"
-url = "https://github.com/suzuki-shunsuke/pinact/releases/download/v5.0.1/pinact_linux_amd64.tar.gz"
-url_api = "https://api.github.com/repos/suzuki-shunsuke/pinact/releases/assets/664460175"
+checksum = "sha256:7f003d8f51e984c2264d2009d430e3e0e87ae404a0e2dc2a9a277b0f731bf5b7"
+url = "https://github.com/suzuki-shunsuke/pinact/releases/download/v5.0.2/pinact_linux_amd64.tar.gz"
+url_api = "https://api.github.com/repos/suzuki-shunsuke/pinact/releases/assets/675205650"
 provenance = "github-attestations"
 
 [tools.pinact."platforms.linux-x64-musl-baseline"]
-checksum = "sha256:12500c0fff5db94a0155e2e76ed959d1dc0e899056ee168d8fb7b4840e7c04f0"
-url = "https://github.com/suzuki-shunsuke/pinact/releases/download/v5.0.1/pinact_linux_amd64.tar.gz"
-url_api = "https://api.github.com/repos/suzuki-shunsuke/pinact/releases/assets/664460175"
+checksum = "sha256:7f003d8f51e984c2264d2009d430e3e0e87ae404a0e2dc2a9a277b0f731bf5b7"
+url = "https://github.com/suzuki-shunsuke/pinact/releases/download/v5.0.2/pinact_linux_amd64.tar.gz"
+url_api = "https://api.github.com/repos/suzuki-shunsuke/pinact/releases/assets/675205650"
 provenance = "github-attestations"
 
 [tools.pinact."platforms.macos-arm64"]
-checksum = "sha256:58390ac843b7a14414df79762e2f64051158d00549762b1c49ded3d2f1746007"
-url = "https://github.com/suzuki-shunsuke/pinact/releases/download/v5.0.1/pinact_darwin_arm64.tar.gz"
-url_api = "https://api.github.com/repos/suzuki-shunsuke/pinact/releases/assets/664460145"
+checksum = "sha256:9b9545d53376654005daaee5ab736d579887205ca3df99925c8fe8358c6e7fdb"
+url = "https://github.com/suzuki-shunsuke/pinact/releases/download/v5.0.2/pinact_darwin_arm64.tar.gz"
+url_api = "https://api.github.com/repos/suzuki-shunsuke/pinact/releases/assets/675205643"
 provenance = "github-attestations"
 
 [[tools.pnpm]]
