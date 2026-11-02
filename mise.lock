@@ -37,50 +37,50 @@ version = "0.5.0"
 backend = "cargo:similarity-ts"
 
 [[tools.cloudflared]]
-version = "2026.10.6"
+version = "2026.10.7"
 backend = "aqua:cloudflare/cloudflared"
 
 [tools.cloudflared."platforms.linux-arm64"]
-checksum = "sha256:0ae0e179475b2c77651a718d2b376e0151f4fca5954702a84f02843a4d5fcac0"
+checksum = "sha256:3df43aedc9ff291d1735b5cb576cb97e0b157488796db2e32b28aecabb445775"
 checksum_source = "mise-versions"
-url = "https://github.com/cloudflare/cloudflared/releases/download/2026.10.6/cloudflared-linux-arm64"
-url_api = "https://api.github.com/repos/cloudflare/cloudflared/releases/assets/688473003"
+url = "https://github.com/cloudflare/cloudflared/releases/download/2026.10.7/cloudflared-linux-arm64"
+url_api = "https://api.github.com/repos/cloudflare/cloudflared/releases/assets/692818763"
 
 [tools.cloudflared."platforms.linux-arm64-musl"]
-checksum = "sha256:0ae0e179475b2c77651a718d2b376e0151f4fca5954702a84f02843a4d5fcac0"
+checksum = "sha256:3df43aedc9ff291d1735b5cb576cb97e0b157488796db2e32b28aecabb445775"
 checksum_source = "mise-versions"
-url = "https://github.com/cloudflare/cloudflared/releases/download/2026.10.6/cloudflared-linux-arm64"
-url_api = "https://api.github.com/repos/cloudflare/cloudflared/releases/assets/688473003"
+url = "https://github.com/cloudflare/cloudflared/releases/download/2026.10.7/cloudflared-linux-arm64"
+url_api = "https://api.github.com/repos/cloudflare/cloudflared/releases/assets/692818763"
 
 [tools.cloudflared."platforms.linux-x64"]
-checksum = "sha256:1d356dac769d0dbf62ebe588c4034824bbff98d5790c2f844cc99e0e2f57462d"
+checksum = "sha256:1f99fb518b83dec2ba8d870a7cc991d82a77e6196295a3d2754ba17ab9f91872"
 checksum_source = "mise-versions"
-url = "https://github.com/cloudflare/cloudflared/releases/download/2026.10.6/cloudflared-linux-amd64"
-url_api = "https://api.github.com/repos/cloudflare/cloudflared/releases/assets/688471811"
+url = "https://github.com/cloudflare/cloudflared/releases/download/2026.10.7/cloudflared-linux-amd64"
+url_api = "https://api.github.com/repos/cloudflare/cloudflared/releases/assets/692817008"
 
 [tools.cloudflared."platforms.linux-x64-baseline"]
-checksum = "sha256:1d356dac769d0dbf62ebe588c4034824bbff98d5790c2f844cc99e0e2f57462d"
+checksum = "sha256:1f99fb518b83dec2ba8d870a7cc991d82a77e6196295a3d2754ba17ab9f91872"
 checksum_source = "mise-versions"
-url = "https://github.com/cloudflare/cloudflared/releases/download/2026.10.6/cloudflared-linux-amd64"
-url_api = "https://api.github.com/repos/cloudflare/cloudflared/releases/assets/688471811"
+url = "https://github.com/cloudflare/cloudflared/releases/download/2026.10.7/cloudflared-linux-amd64"
+url_api = "https://api.github.com/repos/cloudflare/cloudflared/releases/assets/692817008"
 
 [tools.cloudflared."platforms.linux-x64-musl"]
-checksum = "sha256:1d356dac769d0dbf62ebe588c4034824bbff98d5790c2f844cc99e0e2f57462d"
+checksum = "sha256:1f99fb518b83dec2ba8d870a7cc991d82a77e6196295a3d2754ba17ab9f91872"
 checksum_source = "mise-versions"
-url = "https://github.com/cloudflare/cloudflared/releases/download/2026.10.6/cloudflared-linux-amd64"
-url_api = "https://api.github.com/repos/cloudflare/cloudflared/releases/assets/688471811"
+url = "https://github.com/cloudflare/cloudflared/releases/download/2026.10.7/cloudflared-linux-amd64"
+url_api = "https://api.github.com/repos/cloudflare/cloudflared/releases/assets/692817008"
 
 [tools.cloudflared."platforms.linux-x64-musl-baseline"]
-checksum = "sha256:1d356dac769d0dbf62ebe588c4034824bbff98d5790c2f844cc99e0e2f57462d"
+checksum = "sha256:1f99fb518b83dec2ba8d870a7cc991d82a77e6196295a3d2754ba17ab9f91872"
 checksum_source = "mise-versions"
-url = "https://github.com/cloudflare/cloudflared/releases/download/2026.10.6/cloudflared-linux-amd64"
-url_api = "https://api.github.com/repos/cloudflare/cloudflared/releases/assets/688471811"
+url = "https://github.com/cloudflare/cloudflared/releases/download/2026.10.7/cloudflared-linux-amd64"
+url_api = "https://api.github.com/repos/cloudflare/cloudflared/releases/assets/692817008"
 
 [tools.cloudflared."platforms.macos-arm64"]
-checksum = "sha256:ea1e5105d35bbe16cee5b2f7b4742059ada341fbd35938ed827c24b85efa51c8"
+checksum = "sha256:3586ccf397e98e5f437e60e7c307ca6ac463e110580503af8bb8e6f9ebf831bd"
 checksum_source = "mise-versions"
-url = "https://github.com/cloudflare/cloudflared/releases/download/2026.10.6/cloudflared-darwin-arm64.tgz"
-url_api = "https://api.github.com/repos/cloudflare/cloudflared/releases/assets/688470940"
+url = "https://github.com/cloudflare/cloudflared/releases/download/2026.10.7/cloudflared-darwin-arm64.tgz"
+url_api = "https://api.github.com/repos/cloudflare/cloudflared/releases/assets/692819281"
 
 [[tools.ghq]]
 version = "1.11.2"
@@ -376,36 +376,36 @@ version = "3.95.1"
 backend = "vfox:oci"
 
 [[tools.opencode]]
-version = "2.2.3"
+version = "2.2.5"
 backend = "aqua:anomalyco/opencode"
 
 [tools.opencode."platforms.linux-arm64"]
-checksum = "sha256:72aac82c021268f6cc9810de913f8d47d05626b1ad974d7f5dc5b087e1ad0f68"
-url = "https://opencode.ai/files/bin/2.2.3/opencode-linux-arm64.tar.gz"
+checksum = "sha256:5a528f42caf576c6cdece6a191eb273d3db54effa5518e0402684d8f8026aeb6"
+url = "https://opencode.ai/files/bin/2.2.5/opencode-linux-arm64.tar.gz"
 
 [tools.opencode."platforms.linux-arm64-musl"]
-checksum = "sha256:72aac82c021268f6cc9810de913f8d47d05626b1ad974d7f5dc5b087e1ad0f68"
-url = "https://opencode.ai/files/bin/2.2.3/opencode-linux-arm64.tar.gz"
+checksum = "sha256:5a528f42caf576c6cdece6a191eb273d3db54effa5518e0402684d8f8026aeb6"
+url = "https://opencode.ai/files/bin/2.2.5/opencode-linux-arm64.tar.gz"
 
 [tools.opencode."platforms.linux-x64"]
-checksum = "sha256:ef3aeeaf5522b10d69a3da7bbd6e6d8d259f845833d96b8310767d3407b18a35"
-url = "https://opencode.ai/files/bin/2.2.3/opencode-linux-x64.tar.gz"
+checksum = "sha256:09f44302c10fd036912f59c81fd1aef5df45dd06f649197f9dfc9bbe2a79614e"
+url = "https://opencode.ai/files/bin/2.2.5/opencode-linux-x64.tar.gz"
 
 [tools.opencode."platforms.linux-x64-baseline"]
-checksum = "sha256:ef3aeeaf5522b10d69a3da7bbd6e6d8d259f845833d96b8310767d3407b18a35"
-url = "https://opencode.ai/files/bin/2.2.3/opencode-linux-x64.tar.gz"
+checksum = "sha256:09f44302c10fd036912f59c81fd1aef5df45dd06f649197f9dfc9bbe2a79614e"
+url = "https://opencode.ai/files/bin/2.2.5/opencode-linux-x64.tar.gz"
 
 [tools.opencode."platforms.linux-x64-musl"]
-checksum = "sha256:ef3aeeaf5522b10d69a3da7bbd6e6d8d259f845833d96b8310767d3407b18a35"
-url = "https://opencode.ai/files/bin/2.2.3/opencode-linux-x64.tar.gz"
+checksum = "sha256:09f44302c10fd036912f59c81fd1aef5df45dd06f649197f9dfc9bbe2a79614e"
+url = "https://opencode.ai/files/bin/2.2.5/opencode-linux-x64.tar.gz"
 
 [tools.opencode."platforms.linux-x64-musl-baseline"]
-checksum = "sha256:ef3aeeaf5522b10d69a3da7bbd6e6d8d259f845833d96b8310767d3407b18a35"
-url = "https://opencode.ai/files/bin/2.2.3/opencode-linux-x64.tar.gz"
+checksum = "sha256:09f44302c10fd036912f59c81fd1aef5df45dd06f649197f9dfc9bbe2a79614e"
+url = "https://opencode.ai/files/bin/2.2.5/opencode-linux-x64.tar.gz"
 
 [tools.opencode."platforms.macos-arm64"]
-checksum = "sha256:65db03573e5717e6da245ae3e5c2ffa35915b90689d37c43d4e1ade4d47f55f9"
-url = "https://opencode.ai/files/bin/2.2.3/opencode-darwin-arm64.zip"
+checksum = "sha256:25ba9908979fa7d764792c82589b4b5768ab1511154e0317d98aa77d216ce767"
+url = "https://opencode.ai/files/bin/2.2.5/opencode-darwin-arm64.zip"
 
 [[tools.pinact]]
 version = "5.0.2"
