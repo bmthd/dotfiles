@@ -357,7 +357,7 @@ version = "0.166.0"
 backend = "npm:@openai/codex"
 
 [[tools."npm:@playwright/cli"]]
-version = "0.1.22"
+version = "0.1.23"
 backend = "npm:@playwright/cli"
 
 [tools."npm:@playwright/cli".options]
