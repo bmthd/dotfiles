@@ -21,10 +21,7 @@ mkdir -p "$HOME/.claude/skills" "$HOME/.config/opencode/skills" "$HOME/.agents/s
 # what does not belong anywhere else: the dotfiles skill, which only makes sense
 # against it. Third-party skills come from their upstream repos. productivity
 # pulls all skills from Matt Pocock's upstream productivity skills folder.
-# mathbullet contributes html and explain, two of the skills html's SKILL.md
-# recommends using together. The other two it recommends, k16shikano's
-# japanese-tech-writing and cognitive-rhythm-writing gists, are deliberately not
-# installed; see the yomiyasu line below.
+# mathbullet contributes explain.
 # Update any of them later with `npx skills update`.
 #
 # SECURITY: these are the one dependency here that nothing checks. A skill is
@@ -46,7 +43,7 @@ install_skills "own" bmthd/skills
 install_skills "dotfiles-local" bmthd/dotfiles
 install_skills "superpowers" obra/superpowers
 install_skills "productivity" https://github.com/mattpocock/skills/tree/main/skills/productivity -s '*'
-install_skills "mathbullet" mathbullet/skills -s html -s explain
+install_skills "mathbullet" mathbullet/skills -s explain
 # Orca (the parallel-agent ADE) ships its skills in the app's own repo. The CLI
 # itself is not installable here — it comes from the desktop app, or over the
 # SSH relay on a VPS — but the skills teach an agent to drive it, so install
@@ -100,6 +97,9 @@ install_skills "yomiyasu" nanaism/yomiyasu -s yomiyasu
 # install lines does not take them off a machine that already has them, so
 # remove them explicitly; on a machine without them this is a no-op.
 npx skills remove japanese-tech-writing cognitive-rhythm-writing -g -y >/dev/null 2>&1 || true
+# mathbullet's html skill used to be installed alongside explain and was
+# dropped; remove it from machines that still carry it, for the same reason.
+npx skills remove html -g -y >/dev/null 2>&1 || true
 
 # Record which revision of bmthd/skills this machine now carries, so the
 # shell-startup notice can tell when that repository has moved on. `skills add`
