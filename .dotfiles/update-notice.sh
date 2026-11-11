@@ -190,10 +190,64 @@ dotfiles_update_notice_remedy() {
     esac
 }
 
+# Where the last check leaves what it found, one line per repository that was
+# behind:
+#
+#   name|installed revision|remote revision
+#
+# The printed notice is not enough on its own. It goes to one shell — whichever
+# interactive one starts first after the interval runs out — and that shell
+# spends the check whether or not anyone read it. A terminal that launches a
+# full-screen program in the same breath (an agent pane running `claude`, a
+# multiplexer) paints over the notice before it is seen, and on a machine where
+# every terminal is like that, it is never seen at all. This record is what lets
+# something that *is* on screen, such as the Claude Code status line, keep
+# saying so until the update is applied.
+dotfiles_update_notice_pending_file() {
+    printf '%s\n' "$DOTFILES_CONFIG_DIR/pending-update"
+}
+
+# The line the pending record holds for one repository, if any.
+dotfiles_update_notice_pending_line() {
+    local want="$1" file line
+    file="$(dotfiles_update_notice_pending_file)"
+    [ -r "$file" ] || return 1
+    while IFS= read -r line; do
+        case "$line" in
+            "$want|"*) printf '%s\n' "$line"; return 0 ;;
+        esac
+    done < "$file"
+    return 1
+}
+
+# Print the names of the repositories with an update still waiting, on one
+# line, and succeed; fail when there are none.
+#
+# No network: this is asked on every status line render. An entry counts only
+# while the revision file still holds the revision the check compared against.
+# Applying an update rewrites that file, so the entry stops counting at that
+# moment rather than at the next check, which may be a day away.
+dotfiles_update_notice_pending() {
+    local name slug revision_file policy line names=""
+
+    while IFS='|' read -r name slug revision_file policy; do
+        [ -n "$name" ] || continue
+        line="$(dotfiles_update_notice_pending_line "$name")" || continue
+        line="${line#*|}"
+        [ "$(cat "$revision_file" 2>/dev/null)" = "${line%%|*}" ] || continue
+        names="$names $name"
+    done <<EOF
+$(dotfiles_update_notice_watchlist)
+EOF
+
+    [ -n "$names" ] || return 1
+    printf '%s\n' "${names# }"
+}
+
 dotfiles_update_notice_check() {
     local last_check_file now last_check
     local name slug revision_file policy installed_revision remote_revision summary
-    local announced="" changed=""
+    local announced="" changed="" pending_file pending="" kept
 
     last_check_file="$DOTFILES_CONFIG_DIR/last-update-check"
     now="$(date +%s)"
@@ -210,7 +264,15 @@ dotfiles_update_notice_check() {
 
     while IFS='|' read -r name slug revision_file policy; do
         [ -n "$name" ] || continue
-        remote_revision="$(dotfiles_update_notice_remote_revision "$slug")" || continue
+        if ! remote_revision="$(dotfiles_update_notice_remote_revision "$slug")"; then
+            # Nothing was learned about this repository, so what an earlier
+            # check recorded for it stands.
+            if kept="$(dotfiles_update_notice_pending_line "$name")"; then
+                pending="$pending$kept
+"
+            fi
+            continue
+        fi
 
         if [ ! -r "$revision_file" ]; then
             if [ "$policy" = "seed" ]; then
@@ -233,9 +295,18 @@ dotfiles_update_notice_check() {
         summary="$(dotfiles_update_notice_summary "$slug" "$installed_revision" "$remote_revision")" || summary=""
         [ -n "$summary" ] && printf '%s\n' "$summary"
         changed="$changed $name"
+        pending="$pending$name|$installed_revision|$remote_revision
+"
     done <<EOF
 $(dotfiles_update_notice_watchlist)
 EOF
+
+    pending_file="$(dotfiles_update_notice_pending_file)"
+    if [ -n "$pending" ]; then
+        printf '%s' "$pending" > "$pending_file"
+    else
+        rm -f "$pending_file"
+    fi
 
     [ -n "$announced" ] || return 0
     dotfiles_update_notice_remedy "$changed"
@@ -252,6 +323,10 @@ case "${1:-}" in
         ;;
     is-current)
         dotfiles_update_notice_is_current "${2:-}"
+        exit $?
+        ;;
+    pending)
+        dotfiles_update_notice_pending
         exit $?
         ;;
 esac

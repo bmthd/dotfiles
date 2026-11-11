@@ -7,6 +7,12 @@ statusline="$(dirname "$0")/../.claude/statusline.sh"
 test_dir="$(mktemp -d)"
 trap 'rm -rf "$test_dir"' EXIT
 
+# The status line reads this machine's pending-update record. Point it at an
+# empty directory so the assertions do not depend on whether the machine
+# running them happens to be behind.
+export DOTFILES_CONFIG_DIR="$test_dir/dotfiles"
+mkdir -p "$DOTFILES_CONFIG_DIR"
+
 failures=0
 
 # Run the status line with the given JSON payload and strip ANSI escapes so the
@@ -108,6 +114,30 @@ expect_at "drops the bar before the percentage" 45 "$long" "░" missing
 expect_at "keeps the percentage and model when narrow" 35 "$long" "42% · 🧠 Opus 5.5 (1M context)"
 expect_at "trims the model name as a last resort" 20 "$long" "42% · 🧠 Opus 5.5 …"
 expect_at "leaves output alone without COLUMNS" "" "$long" "…/c/a-very-long-directory-name-that-goes-on"
+
+# --- pending dotfiles update ------------------------------------------------
+# The shell prints the update notice once a day into whichever terminal opens
+# first; when that terminal goes straight into Claude Code, the status line is
+# the only place left where it can be seen.
+notice_src="$(dirname "$0")/../.dotfiles/update-notice.sh"
+cp "$notice_src" "$DOTFILES_CONFIG_DIR/update-notice.sh"
+printf '%s\n' "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" > "$DOTFILES_CONFIG_DIR/revision"
+plain="{$base,\"context_window\":{\"used_percentage\":42}}"
+
+expect_missing "shows no reminder when nothing is pending" "$plain" "🔔"
+
+printf 'dotfiles|%s|%s\n' \
+  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" \
+  > "$DOTFILES_CONFIG_DIR/pending-update"
+expect_contains "names the remedy while an update is pending" "$plain" "🔔 /dotfiles apply"
+expect_at "shrinks the reminder before trimming the directory" 95 "$long" "🔔 ·"
+expect_at "keeps the directory whole when the bell alone fits" 95 "$long" "📁 a-very-long-directory-name-that-goes-on ·"
+expect_at "keeps the bell when narrow" 40 "$long" "🔔 · 42% · 🧠 Opus 5.5 (1M context)"
+
+# Once the update is applied the revision file moves and the reminder goes,
+# without waiting for the next daily check to tidy the record up.
+printf '%s\n' "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" > "$DOTFILES_CONFIG_DIR/revision"
+expect_missing "drops the reminder once the update is applied" "$plain" "🔔"
 
 if [ "$failures" -ne 0 ]; then
   echo "$failures statusline test(s) failed" >&2

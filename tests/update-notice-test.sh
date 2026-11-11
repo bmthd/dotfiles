@@ -277,6 +277,49 @@ assert_lacks "dotfiles (" "$output"
 assert_contains "skills (3333333 → 4444444)" "$output"
 [ ! -e "$config_dir/revision" ]
 
+# --- pending updates --------------------------------------------------------
+# The printed notice reaches exactly one shell, once per interval, and a shell
+# that starts a full-screen program straight away shows it to nobody. So what
+# the check found is also kept, and `pending` answers from that record alone.
+pending_file="$config_dir/pending-update"
+expect_pending() { # label expected-names ("" = nothing pending)
+  local actual
+  actual="$(DOTFILES_CURL_BIN=false bash "$notice" pending)" || actual=""
+  [ "$actual" = "$2" ] || {
+    printf '%s: expected pending "%s", got "%s"\n' "$1" "$2" "$actual" >&2
+    exit 1
+  }
+}
+
+printf '%s\n' "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" > "$config_dir/revision"
+due
+dotfiles_update_notice_check >/dev/null
+# Asked with a curl that cannot work: the answer must not need the network, or
+# it could not be asked on every status line render.
+expect_pending "after a check that found updates" "dotfiles skills"
+
+# Applying an update moves the revision file, and that alone must retire the
+# entry: the next check may be a day away, and a reminder that outlives the
+# update it asks for teaches the reader to ignore it.
+printf '%s\n' "$DOTFILES_TEST_REV_SKILLS" > "$skills_revision_file"
+expect_pending "after skills were reinstalled" "dotfiles"
+
+# A check that could not reach the remote has learned nothing, so it must not
+# erase what an earlier one found.
+due
+DOTFILES_CURL_BIN=false dotfiles_update_notice_check >/dev/null
+expect_pending "after an offline check" "dotfiles"
+
+# A check that finds everything current leaves no record behind.
+printf '%s\n' "$DOTFILES_TEST_REV_DOTFILES" > "$config_dir/revision"
+expect_pending "after dotfiles was applied" ""
+due
+dotfiles_update_notice_check >/dev/null
+[ ! -e "$pending_file" ] || {
+  printf 'pending record survived an up-to-date check:\n%s\n' "$(cat "$pending_file")" >&2
+  exit 1
+}
+
 printf '%s\n' "$(date +%s)" > "$config_dir/last-update-check"
 if dotfiles_update_notice_check | grep -q '更新があります'; then
   echo "check interval was ignored" >&2
