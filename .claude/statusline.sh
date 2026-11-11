@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Claude Code status line — single line:
-#   📁 <cwd>  ·  🌿 <worktree>(only in a linked worktree)  ·  <gauge> <ctx%>  ·  🧠 <model>
+#   📁 <cwd>  ·  🌿 <worktree>(only in a linked worktree)  ·  🔔 /dotfiles apply(only while an update is pending)  ·  <gauge> <ctx%>  ·  🧠 <model>
 #
 # Claude Code pipes a JSON payload to this script on stdin. Relevant fields:
 #   .workspace.current_dir  current working directory
@@ -41,6 +41,24 @@ if git_dir="$(git -C "$cwd" rev-parse --git-dir 2>/dev/null)"; then
   if [ "$(abs "$git_dir")" != "$(abs "$common_dir")" ]; then
     worktree="$(basename "$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null)")"
   fi
+fi
+
+# ---- pending dotfiles update ----------------------------------------------
+# update-notice.sh prints its notice into one interactive shell a day. When that
+# shell is a pane that starts Claude Code at once, the notice is painted over
+# before anyone reads it, and the check is spent until tomorrow — where the same
+# thing happens. The status line is what stays on screen in that setup, so the
+# reminder lives here until the update is applied. It names the remedy rather
+# than the fact, because the remedy is typed into this very prompt.
+#
+# update-notice.sh owns the record and what counts as pending; this only asks.
+# The -s test keeps the common case, nothing pending, from spawning a process on
+# every render.
+notice=""
+dotfiles_config="${DOTFILES_CONFIG_DIR:-$HOME/.config/dotfiles}"
+if [ -s "$dotfiles_config/pending-update" ] && [ -r "$dotfiles_config/update-notice.sh" ] \
+  && bash "$dotfiles_config/update-notice.sh" pending >/dev/null 2>&1; then
+  notice="🔔 /dotfiles apply"
 fi
 
 # ---- context usage --------------------------------------------------------
@@ -119,14 +137,20 @@ fit() {
 
 # Columns taken by the parts that are never shortened: separators (3 each),
 # the gauge ("<bar> <pct>%") and "🧠 <model>". The bar is counted apart from
-# vis_width because its block characters are 1 column, not 2.
+# vis_width because its block characters are 1 column, not 2. The update
+# reminder is counted here too: it shrinks to its bell but is never dropped,
+# since being overlooked is the failure it exists to prevent.
+notice_width() {
+  if [ -z "$notice" ]; then printf 0
+  else printf '%s' $(( $(vis_width "$notice") + 3 )); fi
+}
 gauge_width() {
   if   [ -z "$pct_label" ]; then printf 0
   elif [ -n "$gauge" ];     then printf '%s' $(( ${#bar} + 1 + ${#pct} + 1 + 3 ))
   else                           printf '%s' $(( ${#pct} + 1 + 3 )); fi
 }
 budget() { # columns left for "📁 <dir>" and "🌿 <worktree>" together
-  local b=$(( ${COLUMNS:-0} - $(gauge_width) - $(vis_width "🧠 $model") - 3 ))
+  local b=$(( ${COLUMNS:-0} - $(gauge_width) - $(notice_width) - $(vis_width "🧠 $model") - 3 ))
   [ -n "$worktree" ] && b=$(( b - 3 ))
   printf '%s' "$b"
 }
@@ -138,6 +162,9 @@ names_width() {
 
 if [[ "${COLUMNS:-}" =~ ^[0-9]+$ ]] && [ "$COLUMNS" -gt 0 ]; then
   min_name=10 # "📁 " plus a few characters: still recognisable
+  # 0. Shrink the update reminder to its bell: the command is a convenience,
+  #    the names are what tell one pane from another.
+  [ "$(names_width)" -gt "$(budget)" ] && [ -n "$notice" ] && notice="🔔"
   # 1. Keep only the last path component.
   [ "$(names_width)" -gt "$(budget)" ] && short_dir="${dir##*/}"
   # 2. Split what is left evenly between the two names; a name shorter than
@@ -167,7 +194,7 @@ if [[ "${COLUMNS:-}" =~ ^[0-9]+$ ]] && [ "$COLUMNS" -gt 0 ]; then
   [ "$(names_width)" -gt "$(budget)" ] && short_dir=""
   # 5. Last resort: trim the model name so the percentage before it survives.
   if [ "$(budget)" -lt 0 ]; then
-    room=$(( COLUMNS - $(gauge_width) - 3 )) # 3 = "🧠 "
+    room=$(( COLUMNS - $(gauge_width) - $(notice_width) - 3 )) # 3 = "🧠 "
     [ "$room" -lt 6 ] && room=6
     model="$(fit "$model" "$room")"
   fi
@@ -177,6 +204,7 @@ fi
 parts=()
 [ -n "$short_dir" ] && parts+=("${CYAN}📁 ${short_dir}${RESET}")
 [ -n "$worktree" ]  && parts+=("${MAGENTA}🌿 ${worktree}${RESET}")
+[ -n "$notice" ]    && parts+=("${YELLOW}${notice}${RESET}")
 if [ -n "$pct_label" ]; then
   if [ -n "$gauge" ]; then parts+=("${gauge} ${pct_label}"); else parts+=("$pct_label"); fi
 fi
