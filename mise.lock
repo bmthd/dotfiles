@@ -349,11 +349,11 @@ version = "30.6.0"
 backend = "npm:@antfu/ni"
 
 [[tools."npm:@google/gemini-cli"]]
-version = "0.67.0"
+version = "0.68.0"
 backend = "npm:@google/gemini-cli"
 
 [[tools."npm:@openai/codex"]]
-version = "0.167.0"
+version = "0.167.1"
 backend = "npm:@openai/codex"
 
 [[tools."npm:@playwright/cli"]]
@@ -372,7 +372,7 @@ version = "5.0.12"
 backend = "npm:difit"
 
 [[tools.oci]]
-version = "3.96.0"
+version = "3.96.2"
 backend = "vfox:oci"
 
 [[tools.opencode]]
@@ -546,7 +546,7 @@ url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/704009442"
 provenance = "github-attestations"
 
 [[tools.wrangler]]
-version = "4.159.0"
+version = "4.160.0"
 backend = "npm:wrangler"
 
 [tools.wrangler.options]
