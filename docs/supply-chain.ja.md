@@ -10,7 +10,7 @@
 | 成果物の完全性 | `mise.lock` のチェックサム | ロックした成果物と異なるバイト列。ただし **checksum を記録する backend に限る** ([カバー範囲](#カバー範囲-どのツールに何が効くか)) |
 | 成果物の provenance | backend の検証 + `locked_verify_provenance` | 対応する成果物で、記録済み provenance を検証できなくなった場合 |
 | パッケージ | `~/.npmrc` の [Takumi Guard](https://npm.flatt.tech/) プロキシ | npm 経由すべて。特にロックできない実行時の `npx ctx7@latest` / `npx skills add` |
-| Action のソース | `pinact` が検証する完全な commit SHA | GitHub Actions の release tag の移動や侵害 |
+| Action のソース | `.github/workflows/actions.lock` に記録した commit SHA | GitHub Actions の release tag の移動や侵害。推移的に使われる action も含む |
 
 ## バージョン: `latest` 宣言 + ロックファイル
 
@@ -68,7 +68,7 @@ checksum による保護は mise ではなく backend の性質です。
 policy が必須とし、下のチェックが検証するのもこの 2 つです。lockfile にあるほかの platform variation はそのまま残し、ここでは主張しません:
 
 <!-- coverage:checksum:start -->
-`aqua:anomalyco/opencode`, `aqua:astral-sh/uv`, `aqua:cli/cli`, `aqua:cloudflare/cloudflared`, `aqua:jqlang/jq`, `aqua:modem-dev/hunk`, `aqua:pnpm/pnpm`, `aqua:suzuki-shunsuke/pinact`, `aqua:x-motemen/ghq`, `core:bun`, `core:node`, `github:rtk-ai/rtk`
+`aqua:anomalyco/opencode`, `aqua:astral-sh/uv`, `aqua:cli/cli`, `aqua:cloudflare/cloudflared`, `aqua:jqlang/jq`, `aqua:modem-dev/hunk`, `aqua:pnpm/pnpm`, `aqua:x-motemen/ghq`, `core:bun`, `core:node`, `github:rtk-ai/rtk`
 <!-- coverage:checksum:end -->
 
 version と backend しか記録していないもの。上の補集合であり、許可リストの例外と同じ集合です:
@@ -80,7 +80,7 @@ version と backend しか記録していないもの。上の補集合であり
 さらに検証済みの provenance を lockfile に持つもの:
 
 <!-- coverage:provenance:start -->
-`aqua:astral-sh/uv`, `aqua:cli/cli`, `aqua:jqlang/jq`, `aqua:pnpm/pnpm`, `aqua:suzuki-shunsuke/pinact`
+`aqua:astral-sh/uv`, `aqua:cli/cli`, `aqua:jqlang/jq`, `aqua:pnpm/pnpm`
 <!-- coverage:provenance:end -->
 
 この 4 つのリストは、CI のたびに [`tests/mise-pins-test.sh`](../tests/mise-pins-test.sh) が `mise.lock` と突き合わせます。
@@ -89,7 +89,7 @@ backend が checksum を得たり失ったりしたときに、この文書が�
 checksum が保証するのは、`mise.lock` の値を基準とした完全性です。
 そのバイト列を誰が build または publish したかという真正性までは保証しません。
 真正性については、backend と upstream release が対応する場合に mise が検証済み provenance を記録します。
-現在は、すでにその provenance を提供している `github-cli`、`jq`、`pinact`、`pnpm`、`uv` について、記録されたすべての platform 成果物に `github-attestations` を必須とします。
+現在は、すでにその provenance を提供している `github-cli`、`jq`、`pnpm`、`uv` について、記録されたすべての platform 成果物に `github-attestations` を必須とします。
 各期待値は現在の正確な aqua backend にも結び付けるため、upstream identity の変更には policy の再審査が必要です。
 これらの記録が消えるか別の値へ変わると、後退として検出します。
 
@@ -97,19 +97,20 @@ checksum が保証するのは、`mise.lock` の値を基準とした完全性�
 この保証は mise と upstream release の双方が provenance を提供する成果物に限られます。
 checksum しかない tool や、明示した version-only の例外に provenance を追加する設定ではありません。
 
-## Action のソース: 不変な commit SHA
+## Action のソース: workflow lockfile
 
-[`.github/workflows`](../.github/workflows) 以下の `uses:` は、すべて 40 文字の完全な commit SHA に固定します。
-行末には release tag をコメントとして残すため、実行時に可変な tag を信頼せず、レビューでは元のバージョンを読めます。
+workflow は action を正確な release tag (`actions/checkout@v7.0.1`) で参照し、[`.github/workflows/actions.lock`](../.github/workflows/actions.lock) がその tag の解決先 commit と、名前の裏にある owner と repository の数値 ID を記録します。
+Actions は tag の現在の指し先ではなく lock した commit を実行し、`uses:` に entry がない job は実行しません。workflow ファイルに SHA を書く方式と違い、action がさらに使う action も lockfile の対象になります。
 
-二つの経路で `pinact` がこの状態を維持します。
-CI の `pinact run --check --verify-comment` は、未固定の参照に加えて、SHA とバージョンコメントの不整合も拒否します。
-global pre-commit dispatcher は staged workflow に pinact を実行してから、従来どおり repository 固有の pre-commit hook へ処理を渡します。
-pinact は index の一時コピーを修正し、生成した blob だけを index に戻すため、未 stage の編集や部分 stage の内容が commit に混ざりません。
-同じ修正を working tree へ安全に適用できる場合は反映し、競合する未 stage 編集は変更せずに残します。
+lockfile は [`gh actions-lock`](https://github.com/github/gh-actions-lock) 拡張が生成し、手で編集しません。
+Renovate は `uses:` を上げる PR の中で lockfile も再生成します。workflow を手で編集したら `gh actions-lock` を実行して結果を commit します。
+CI の `Actions lockfile` job は `gh actions-lock --verify` を実行し、lockfile にない参照や、upstream で検証できなくなった commit があれば失敗します。
+ほかのすべての action を信頼してよいかを判定するのはこの拡張なので、CI では release を固定して入れます。
 
-pinact 自体も mise の管理対象であり、`mise.lock` が checksum とバージョンを固定します。
-その lock entry は、ほかのツールと同じ日次の `--minimum-release-age 2d` gate を通って更新されます。
+lockfile の diff は依存の変更としてレビューします。`commit` の変化は新しく実行されるコードで、`owner_id` や `repo_id` の変化は、名前の裏の repository が lock したものと別物になったことを意味します。
+
+これは以前の `pinact` による構成を置き換えます。全 repository で staged workflow を SHA に固定していた global pre-commit hook も含みます。
+lockfile は repository ごとの opt-in で、machine 全体の hook が勝手に作るものではないため、hook は移植せずに削除しました。
 
 ## パッケージ: npm レジストリのプロキシ
 

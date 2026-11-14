@@ -134,7 +134,6 @@ VERSION_ONLY_ALLOWLIST = {
 PROVENANCE_REQUIRED = {
     "github-cli": ("aqua:cli/cli", "github-attestations"),
     "jq": ("aqua:jqlang/jq", "github-attestations"),
-    "pinact": ("aqua:suzuki-shunsuke/pinact", "github-attestations"),
     "pnpm": ("aqua:pnpm/pnpm", "github-attestations"),
     "uv": ("aqua:astral-sh/uv", "github-attestations"),
 }

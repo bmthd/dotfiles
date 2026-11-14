@@ -4,7 +4,7 @@
 # comment there.
 RAW_BASE="${DOTFILES_RAW_BASE:-https://raw.githubusercontent.com/bmthd/dotfiles/${DOTFILES_REF:-main}}"
 INSTALLER="$(mktemp)"
-# The installer downloads dispatch and pinact-staged itself, so hand it the
+# The installer downloads dispatch itself, so hand it the
 # same base rather than letting it fall back to main on its own.
 export DOTFILES_RAW_BASE="$RAW_BASE"
 if curl -fsSL "$RAW_BASE/.dotfiles/git-hooks/install.sh" -o "$INSTALLER"; then
