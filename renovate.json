@@ -16,6 +16,13 @@
         "pinDigest"
       ],
       "minimumReleaseAge": null
+    },
+    {
+      "description": "Workflow action bumps are reviewed together, so batch them into one PR instead of one per action",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "groupName": "GitHub Actions"
     }
   ]
 }
