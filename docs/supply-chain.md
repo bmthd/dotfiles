@@ -10,7 +10,7 @@ The defense is four layers, each covering a different range.
 | Artifact integrity | checksums in `mise.lock` | bytes that differ from the locked artifact, **on the backends that record one** — see [coverage](#coverage-which-tools-get-what) |
 | Artifact provenance | backend verification + `locked_verify_provenance` | supported artifacts whose recorded provenance no longer verifies |
 | Package | the [Takumi Guard](https://npm.flatt.tech/) proxy in `~/.npmrc` | everything through npm, especially the run-time `npx ctx7@latest` / `npx skills add` that cannot be locked |
-| Action source | full commit SHAs verified by `pinact` | movement or compromise of a GitHub Actions release tag |
+| Action source | commit SHAs recorded in `.github/workflows/actions.lock` | movement or compromise of a GitHub Actions release tag, including in transitive actions |
 
 ## Version: `latest` declarations plus a lockfile
 
@@ -64,7 +64,7 @@ These record a checksum for the two platforms this repository installs on, `linu
 That is the pair the policy requires and the pair the check below verifies; the other platform variants in the lockfile are left intact and are not asserted here:
 
 <!-- coverage:checksum:start -->
-`aqua:anomalyco/opencode`, `aqua:astral-sh/uv`, `aqua:cli/cli`, `aqua:cloudflare/cloudflared`, `aqua:jqlang/jq`, `aqua:modem-dev/hunk`, `aqua:pnpm/pnpm`, `aqua:suzuki-shunsuke/pinact`, `aqua:x-motemen/ghq`, `core:bun`, `core:node`, `github:rtk-ai/rtk`
+`aqua:anomalyco/opencode`, `aqua:astral-sh/uv`, `aqua:cli/cli`, `aqua:cloudflare/cloudflared`, `aqua:jqlang/jq`, `aqua:modem-dev/hunk`, `aqua:pnpm/pnpm`, `aqua:x-motemen/ghq`, `core:bun`, `core:node`, `github:rtk-ai/rtk`
 <!-- coverage:checksum:end -->
 
 These record nothing but a version and a backend — the list above's complement, and the same set as the allowlisted exceptions:
@@ -76,33 +76,34 @@ These record nothing but a version and a backend — the list above's complement
 And these additionally carry verified provenance in the lockfile:
 
 <!-- coverage:provenance:start -->
-`aqua:astral-sh/uv`, `aqua:cli/cli`, `aqua:jqlang/jq`, `aqua:pnpm/pnpm`, `aqua:suzuki-shunsuke/pinact`
+`aqua:astral-sh/uv`, `aqua:cli/cli`, `aqua:jqlang/jq`, `aqua:pnpm/pnpm`
 <!-- coverage:provenance:end -->
 
 [`tests/mise-pins-test.sh`](../tests/mise-pins-test.sh) checks these four lists against `mise.lock` on every CI run, so a backend that gains or loses a checksum fails here rather than quietly making this page a lie.
 
 A checksum establishes integrity relative to the value in `mise.lock`; it does not establish who built or published those bytes.
 For authenticity, mise records verified provenance when a backend and release provide it.
-The policy currently requires `github-attestations` on every recorded platform asset for `github-cli`, `jq`, `pinact`, `pnpm`, and `uv`, because those tools already provide that provenance.
+The policy currently requires `github-attestations` on every recorded platform asset for `github-cli`, `jq`, `pnpm`, and `uv`, because those tools already provide that provenance.
 Each expectation is also bound to its current exact aqua backend, so switching the upstream identity requires policy review.
 Removing or changing one of those entries is treated as a regression.
 
 `.mise.toml` sets `locked_verify_provenance = true`, so installation re-runs cryptographic provenance verification instead of trusting the lockfile's prior verification result.
 This guarantee applies only to artifacts for which mise and the upstream release provide provenance; it does not add provenance to the checksum-only tools or the explicit version-only exceptions.
 
-## Action source: immutable commit SHAs
+## Action source: the workflow lockfile
 
-Every `uses:` reference under [`.github/workflows`](../.github/workflows) is pinned to a full 40-character commit SHA.
-The release tag remains in an end-of-line comment, so a review still shows the recognizable version without trusting that mutable tag at run time.
+Workflows reference actions by an exact release tag (`actions/checkout@v7.0.1`), and [`.github/workflows/actions.lock`](../.github/workflows/actions.lock) records the commit each tag resolved to, along with the numeric owner and repository IDs behind the name.
+Actions runs the locked commit, not whatever the tag points at now, and refuses a job whose `uses:` has no entry. Unlike SHA pins in the workflow file, the lockfile also covers the actions that those actions use.
 
-`pinact` performs both enforcement paths.
-CI runs `pinact run --check --verify-comment`, which rejects an unpinned reference and a SHA whose version comment no longer matches.
-The global pre-commit dispatcher runs pinact first for staged workflow files, then forwards to the repository's own pre-commit hook as before.
-It pins a temporary copy of the index and writes the resulting blobs back to the index, so unrelated unstaged edits and partial staging do not leak into the commit.
-When the same fix applies cleanly to the working tree, the hook mirrors it there; a conflicting unstaged edit is left untouched.
+The lockfile is generated by the [`gh actions-lock`](https://github.com/github/gh-actions-lock) extension and is never edited by hand.
+Renovate regenerates it in the same PR that bumps a `uses:` line; after editing a workflow by hand, run `gh actions-lock` and commit the result.
+CI's `Actions lockfile` job runs `gh actions-lock --verify`, which fails when a reference is missing from the lockfile or a locked commit no longer verifies upstream.
+The extension itself is installed at a pinned release there, since it is what decides whether every other action is trustworthy.
 
-pinact itself is a mise-managed tool and is checksum-pinned in `mise.lock`.
-Its lock entry advances through the same daily `--minimum-release-age 2d` gate as the rest of the toolchain.
+Review a lockfile diff as a dependency change: a changed `commit` is new code to run, and a changed `owner_id` or `repo_id` means the repository behind the name is no longer the one that was locked.
+
+This replaces the earlier `pinact` setup, including the global pre-commit hook that SHA-pinned staged workflows in every repository.
+A lockfile is a per-repository opt-in, which a machine-wide hook has no business creating, so the hook was removed rather than ported.
 
 ## Package: the npm registry proxy
 

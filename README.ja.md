@@ -40,7 +40,7 @@ curl -fsSL https://raw.githubusercontent.com/bmthd/dotfiles/main/install.sh | ba
 - **エージェントスキル** — Claude Code / OpenCode / Cursor / Codex / Gemini CLI の 5 つに同じものを導入
 - **プラグイン** — Codex、pstack、および公式プラグイン (TypeScript LSP)
 - **npm レジストリ** — マルウェアを遮断する [Takumi Guard](https://npm.flatt.tech/) プロキシ経由に変更
-- **グローバル git フック** — 新しい worktree の mise config を trust し、repository hook と部分 stage を維持したまま、commit 前に staged GitHub Actions 参照を pin する ([`.dotfiles/git-hooks`](.dotfiles/git-hooks))
+- **グローバル git フック** — repository hook を維持したまま、新しい worktree の mise config を trust する ([`.dotfiles/git-hooks`](.dotfiles/git-hooks))
 - **シェルの起動ファイル** — mise の有効化と更新通知を、mise が所有し書き換えられるブロックとして `~/.zshrc` と `~/.bashrc` に書き込む（[`.mise.toml`](.mise.toml) の `[bootstrap.mise_shell_activate]` と `[dotfiles]`）
 
 セットアップはいつでも mise タスクとして再実行できます。
@@ -85,7 +85,7 @@ mise の設定はもう含まれません。リポジトリ側のコピーは `~
 | [`mise.lock`](mise.lock) | 実際に入るバージョンとチェックサム。`~/.config/mise/mise.lock` に配置される |
 | [`.agents/skills`](.agents/skills) | このリポジトリ専用のスキル。汎用のものは [bmthd/skills](https://github.com/bmthd/skills) に分離 |
 | [`renovate.json`](renovate.json) | GitHub Actions の更新 PR の方針 |
-| [`.githooks`](.githooks) | `[tools]` を守る repository 固有の pre-commit フック。global dispatcher は先に pinact を実行してからここへ処理を渡す |
+| [`.githooks`](.githooks) | `[tools]` を守る repository 固有の pre-commit フック。global dispatcher からここへ処理を渡す |
 
 ツールのバージョンは `mise upgrade` ではなく、毎日走る [`bump-tools.yml`](.github/workflows/bump-tools.yml) が `mise.lock` を進めることで上がります。
 手元で先に進めたい場合は `mise lock --bump --minimum-release-age 2d --global`。

@@ -13,10 +13,14 @@ HOOKS_DIR="${GIT_HOOKS_DIR:-$HOME/.config/git/hooks}"
 # the base URL it exported rather than resolving main a second time.
 RAW_BASE="${DOTFILES_RAW_BASE:-https://raw.githubusercontent.com/bmthd/dotfiles/${DOTFILES_REF:-main}}"
 DISPATCH_URL="$RAW_BASE/.dotfiles/git-hooks/dispatch"
-PINACT_STAGED_URL="$RAW_BASE/.dotfiles/git-hooks/pinact-staged"
 # Identifies a dispatch this script wrote, so a re-run refreshes its own files
 # and only its own.
 MARKER="bmthd/dotfiles global git hook dispatcher"
+# The helper that used to SHA-pin staged workflows with pinact. Workflow pinning
+# is now the job of each repository's own .github/workflows/actions.lock, which
+# a machine-wide hook cannot write for a repository that never opted in, so the
+# helper is gone — and removed from machines it was installed on, but only when
+# the marker proves this script put it there.
 PINACT_MARKER="bmthd/dotfiles staged pinact helper"
 
 # githooks(5), including the server-side and p4 hooks. core.hooksPath replaces
@@ -42,11 +46,6 @@ if [ -e "$HOOKS_DIR/dispatch" ] && ! grep -q "$MARKER" "$HOOKS_DIR/dispatch" 2> 
     echo "⚠ $HOOKS_DIR/dispatch exists and was not written by this script; aborting"
     exit 1
 fi
-if [ -e "$HOOKS_DIR/pinact-staged" ] &&
-    ! grep -q "$PINACT_MARKER" "$HOOKS_DIR/pinact-staged" 2> /dev/null; then
-    echo "⚠ $HOOKS_DIR/pinact-staged exists and was not written by this script; aborting"
-    exit 1
-fi
 
 local_dispatch="$(cd "$(dirname "$0")" && pwd)/dispatch"
 if [ -f "$local_dispatch" ]; then
@@ -57,14 +56,10 @@ elif ! curl -fsSL "$DISPATCH_URL" -o "$HOOKS_DIR/dispatch"; then
 fi
 chmod +x "$HOOKS_DIR/dispatch"
 
-local_pinact_staged="$(cd "$(dirname "$0")" && pwd)/pinact-staged"
-if [ -f "$local_pinact_staged" ]; then
-    cp "$local_pinact_staged" "$HOOKS_DIR/pinact-staged"
-elif ! curl -fsSL "$PINACT_STAGED_URL" -o "$HOOKS_DIR/pinact-staged"; then
-    echo "⚠ Failed to download the staged pinact helper"
-    exit 1
+if [ -f "$HOOKS_DIR/pinact-staged" ] &&
+    grep -q "$PINACT_MARKER" "$HOOKS_DIR/pinact-staged" 2> /dev/null; then
+    rm -f "$HOOKS_DIR/pinact-staged"
 fi
-chmod +x "$HOOKS_DIR/pinact-staged"
 
 skipped=()
 for hook in "${HOOK_NAMES[@]}"; do
