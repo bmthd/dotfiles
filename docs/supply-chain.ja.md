@@ -10,6 +10,7 @@
 | 成果物の完全性 | `mise.lock` のチェックサム | ロックした成果物と異なるバイト列。ただし **checksum を記録する backend に限る** ([カバー範囲](#カバー範囲-どのツールに何が効くか)) |
 | 成果物の provenance | backend の検証 + `locked_verify_provenance` | 対応する成果物で、記録済み provenance を検証できなくなった場合 |
 | パッケージ | `~/.npmrc` の [Takumi Guard](https://npm.flatt.tech/) プロキシ | npm 経由すべて。特にロックできない実行時の `npx ctx7@latest` / `npx skills add` |
+| スキル | `.dotfiles/apm/apm.lock.yaml` + `apm install -g --frozen`。毎週のレビュー PR で更新 | upstream で変わったサードパーティのスキル内容 ([詳細](#スキル)) |
 | Action のソース | `pinact` が検証する完全な commit SHA | GitHub Actions の release tag の移動や侵害 |
 
 ## バージョン: `latest` 宣言 + ロックファイル
@@ -68,7 +69,7 @@ checksum による保護は mise ではなく backend の性質です。
 policy が必須とし、下のチェックが検証するのもこの 2 つです。lockfile にあるほかの platform variation はそのまま残し、ここでは主張しません:
 
 <!-- coverage:checksum:start -->
-`aqua:anomalyco/opencode`, `aqua:astral-sh/uv`, `aqua:cli/cli`, `aqua:cloudflare/cloudflared`, `aqua:jqlang/jq`, `aqua:modem-dev/hunk`, `aqua:pnpm/pnpm`, `aqua:suzuki-shunsuke/pinact`, `aqua:x-motemen/ghq`, `core:bun`, `core:node`, `github:rtk-ai/rtk`
+`aqua:anomalyco/opencode`, `aqua:astral-sh/uv`, `aqua:cli/cli`, `aqua:cloudflare/cloudflared`, `aqua:jqlang/jq`, `aqua:modem-dev/hunk`, `aqua:pnpm/pnpm`, `aqua:suzuki-shunsuke/pinact`, `aqua:x-motemen/ghq`, `core:bun`, `core:node`, `github:microsoft/apm`, `github:rtk-ai/rtk`
 <!-- coverage:checksum:end -->
 
 version と backend しか記録していないもの。上の補集合であり、許可リストの例外と同じ集合です:
@@ -132,10 +133,19 @@ npm レジストリと通信しない backend には効きません。`cargo:` �
 `cargo:similarity-ts`, `vfox:oci`
 <!-- coverage:unproxied-version-only:end -->
 
-## 対象外: スキル
+## スキル
 
-`npx skills add` が取得する Markdown は各エージェントのコンテキストに直接入るため、プロンプトインジェクションの経路になり得ます。
-しかし skills CLI にリビジョン固定の手段がありません。`npx skills update` は差分を確認してから実行してください。
+スキルは各エージェントのコンテキストに直接入る Markdown なので、プロンプトインジェクションの経路になり得ます。
+
+サードパーティのスキルは [APM](https://github.com/microsoft/apm) で [`.dotfiles/apm/apm.yml`](../.dotfiles/apm/apm.yml) から入れます。
+隣の [`apm.lock.yaml`](../.dotfiles/apm/apm.lock.yaml) がそれぞれの commit と内容のハッシュを記録し、端末は `apm install -g --frozen` で入れます。記録どおりのものだけを入れ、記録にないものは入れません。
+[`bump-skills.yml`](../.github/workflows/bump-skills.yml) が毎週これを解決し直して PR を開きます。本文には、動いたリポジトリごとに upstream の compare ビューへのリンクが並びます。
+ツールと違って待つべきリリース経過日数がないので、このレビューが関門です。マージ前に compare ビューを読んでください。
+
+残る穴は 2 つです:
+
+- 自作のスキル（[`bmthd/skills`](https://github.com/bmthd/skills) とこのリポジトリのもの）は `npx skills add` で入れ、意図して HEAD を追います。動いたことはシェル起動時の更新通知が知らせます。
+- スキルを固定しても固定されるのは指示であり、指示が実行するものではありません。たとえば `modern-web-guidance` はエージェントに `npx -y modern-web-guidance@latest` を実行させ、その前に立つのは Takumi Guard プロキシだけです。
 
 ## bump-tools.yml のセットアップ（初回のみ）
 
@@ -150,5 +160,6 @@ GitHub App なら登録できるので、App のトークンを使います。
    - `BUMP_APP_CLIENT_ID` — 手順 2 の Client ID
    - `BUMP_APP_PRIVATE_KEY` — ダウンロードした `.pem` の中身
 5. Settings > Rules > `main-guardrails` の Bypass list に、作成した App を Integration として追加する
+6. main に push せず PR を開く [`bump-skills.yml`](../.github/workflows/bump-skills.yml) のために、App に **Pull requests: Read and write** も付与し、installation 側で新しい権限を承認する
 
 `workflow_dispatch` から手動実行して、push まで通ることを確認してください。

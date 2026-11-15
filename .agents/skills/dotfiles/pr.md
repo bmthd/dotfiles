@@ -50,11 +50,13 @@ on a work machine those two routinely differ.
 
 Read the repository facts in [SKILL.md](SKILL.md) first. In addition:
 
-- **Adding a third-party skill**: add an `install_skills` line to
-  [`.dotfiles/setup/skills.sh`](../../../.dotfiles/setup/skills.sh) rather than copying
-  the skill into this repository. Gists work too, via their `.git` clone URL
-  (`https://gist.github.com/<id>.git`): the skills CLI source parser mistakes
-  `gist.github.com` for `github.com`, so the page URL 404s.
+- **Adding a third-party skill**: add an entry for its skill directory to
+  [`.dotfiles/apm/apm.yml`](../../../.dotfiles/apm/apm.yml) rather than copying the skill
+  into this repository, then run `bash .dotfiles/apm/relock.sh` (needs `apm`, which mise
+  installs) and commit the regenerated `apm.lock.yaml` with it. CI fails while the two
+  disagree. If the source repository was installed by the skills CLI before, add it to
+  the source list in `remove_skills_cli_copies` in
+  [`.dotfiles/setup/skills.sh`](../../../.dotfiles/setup/skills.sh) too.
 - **Changing what a setup task does** means editing `.dotfiles/setup/<name>.sh`, not
   `.mise.toml`: a task there is a one-line delegation to its script and stays that way.
   A *new* task needs three things in the same commit — the script, the task, and the
@@ -67,16 +69,19 @@ Read the repository facts in [SKILL.md](SKILL.md) first. In addition:
   ```bash
   bash -n install.sh .dotfiles/update-notice.sh .claude/statusline.sh \
     .dotfiles/git-hooks/dispatch .dotfiles/git-hooks/install.sh \
-    .dotfiles/apply.sh .dotfiles/setup/*.sh
+    .dotfiles/apply.sh .dotfiles/setup/*.sh .dotfiles/apm/relock.sh \
+    .github/workflows/*.sh
   zsh -n install.sh
   shellcheck install.sh .claude/statusline.sh .dotfiles/update-notice.sh \
     .dotfiles/apply.sh .dotfiles/mise-layout.sh \
-    .dotfiles/git-hooks/* .dotfiles/setup/*.sh .githooks/pre-commit tests/*.sh
+    .dotfiles/git-hooks/* .dotfiles/setup/*.sh .dotfiles/apm/relock.sh \
+    .github/workflows/*.sh .githooks/pre-commit tests/*.sh
   bash tests/update-notice-test.sh && bash tests/statusline-test.sh
   bash tests/mise-pins-test.sh && bash tests/install-order-test.sh && bash tests/git-hooks-test.sh
   bash tests/setup-facade-test.sh && bash tests/oci-plugin-test.sh && bash tests/revision-pinning-test.sh
   bash tests/apply-test.sh && bash tests/shell-rc-test.sh
   mise ls >/dev/null && mise tasks ls >/dev/null
+  mise x apm -- bash .dotfiles/apm/relock.sh --check
   ```
 
 - **`mise ls` passing does not mean `.mise.toml` is correct.** Every entry in

@@ -48,10 +48,12 @@ author であって PR を開くアカウントではない。会社の端末で
 先に [SKILL.ja.md](SKILL.ja.md) のリポジトリ前提知識を読むこと。加えて:
 
 - **サードパーティのスキルを追加するとき**: スキルをこのリポジトリにコピーするのではなく、
-  [`.dotfiles/setup/skills.sh`](../../../.dotfiles/setup/skills.sh) に `install_skills` の
-  行を足す。gist も `.git` の clone URL（`https://gist.github.com/<id>.git`）を使えば
-  動く。skills CLI のソース解析は `gist.github.com` を `github.com` と取り違えるため、
-  ページ URL では 404 になる
+  [`.dotfiles/apm/apm.yml`](../../../.dotfiles/apm/apm.yml) にそのスキルのディレクトリを
+  足し、`bash .dotfiles/apm/relock.sh`（`apm` が必要。mise が入れる）を実行して、再生成
+  された `apm.lock.yaml` と一緒にコミットする。両者が食い違う間は CI が落ちる。以前
+  skills CLI で入れていたソースなら、
+  [`.dotfiles/setup/skills.sh`](../../../.dotfiles/setup/skills.sh) の
+  `remove_skills_cli_copies` のソース一覧にも足す
 - **セットアップタスクの中身を変えるとき**は `.mise.toml` ではなく
   `.dotfiles/setup/<name>.sh` を編集する。`.mise.toml` のタスクはスクリプトへの 1 行の
   委譲であり、そのまま保つ。タスクを *新設* するときは同じコミットで 3 つ必要 —
@@ -64,16 +66,19 @@ author であって PR を開くアカウントではない。会社の端末で
   ```bash
   bash -n install.sh .dotfiles/update-notice.sh .claude/statusline.sh \
     .dotfiles/git-hooks/dispatch .dotfiles/git-hooks/install.sh \
-    .dotfiles/apply.sh .dotfiles/setup/*.sh
+    .dotfiles/apply.sh .dotfiles/setup/*.sh .dotfiles/apm/relock.sh \
+    .github/workflows/*.sh
   zsh -n install.sh
   shellcheck install.sh .claude/statusline.sh .dotfiles/update-notice.sh \
     .dotfiles/apply.sh .dotfiles/mise-layout.sh \
-    .dotfiles/git-hooks/* .dotfiles/setup/*.sh .githooks/pre-commit tests/*.sh
+    .dotfiles/git-hooks/* .dotfiles/setup/*.sh .dotfiles/apm/relock.sh \
+    .github/workflows/*.sh .githooks/pre-commit tests/*.sh
   bash tests/update-notice-test.sh && bash tests/statusline-test.sh
   bash tests/mise-pins-test.sh && bash tests/install-order-test.sh && bash tests/git-hooks-test.sh
   bash tests/setup-facade-test.sh && bash tests/oci-plugin-test.sh && bash tests/revision-pinning-test.sh
   bash tests/apply-test.sh && bash tests/shell-rc-test.sh
   mise ls >/dev/null && mise tasks ls >/dev/null
+  mise x apm -- bash .dotfiles/apm/relock.sh --check
   ```
 
 - **`mise ls` が通ることは `.mise.toml` が正しいことを意味しない。** `[tools]` の各行は

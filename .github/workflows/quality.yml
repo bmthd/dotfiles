@@ -42,6 +42,10 @@ jobs:
       # checks that a task and its script still agree.
       - name: Test the setup task facade
         run: bash tests/setup-facade-test.sh
+      # A manifest entry added without re-locking would make every machine's
+      # `apm install -g --frozen` fail; catch it here instead.
+      - name: Verify the skills lockfile covers the manifest
+        run: mise x apm -- bash .dotfiles/apm/relock.sh --check
       - name: Verify immutable GitHub Actions references
         run: mise x pinact -- pinact run --check --verify-comment
         env:
@@ -68,6 +72,8 @@ jobs:
           bash -n .dotfiles/git-hooks/install.sh
           bash -n .dotfiles/apply.sh
           bash -n .github/workflows/bump-tools.commit.sh
+          bash -n .github/workflows/bump-skills.pr.sh
+          bash -n .dotfiles/apm/relock.sh
           # The setup task bodies. They are only shell once they are files —
           # inline in .mise.toml nothing here could have parsed them.
           for script in .dotfiles/setup/*.sh; do bash -n "$script"; done

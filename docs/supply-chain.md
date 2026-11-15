@@ -10,6 +10,7 @@ The defense is four layers, each covering a different range.
 | Artifact integrity | checksums in `mise.lock` | bytes that differ from the locked artifact, **on the backends that record one** — see [coverage](#coverage-which-tools-get-what) |
 | Artifact provenance | backend verification + `locked_verify_provenance` | supported artifacts whose recorded provenance no longer verifies |
 | Package | the [Takumi Guard](https://npm.flatt.tech/) proxy in `~/.npmrc` | everything through npm, especially the run-time `npx ctx7@latest` / `npx skills add` that cannot be locked |
+| Skills | `.dotfiles/apm/apm.lock.yaml` + `apm install -g --frozen`, advanced by a reviewed weekly PR | third-party skill content changing upstream ([details](#skills)) |
 | Action source | full commit SHAs verified by `pinact` | movement or compromise of a GitHub Actions release tag |
 
 ## Version: `latest` declarations plus a lockfile
@@ -64,7 +65,7 @@ These record a checksum for the two platforms this repository installs on, `linu
 That is the pair the policy requires and the pair the check below verifies; the other platform variants in the lockfile are left intact and are not asserted here:
 
 <!-- coverage:checksum:start -->
-`aqua:anomalyco/opencode`, `aqua:astral-sh/uv`, `aqua:cli/cli`, `aqua:cloudflare/cloudflared`, `aqua:jqlang/jq`, `aqua:modem-dev/hunk`, `aqua:pnpm/pnpm`, `aqua:suzuki-shunsuke/pinact`, `aqua:x-motemen/ghq`, `core:bun`, `core:node`, `github:rtk-ai/rtk`
+`aqua:anomalyco/opencode`, `aqua:astral-sh/uv`, `aqua:cli/cli`, `aqua:cloudflare/cloudflared`, `aqua:jqlang/jq`, `aqua:modem-dev/hunk`, `aqua:pnpm/pnpm`, `aqua:suzuki-shunsuke/pinact`, `aqua:x-motemen/ghq`, `core:bun`, `core:node`, `github:microsoft/apm`, `github:rtk-ai/rtk`
 <!-- coverage:checksum:end -->
 
 These record nothing but a version and a backend — the list above's complement, and the same set as the allowlisted exceptions:
@@ -125,10 +126,19 @@ Two tools fall through both, having neither a proxy in front of them nor a check
 `cargo:similarity-ts`, `vfox:oci`
 <!-- coverage:unproxied-version-only:end -->
 
-## Not covered: skills
+## Skills
 
-The Markdown that `npx skills add` fetches goes straight into every agent's context, which makes it a prompt-injection channel.
-The skills CLI has no way to pin a revision. Review the diff before running `npx skills update`.
+A skill is Markdown that goes straight into every agent's context, which makes it a prompt-injection channel.
+
+Third-party skills are installed with [APM](https://github.com/microsoft/apm) from [`.dotfiles/apm/apm.yml`](../.dotfiles/apm/apm.yml).
+[`apm.lock.yaml`](../.dotfiles/apm/apm.lock.yaml) beside it records the commit and content hash of each one, and machines install with `apm install -g --frozen`, which installs exactly that and nothing it does not record.
+[`bump-skills.yml`](../.github/workflows/bump-skills.yml) re-resolves them weekly and opens a PR whose body links the upstream compare view of every repository that moved.
+Unlike tools there is no release age to wait out, so that review is the gate: read the compare views before merging.
+
+Two gaps remain:
+
+- Own skills ([`bmthd/skills`](https://github.com/bmthd/skills) and this repository's) go through `npx skills add` and track HEAD on purpose; the shell-startup update notice reports when they move.
+- Pinning a skill pins its instructions, not what they run. `modern-web-guidance`, for one, tells the agent to run `npx -y modern-web-guidance@latest`, which only the Takumi Guard proxy stands in front of.
 
 ## One-time setup for bump-tools.yml
 
@@ -143,5 +153,6 @@ A GitHub App can, so the workflow uses an App token.
    - `BUMP_APP_CLIENT_ID` — the Client ID from step 2
    - `BUMP_APP_PRIVATE_KEY` — the contents of the downloaded `.pem`
 5. Add the App as an Integration in the Bypass list of Settings > Rules > `main-guardrails`.
+6. For [`bump-skills.yml`](../.github/workflows/bump-skills.yml), which opens a PR rather than pushing to main, also grant the App **Pull requests: Read and write**, and accept the new permission on its installation.
 
 Trigger the workflow manually from `workflow_dispatch` and confirm that the push goes through.

@@ -3,7 +3,16 @@
 # Codex, and Gemini CLI.
 # Placed by the setup:scripts task in .mise.toml; see the comment there.
 #
-# The `npx skills add` calls below must resolve through the Takumi Guard proxy,
+# Two installers, split by whose skills they are:
+#
+#   * own skills (bmthd/skills, and the dotfiles skill in this repository) go
+#     through the `skills` CLI and track HEAD — the shell-startup update notice
+#     is what tells a machine they have moved;
+#   * third-party skills go through APM, pinned to the commits recorded in
+#     .dotfiles/apm/apm.lock.yaml. The manifest beside it says why each one is
+#     there and why APM.
+#
+# The `npx skills` calls below must resolve through the Takumi Guard proxy,
 # which is why the task declares setup:npm-registry as a dependency rather than
 # relying on the order of the parent task's depends list.
 
@@ -11,24 +20,11 @@
 # "universal" agents to the skills CLI: they all read ~/.agents/skills, which is
 # also where it puts a skill for OpenCode, so the one directory covers all four
 # and only Claude Code gets a tree of its own (symlinks into ~/.agents/skills).
-# That is why adding gemini-cli below needs no new mkdir: nothing lands in
-# ~/.gemini.
+# APM's `claude` and `agent-skills` targets write the same two directories.
 mkdir -p "$HOME/.claude/skills" "$HOME/.config/opencode/skills" "$HOME/.agents/skills"
 
-# Install skills via the `skills` CLI — one mechanism for every source.
-# Own skills live in bmthd/skills, split out of the dotfiles repository so they
-# can be shared on their own. What stays in that repository's .agents/skills/ is
-# what does not belong anywhere else: the dotfiles skill, which only makes sense
-# against it. Third-party skills come from their upstream repos. productivity
-# pulls all skills from Matt Pocock's upstream productivity skills folder.
-# Update any of them later with `npx skills update`.
-#
-# SECURITY: these are the one dependency here that nothing checks. A skill is
-# Markdown that is loaded straight into every agent's context, so a compromised
-# one is a prompt-injection channel, not just a malicious package — and the
-# skills CLI has no way to pin a revision (`skills add` takes no ref, and the
-# skills-lock.json restore path is experimental and project-scoped). Treat
-# `npx skills update` as a change to review, not to run unattended.
+RAW_BASE="${DOTFILES_RAW_BASE:-https://raw.githubusercontent.com/bmthd/dotfiles/${DOTFILES_REF:-main}}"
+
 echo "📦 Installing skills..."
 install_skills() {
     local label="$1"; shift
@@ -40,65 +36,70 @@ install_skills "own" bmthd/skills
 # the dotfiles skill (pr / apply) targets the dotfiles repository, so it still
 # lives there
 install_skills "dotfiles-local" bmthd/dotfiles
-install_skills "superpowers" obra/superpowers
-install_skills "productivity" https://github.com/mattpocock/skills/tree/main/skills/productivity -s '*'
-# Orca (the parallel-agent ADE) ships its skills in the app's own repo. The CLI
-# itself is not installable here — it comes from the desktop app, or over the
-# SSH relay on a VPS — but the skills teach an agent to drive it, so install
-# them all and let the ones for absent features simply never trigger.
-install_skills "orca" stablyai/orca -s '*'
-# hunk ships four skills; only hunk-review drives a review session from an agent
-install_skills "hunk" modem-dev/hunk -s hunk-review
-# show-me teaches an agent to answer with a diagram, a call tree or a small HTML
-# view instead of a wall of prose. humanlayer publishes it as a Claude Code
-# plugin — the repository is a marketplace and each skill sits at
-# plugins/<name>/skills/<name>/ — but the skills CLI finds it from the
-# repository root all the same, so the plain owner/repo source works and every
-# agent gets it, not just Claude Code. The selector is what matters here: the
-# marketplace carries several unrelated plugins.
-install_skills "show-me" humanlayer/skills -s show-me
-# eli5 answers a question with an HTML picture explainer — big visuals, few
-# words, no assumed background. Anthropic publishes it in the community plugin
-# marketplace, which is a marketplace of references first: its manifest lists a
-# few thousand plugins that live in other repositories, and only a handful,
-# eli5 among them, are vendored in the repository itself. Source the plugin's
-# own skills directory rather than the repository root, so what is installed is
-# that one plugin and not whatever else the marketplace happens to carry.
-install_skills "eli5" https://github.com/anthropics/claude-plugins-community/tree/main/eli5/skills -s eli5
-# security-audit is Cloudflare's source-first audit workflow (recon, coverage
-# ledger, isolated hunters, independent verifiers). It stays in guidance mode
-# unless a full audit is explicitly asked for, so loading it on an ordinary
-# security question does not start writing report files. Its two validators
-# are zero-dependency Node scripts (fs/path only) that run from the skill
-# directory.
-install_skills "security-audit" cloudflare/security-audit-skill -s security-audit
-# modern-web-guidance steers web UI work toward current platform features
-# (dialog/popover, container queries, view transitions, ...) instead of the
-# legacy patterns that dominate training data. The skill is a thin wrapper: it
-# makes the agent run `npx -y modern-web-guidance@latest search|retrieve`,
-# which fetches the guides at use time, so the SECURITY note above extends to
-# that npm package too. The repository also ships a chrome-extensions skill;
-# select by name so only the web guidance is installed.
-install_skills "modern-web-guidance" GoogleChrome/modern-web-guidance -s modern-web-guidance
-# pstack: Claude Code gets it as a plugin (setup:claude-plugins installs it
-# from the cursor/plugins marketplace, agents included), so the skills CLI
-# installs it for every other agent only — linking it into ~/.claude/skills
-# as well would show Claude Code each skill twice, once bare and once as
-# /pstack:<name>. Take all of them: poteto-mode is the entry point and its
-# inline Principles index navigates to the 21 principle-* skills by name, so a
-# subset leaves it pointing at skills that are not there.
-npx skills add https://github.com/cursor/plugins/tree/main/pstack/skills -s '*' \
-    -y -g -a opencode -a cursor -a codex -a gemini-cli 2>/dev/null \
-  && echo "✓ pstack skills installed" \
-  || echo "⚠ pstack skills installation failed (continuing)"
-# yomiyasu rewrites AI-flavoured Japanese by restoring who-did-what sentence
-# structure rather than swapping banned words:
-# https://zenn.dev/algoartis/articles/0b1c731881b25c
-# The repository carries the same SKILL.md twice, at its root and under
-# skills/yomiyasu/, so select it by name to get one copy.
-install_skills "yomiyasu" nanaism/yomiyasu -s yomiyasu
+
+# --- Third-party skills (APM) -------------------------------------------------
+# Machines set up before APM have these from the skills CLI, which leaves a
+# symlink in ~/.claude/skills that APM refuses to deploy over. Remove what the
+# skills CLI installed from a source APM now owns; its lock file names the
+# source of each skill. Matching on sources rather than skill names also takes
+# out the ones APM no longer installs (playwright-cli's `dev`, hunk's
+# extensions). Once migrated nothing matches and this is a no-op.
+remove_skills_cli_copies() {
+    local lock="$HOME/.agents/.skill-lock.json"
+    local owned='["obra/superpowers","mattpocock/skills","stablyai/orca","modem-dev/hunk","humanlayer/skills","anthropics/claude-plugins-community","cloudflare/security-audit-skill","cursor/plugins","nanaism/yomiyasu","GoogleChrome/modern-web-guidance","microsoft/playwright-cli","yoshiko-pg/difit"]'
+    [ -r "$lock" ] && command -v jq >/dev/null 2>&1 || return 0
+    local name legacy=()
+    while IFS= read -r name; do
+        legacy+=("$name")
+    done < <(jq -r --argjson owned "$owned" \
+        '.skills // {} | to_entries[] | select((.value.source | ascii_downcase) as $s | $owned | map(ascii_downcase) | index($s)) | .key' \
+        "$lock")
+    [ "${#legacy[@]}" -gt 0 ] || return 0
+    npx skills remove "${legacy[@]}" -g -y >/dev/null 2>&1 \
+      && echo "✓ Moved ${#legacy[@]} skill(s) from the skills CLI to APM" \
+      || echo "⚠ Failed to remove skills-CLI copies of APM-managed skills (continuing)"
+}
+
+# ~/.apm is the APM user scope, and its manifest and lockfile are replaced from
+# this repository on every run: a skill added there by hand would be dropped
+# from the manifest here, so add it to .dotfiles/apm/apm.yml instead. Copies,
+# not symlinks — APM refuses to write through a symlinked lockfile.
+#
+# `--frozen` installs exactly what the lockfile records and fails instead of
+# resolving anything it does not, so an entry added to the manifest without
+# re-locking cannot quietly pull upstream HEAD.
+if command -v apm >/dev/null 2>&1; then
+    APM_DIR="$HOME/.apm"
+    mkdir -p "$APM_DIR"
+    fetched=0
+    for file in apm.yml apm.lock.yaml; do
+        # Through a temp file, so a failed download never leaves a manifest
+        # that disagrees with its lockfile.
+        tmp="$(mktemp)"
+        if curl -fsSL --max-time 30 "$RAW_BASE/.dotfiles/apm/$file" -o "$tmp"; then
+            mv "$tmp" "$APM_DIR/$file.new"
+            fetched=$((fetched + 1))
+        else
+            rm -f "$tmp"
+        fi
+    done
+    if [ "$fetched" -eq 2 ]; then
+        mv "$APM_DIR/apm.yml.new" "$APM_DIR/apm.yml"
+        mv "$APM_DIR/apm.lock.yaml.new" "$APM_DIR/apm.lock.yaml"
+        remove_skills_cli_copies
+        apm install -g --frozen \
+          && echo "✓ third-party skills installed (APM)" \
+          || echo "⚠ third-party skills installation failed (continuing)"
+    else
+        rm -f "$APM_DIR/apm.yml.new" "$APM_DIR/apm.lock.yaml.new"
+        echo "⚠ Failed to download the APM manifest (continuing)"
+    fi
+else
+    echo "⚠ apm not found; skipping third-party skills (run \`mise install\` first)"
+fi
+
 # yomiyasu's SKILL.md warns that other Japanese style skills active alongside it
-# make its output erratic, so it replaces the two that used to be installed
+# make its output erratic, so it replaced the two that used to be installed
 # here, japanese-tech-writing and cognitive-rhythm-writing. Dropping their
 # install lines does not take them off a machine that already has them, so
 # remove them explicitly; on a machine without them this is a no-op.

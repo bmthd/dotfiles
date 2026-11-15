@@ -1,0 +1,174 @@
+# Third-party agent skills, installed by `setup:skills` with APM
+# (https://github.com/microsoft/apm) into the user scope: setup copies this file
+# and apm.lock.yaml beside it to ~/.apm/ and runs `apm install -g --frozen`.
+#
+# Why APM rather than `npx skills add`: a skill is Markdown loaded straight into
+# every agent's context, so a compromised upstream is a prompt-injection channel.
+# The skills CLI cannot pin a revision; APM records the commit of every entry in
+# apm.lock.yaml and `--frozen` installs exactly that. The lock moves only through
+# .github/workflows/bump-skills.yml, weekly, as a reviewable diff.
+#
+# Own skills (bmthd/skills, and the dotfiles skill in this repository) stay on
+# the skills CLI in .dotfiles/setup/skills.sh: they are meant to track HEAD, and
+# the shell-startup update notice is what tells a machine they have moved.
+#
+# Targets: `claude` writes ~/.claude/skills/, `agent-skills` writes
+# ~/.agents/skills/, which Cursor, Codex, OpenCode and Gemini CLI all read.
+# Those two directories are exactly what the skills CLI used to fill, and
+# listing `gemini` or `opencode` as targets as well would hand those agents a
+# second copy of every skill from their own directory.
+#
+# Every entry is one skill directory, never a whole repository, for two reasons
+# found by installing them:
+#   * a repository root is often a Claude or Agent plugin, and APM installs a
+#     plugin whole — obra/superpowers then writes a SessionStart hook into
+#     ~/.claude/settings.json, which setup:claude owns — or, for an Agent
+#     Plugins package such as pstack, only for the copilot target;
+#   * a sparse checkout of one directory keeps large repositories (stablyai/orca)
+#     from being cloned in full.
+# The cost is that a skill added upstream arrives only once it is listed here.
+#
+# No entry carries a #ref, and `apm install` warns that they are unpinned: the
+# pin is apm.lock.yaml, not this file. After editing this file, run
+# `bash .dotfiles/apm/relock.sh` and commit both; CI fails until they agree.
+name: dotfiles-skills
+version: 0.0.0
+targets:
+  - claude
+  - agent-skills
+dependencies:
+  apm:
+    # obra/superpowers: the whole skills/ directory.
+    - obra/superpowers/skills/brainstorming
+    - obra/superpowers/skills/diagnosing-superpowers
+    - obra/superpowers/skills/dispatching-parallel-agents
+    - obra/superpowers/skills/executing-plans
+    - obra/superpowers/skills/finishing-a-development-branch
+    - obra/superpowers/skills/receiving-code-review
+    - obra/superpowers/skills/requesting-code-review
+    - obra/superpowers/skills/subagent-driven-development
+    - obra/superpowers/skills/systematic-debugging
+    - obra/superpowers/skills/test-driven-development
+    - obra/superpowers/skills/using-git-worktrees
+    - obra/superpowers/skills/using-superpowers
+    - obra/superpowers/skills/verification-before-completion
+    - obra/superpowers/skills/writing-plans
+    - obra/superpowers/skills/writing-skills
+    # Matt Pocock's productivity skills. `teach` collides with pstack's `teach`
+    # in ~/.agents/skills, so this one goes to Claude Code only; the other agents
+    # get pstack's (Claude Code reaches that one as /pstack:teach).
+    - mattpocock/skills/skills/productivity/grill-me
+    - mattpocock/skills/skills/productivity/grilling
+    - mattpocock/skills/skills/productivity/handoff
+    - { git: mattpocock/skills, path: skills/productivity/teach, targets: [claude] }
+    - mattpocock/skills/skills/productivity/to-questionnaire
+    - mattpocock/skills/skills/productivity/wait-what
+    - mattpocock/skills/skills/productivity/writing-for-agents
+    # Orca (the parallel-agent ADE) ships its skills in the app's own repository.
+    # The CLI itself is not installable here — it comes from the desktop app, or
+    # over the SSH relay on a VPS — but the skills teach an agent to drive it, so
+    # take them all and let the ones for absent features simply never trigger.
+    - stablyai/orca/skills/jira-tickets
+    - stablyai/orca/skills/linear-tickets
+    - stablyai/orca/skills/orca-cli
+    - stablyai/orca/skills/orca-computer-use
+    - stablyai/orca/skills/orca-emulator-android
+    - stablyai/orca/skills/orca-emulator
+    - stablyai/orca/skills/orca-jira
+    - stablyai/orca/skills/orca-linear
+    - stablyai/orca/skills/orca-per-workspace-env
+    - stablyai/orca/skills/orca-plugin-authoring
+    - stablyai/orca/skills/orchestration
+    # hunk ships four skills; only hunk-review drives a review session from an
+    # agent.
+    - modem-dev/hunk/packages/hunk/skills/hunk-review
+    # show-me teaches an agent to answer with a diagram, a call tree or a small
+    # HTML view instead of a wall of prose.
+    - humanlayer/skills/plugins/show-me/skills/show-me
+    # eli5 answers a question with an HTML picture explainer. The community
+    # plugin marketplace mostly lists plugins living elsewhere; eli5 is one of
+    # the few vendored in the repository itself.
+    - anthropics/claude-plugins-community/eli5/skills/eli5
+    # security-audit is Cloudflare's source-first audit workflow. It stays in
+    # guidance mode unless a full audit is explicitly asked for. Its two
+    # validators are zero-dependency Node scripts that run from the skill
+    # directory.
+    - cloudflare/security-audit-skill/skills/security-audit
+    # yomiyasu rewrites AI-flavoured Japanese by restoring who-did-what sentence
+    # structure: https://zenn.dev/algoartis/articles/0b1c731881b25c
+    # Its SKILL.md warns that other Japanese style skills active alongside it
+    # make its output erratic; keep it the only one.
+    - nanaism/yomiyasu/skills/yomiyasu
+    # modern-web-guidance steers web UI work toward current platform features
+    # instead of legacy patterns. Pinning it pins only the instructions: they
+    # tell the agent to run `npx -y modern-web-guidance@latest search|retrieve`,
+    # which fetches the guides from npm at use time.
+    - GoogleChrome/modern-web-guidance/skills/modern-web-guidance
+    # The skills of CLIs that mise installs (.mise.toml): playwright-cli's
+    # skills/ directory (not its repository-development `dev` skill), and difit's.
+    - microsoft/playwright-cli/skills/playwright-cli
+    - yoshiko-pg/difit/skills/difit
+    - yoshiko-pg/difit/skills/difit-review
+    # pstack: Claude Code gets it as a plugin (setup:claude-plugins), so only the
+    # other agents get it here — in ~/.claude/skills as well it would show each
+    # skill twice, bare and as /pstack:<name>. Take all of them: poteto-mode's
+    # Principles index navigates to the principle-* skills by name, so a subset
+    # leaves it pointing at skills that are not there.
+    - { git: cursor/plugins, path: pstack/skills/architect, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/arena, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/automate-me, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/benchmark-checklist, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/blast-radius, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/bro, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/correct, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/create-formal-verification-skill, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/create-verification-skill, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/figure-it-out, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/how, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/in-your-own-words, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/interrogate, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/ketchup-video, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/ketchup, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/maintain-formal-verification-skill, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/maintain-verification-skill, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/make-bot-ui, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/no-comments, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/poteto-help, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/poteto-mode, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/principle-attack-the-premise, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/principle-boundary-discipline, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/principle-build-the-lever, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/principle-encode-lessons-in-structure, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/principle-exhaust-the-design-space, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/principle-experience-first, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/principle-explain-the-number, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/principle-fix-root-causes, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/principle-foundational-thinking, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/principle-guard-the-context-window, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/principle-laziness-protocol, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/principle-make-operations-idempotent, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/principle-migrate-callers-then-delete-legacy-apis, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/principle-minimize-reader-load, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/principle-model-the-domain, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/principle-never-block-on-the-human, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/principle-outcome-oriented-execution, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/principle-prove-it-works, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/principle-redesign-from-first-principles, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/principle-separate-before-serializing-shared-state, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/principle-sequence-verifiable-units, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/principle-subtract-before-you-add, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/principle-test-behavior-not-implementation, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/principle-type-system-discipline, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/recall, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/reflect, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/setup-pstack, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/sharpen, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/show-me-your-work, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/statechart, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/swarm, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/tdd, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/teach, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/technical-writing, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/typescript-best-practices, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/unslop, targets: [agent-skills] }
+    - { git: cursor/plugins, path: pstack/skills/why, targets: [agent-skills] }

@@ -66,7 +66,7 @@ A machine installed before that split still has the repository's copy in `config
 `install.sh` and `/dotfiles apply` migrate it only when they can prove nothing was added locally — the file is identical either to the copy being installed or to the `.mise.toml` of the revision it was installed from.
 Otherwise the file stays exactly where it is, so pins keep working, and both say what to do (review it and keep only the machine-local part, or `DOTFILES_MIGRATE_MISE_CONFIG=1` to migrate anyway).
 
-Third-party skill sources are deliberately not watched: they move on their own schedule, mostly for reasons unrelated to the skills installed from them. Update those with `npx skills update`. The Markdown it fetches goes straight into an agent's context, so review the diff before running it.
+Third-party skill sources are deliberately not watched: they move on their own schedule, mostly for reasons unrelated to the skills installed from them. They are pinned in [`.dotfiles/apm/apm.lock.yaml`](.dotfiles/apm/apm.lock.yaml) and advanced by a weekly PR to review.
 
 ## Layout
 
