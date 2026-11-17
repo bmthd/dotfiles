@@ -76,7 +76,7 @@ These record nothing but a version and a backend — the list above's complement
 And these additionally carry verified provenance in the lockfile:
 
 <!-- coverage:provenance:start -->
-`aqua:astral-sh/uv`, `aqua:cli/cli`, `aqua:jqlang/jq`, `aqua:pnpm/pnpm`
+`aqua:astral-sh/uv`, `aqua:cli/cli`, `aqua:jqlang/jq`, `aqua:modem-dev/hunk`, `aqua:pnpm/pnpm`
 <!-- coverage:provenance:end -->
 
 [`tests/mise-pins-test.sh`](../tests/mise-pins-test.sh) checks these four lists against `mise.lock` on every CI run, so a backend that gains or loses a checksum fails here rather than quietly making this page a lie.

@@ -72,6 +72,14 @@ install_skills "eli5" https://github.com/anthropics/claude-plugins-community/tre
 # are zero-dependency Node scripts (fs/path only) that run from the skill
 # directory.
 install_skills "security-audit" cloudflare/security-audit-skill -s security-audit
+# modern-web-guidance steers web UI work toward current platform features
+# (dialog/popover, container queries, view transitions, ...) instead of the
+# legacy patterns that dominate training data. The skill is a thin wrapper: it
+# makes the agent run `npx -y modern-web-guidance@latest search|retrieve`,
+# which fetches the guides at use time, so the SECURITY note above extends to
+# that npm package too. The repository also ships a chrome-extensions skill;
+# select by name so only the web guidance is installed.
+install_skills "modern-web-guidance" GoogleChrome/modern-web-guidance -s modern-web-guidance
 # pstack: Claude Code gets it as a plugin (setup:claude-plugins installs it
 # from the cursor/plugins marketplace, agents included), so the skills CLI
 # installs it for every other agent only — linking it into ~/.claude/skills
