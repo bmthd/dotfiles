@@ -80,7 +80,7 @@ version と backend しか記録していないもの。上の補集合であり
 さらに検証済みの provenance を lockfile に持つもの:
 
 <!-- coverage:provenance:start -->
-`aqua:astral-sh/uv`, `aqua:cli/cli`, `aqua:jqlang/jq`, `aqua:pnpm/pnpm`, `aqua:suzuki-shunsuke/pinact`
+`aqua:astral-sh/uv`, `aqua:cli/cli`, `aqua:jqlang/jq`, `aqua:modem-dev/hunk`, `aqua:pnpm/pnpm`, `aqua:suzuki-shunsuke/pinact`
 <!-- coverage:provenance:end -->
 
 この 4 つのリストは、CI のたびに [`tests/mise-pins-test.sh`](../tests/mise-pins-test.sh) が `mise.lock` と突き合わせます。
