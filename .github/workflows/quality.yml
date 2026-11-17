@@ -15,12 +15,12 @@ jobs:
     name: Mise
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@v7.0.1
       # Resolving the `npm:` tools below reaches the npm registry, so send that
       # traffic through the same malware-blocking proxy the installed machines
       # use. Anonymous mode needs no bot-id and no extra permissions.
-      - uses: flatt-security/setup-takumi-guard-npm@14f07d0cbc739b42a1b7c70a04c2b84cd1318ddd # v1.4.0
-      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+      - uses: flatt-security/setup-takumi-guard-npm@v1.4.0
+      - uses: jdx/mise-action@v4.3.0
         with:
           install: false
       - name: Validate tool config parses
@@ -42,23 +42,40 @@ jobs:
       # checks that a task and its script still agree.
       - name: Test the setup task facade
         run: bash tests/setup-facade-test.sh
-      - name: Verify immutable GitHub Actions references
-        run: mise x pinact -- pinact run --check --verify-comment
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
+
+  actions-lock:
+    # Actions refuses to run an onboarded workflow whose `uses:` has no entry in
+    # .github/workflows/actions.lock, but only once the job starts. --verify
+    # catches a missing entry, or a locked commit that no longer verifies
+    # upstream, on the PR that introduces it. Renovate regenerates the lockfile
+    # in its own PRs; a hand edit to a workflow needs `gh actions-lock` rerun.
+    name: Actions lockfile
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      # Pinned: the extension is what decides whether every other action here
+      # is trustworthy, so it is not one to take at whatever main is today.
+      - run: gh extension install github/gh-actions-lock --pin v0.4.1
+      - run: gh actions-lock --verify
 
   shellcheck:
     name: ShellCheck
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: ludeeus/action-shellcheck@00cae500b08a931fb5698e11e79bfbd38e612a38 # 2.0.0
+      - uses: actions/checkout@v7.0.1
+      - uses: ludeeus/action-shellcheck@2.0.0
 
   syntax:
     name: Shell syntax
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@v7.0.1
       - name: bash -n
         run: |
           bash -n install.sh

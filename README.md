@@ -39,7 +39,7 @@ Afterwards, restart the shell or run `source ~/.zshrc` (`source ~/.bashrc` for b
 - **Agent skills** — the same set installed for Claude Code, OpenCode, Cursor, Codex, and Gemini CLI
 - **Plugins** — Codex, pstack, plus the official plugins (TypeScript LSP)
 - **npm registry** — routed through [Takumi Guard](https://npm.flatt.tech/), a proxy that refuses known-malicious packages
-- **Global git hooks** — trust mise configs in new worktrees and pin staged GitHub Actions references before commit, while preserving repository hooks and partial staging ([`.dotfiles/git-hooks`](.dotfiles/git-hooks))
+- **Global git hooks** — trust mise configs in new worktrees while preserving repository hooks ([`.dotfiles/git-hooks`](.dotfiles/git-hooks))
 - **Shell startup** — the mise activation and the update notice, written into `~/.zshrc` and `~/.bashrc` as blocks mise owns and can rewrite (`[bootstrap.mise_shell_activate]` and `[dotfiles]` in [`.mise.toml`](.mise.toml))
 
 The setup can be re-run at any time as a mise task.
@@ -79,7 +79,7 @@ All of the setup logic lives in mise.
 | [`mise.lock`](mise.lock) | The versions and checksums that actually get installed, installed to `~/.config/mise/mise.lock` |
 | [`.agents/skills`](.agents/skills) | Skills specific to this repository; the general-purpose ones live in [bmthd/skills](https://github.com/bmthd/skills) |
 | [`renovate.json`](renovate.json) | Update policy for GitHub Actions PRs |
-| [`.githooks`](.githooks) | A repository pre-commit hook guarding the `[tools]` block; the global dispatcher runs pinact first and then forwards here |
+| [`.githooks`](.githooks) | A repository pre-commit hook guarding the `[tools]` block; the global dispatcher forwards here |
 
 Tool versions move when the daily [`bump-tools.yml`](.github/workflows/bump-tools.yml) advances `mise.lock`, not through `mise upgrade`.
 To get ahead locally: `mise lock --bump --minimum-release-age 2d --global`.

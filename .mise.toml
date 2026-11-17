@@ -43,7 +43,6 @@ pnpm = { version = "latest" }
 bun = { version = "latest" }
 ghq = { version = "latest" }
 jq = { version = "latest" }
-pinact = { version = "latest" }
 uv = { version = "latest" }
 "cargo:similarity-ts" = { version = "latest" }
 "npm:@antfu/ni" = { version = "latest" }
@@ -54,7 +53,9 @@ oci = { version = "latest" }
 cloudflared = { version = "latest" }
 wrangler = { version = "latest" }
 hunk = { version = "latest" }
-github-cli = { version = "latest", postinstall = "gh extension install github/gh-stack 2>/dev/null || gh extension upgrade stack 2>/dev/null || true" }
+# gh-actions-lock regenerates .github/workflows/actions.lock after a hand edit
+# to a workflow; CI only verifies it.
+github-cli = { version = "latest", postinstall = "gh extension install github/gh-stack 2>/dev/null || gh extension upgrade stack 2>/dev/null || true; gh extension install github/gh-actions-lock 2>/dev/null || gh extension upgrade actions-lock 2>/dev/null || true" }
 # `depends = ["node"]` on the npm: tools below: their postinstall shells out to
 # `npx`, which only exists once node is installed. Without the explicit
 # dependency mise may run it while node is still being (re)installed — `mise

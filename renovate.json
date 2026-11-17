@@ -11,14 +11,7 @@
   },
   "packageRules": [
     {
-      "description": "Digest pins are not a new release, so the age check would only stall them",
-      "matchUpdateTypes": [
-        "pinDigest"
-      ],
-      "minimumReleaseAge": null
-    },
-    {
-      "description": "Workflow action bumps are reviewed together, so batch them into one PR instead of one per action",
+      "description": "Workflow action bumps are reviewed together, so batch them into one PR instead of one per action. Renovate regenerates .github/workflows/actions.lock in that PR, so no digests are pinned in the workflows themselves and no pinDigest rule is needed.",
       "matchManagers": [
         "github-actions"
       ],
