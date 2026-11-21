@@ -20,7 +20,7 @@ jobs:
       # traffic through the same malware-blocking proxy the installed machines
       # use. Anonymous mode needs no bot-id and no extra permissions.
       - uses: flatt-security/setup-takumi-guard-npm@v1.4.0
-      - uses: jdx/mise-action@v5.2.9
+      - uses: jdx/mise-action@v5.2.10
         with:
           install: false
       - name: Validate tool config parses
