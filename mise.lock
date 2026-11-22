@@ -175,50 +175,50 @@ url_api = "https://api.github.com/repos/cli/cli/releases/assets/761188673"
 provenance = "github-attestations"
 
 [[tools."github:rtk-ai/rtk"]]
-version = "1.2.0"
+version = "1.2.1"
 backend = "github:rtk-ai/rtk"
 
 [tools."github:rtk-ai/rtk"."platforms.linux-arm64"]
-checksum = "sha256:93c1dcd37fd5fcae8fa772a5b5c34a30af142ace4f4081c8f98319146b7a10a4"
+checksum = "sha256:5fd75151feeae2b81b1844fca9889610cc77408361653ef3f95d4b9d3e278f4f"
 checksum_source = "mise-versions"
-url = "https://github.com/rtk-ai/rtk/releases/download/v1.2.0/rtk-aarch64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/723664873"
+url = "https://github.com/rtk-ai/rtk/releases/download/v1.2.1/rtk-aarch64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/768714267"
 
 [tools."github:rtk-ai/rtk"."platforms.linux-arm64-musl"]
-checksum = "sha256:f91a06e94e5fad7dfa87946c811a4bcbc500e6da119fd47033f2a8940bf64f93"
+checksum = "sha256:cae1a911eda9e898dbb90039436e9d53922b20afb1e3e4ae341f749eb62b7781"
 checksum_source = "mise-versions"
-url = "https://github.com/rtk-ai/rtk/releases/download/v1.2.0/rtk-aarch64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/723664861"
+url = "https://github.com/rtk-ai/rtk/releases/download/v1.2.1/rtk-aarch64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/768714249"
 
 [tools."github:rtk-ai/rtk"."platforms.linux-x64"]
-checksum = "sha256:70fee7b4a548c43dde94c77e2335550981b0bc2fb013691d8c8109b5bd0eda37"
+checksum = "sha256:75f64525711be935657a6b228d929c24bd9d1ab7d640ea374a8b913e5b5bac05"
 checksum_source = "mise-versions"
-url = "https://github.com/rtk-ai/rtk/releases/download/v1.2.0/rtk-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/723664846"
+url = "https://github.com/rtk-ai/rtk/releases/download/v1.2.1/rtk-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/768714254"
 
 [tools."github:rtk-ai/rtk"."platforms.linux-x64-baseline"]
-checksum = "sha256:70fee7b4a548c43dde94c77e2335550981b0bc2fb013691d8c8109b5bd0eda37"
+checksum = "sha256:75f64525711be935657a6b228d929c24bd9d1ab7d640ea374a8b913e5b5bac05"
 checksum_source = "mise-versions"
-url = "https://github.com/rtk-ai/rtk/releases/download/v1.2.0/rtk-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/723664846"
+url = "https://github.com/rtk-ai/rtk/releases/download/v1.2.1/rtk-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/768714254"
 
 [tools."github:rtk-ai/rtk"."platforms.linux-x64-musl"]
-checksum = "sha256:70fee7b4a548c43dde94c77e2335550981b0bc2fb013691d8c8109b5bd0eda37"
+checksum = "sha256:75f64525711be935657a6b228d929c24bd9d1ab7d640ea374a8b913e5b5bac05"
 checksum_source = "mise-versions"
-url = "https://github.com/rtk-ai/rtk/releases/download/v1.2.0/rtk-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/723664846"
+url = "https://github.com/rtk-ai/rtk/releases/download/v1.2.1/rtk-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/768714254"
 
 [tools."github:rtk-ai/rtk"."platforms.linux-x64-musl-baseline"]
-checksum = "sha256:70fee7b4a548c43dde94c77e2335550981b0bc2fb013691d8c8109b5bd0eda37"
+checksum = "sha256:75f64525711be935657a6b228d929c24bd9d1ab7d640ea374a8b913e5b5bac05"
 checksum_source = "mise-versions"
-url = "https://github.com/rtk-ai/rtk/releases/download/v1.2.0/rtk-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/723664846"
+url = "https://github.com/rtk-ai/rtk/releases/download/v1.2.1/rtk-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/768714254"
 
 [tools."github:rtk-ai/rtk"."platforms.macos-arm64"]
-checksum = "sha256:a2c411ffa49a8595b408c151ea47c9a812268924a76eaeecbc3a5065b02207ff"
+checksum = "sha256:3bc2a92f1d3e404ef99c200cddcc0f4917d6c4ed5b127a751938a96f57d4ed9a"
 checksum_source = "mise-versions"
-url = "https://github.com/rtk-ai/rtk/releases/download/v1.2.0/rtk-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/723664868"
+url = "https://github.com/rtk-ai/rtk/releases/download/v1.2.1/rtk-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/rtk-ai/rtk/releases/assets/768714246"
 
 [[tools.hunk]]
 version = "0.25.0"
@@ -349,11 +349,11 @@ version = "30.6.0"
 backend = "npm:@antfu/ni"
 
 [[tools."npm:@google/gemini-cli"]]
-version = "0.69.0"
+version = "0.70.0"
 backend = "npm:@google/gemini-cli"
 
 [[tools."npm:@openai/codex"]]
-version = "0.170.0"
+version = "0.171.0"
 backend = "npm:@openai/codex"
 
 [[tools."npm:@playwright/cli"]]
