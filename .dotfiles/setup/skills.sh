@@ -6,14 +6,43 @@
 # The `npx skills add` calls below must resolve through the Takumi Guard proxy,
 # which is why the task declares setup:npm-registry as a dependency rather than
 # relying on the order of the parent task's depends list.
-
-# Skill directories for each agent CLI. Cursor, Codex and Gemini CLI are
-# "universal" agents to the skills CLI: they all read ~/.agents/skills, which is
-# also where it puts a skill for OpenCode, so the one directory covers all four
-# and only Claude Code gets a tree of its own (symlinks into ~/.agents/skills).
-# That is why adding gemini-cli below needs no new mkdir: nothing lands in
-# ~/.gemini.
-mkdir -p "$HOME/.claude/skills" "$HOME/.config/opencode/skills" "$HOME/.agents/skills"
+#
+# The whole installation is rebuilt from scratch into a staging home on every
+# run and swapped into place only when every source succeeded. The skills CLI
+# has no --dir option, so staging works by pointing HOME at the staging
+# directory: a global install lands in $HOME/.agents/skills (the canonical
+# store every agent reads, directly or through the relative symlinks the CLI
+# writes into $HOME/.claude/skills), wherever HOME points. Building there
+# first buys two things in-place installs cannot give:
+#
+#   - A skill dropped from this script simply is not in the next staging
+#     build, so it disappears on the next run. In-place installs never remove
+#     anything, which is why this script used to carry a hand-maintained
+#     `npx skills remove <name>` list for every skill it had ever dropped —
+#     a list that silently rotted whenever a removal was forgotten.
+#   - A failed source leaves the machine exactly as it was. The staging build
+#     is discarded, the previous installation stays in place, and the script
+#     exits non-zero naming what failed, instead of leaving a half-updated
+#     mix of old and new skills behind.
+#
+# Two details keep staging from quietly weakening the setup:
+#
+#   - The real ~/.npmrc is copied into the staging home first. npm reads the
+#     registry from the HOME it is given, so without the copy every install
+#     below would resolve through the default registry and bypass the Takumi
+#     Guard proxy that setup:npm-registry just configured.
+#   - npm_config_cache points at the real ~/.npm, so `npx` reuses the skills
+#     CLI it already downloaded instead of fetching a fresh copy into a
+#     staging home that is deleted at the end of the run.
+#
+# The staging home is created under the real $HOME so the final `mv` is a
+# rename on one filesystem, not a copy across devices.
+STAGING_HOME="$(mktemp -d "$HOME/.skills-staging.XXXXXX")"
+trap 'rm -rf "$STAGING_HOME"' EXIT
+if [ -f "$HOME/.npmrc" ]; then
+    cp "$HOME/.npmrc" "$STAGING_HOME/.npmrc"
+fi
+export npm_config_cache="${npm_config_cache:-$HOME/.npm}"
 
 # Install skills via the `skills` CLI — one mechanism for every source.
 # Own skills live in bmthd/skills, split out of the dotfiles repository so they
@@ -30,11 +59,15 @@ mkdir -p "$HOME/.claude/skills" "$HOME/.config/opencode/skills" "$HOME/.agents/s
 # skills-lock.json restore path is experimental and project-scoped). Treat
 # `npx skills update` as a change to review, not to run unattended.
 echo "📦 Installing skills..."
+FAILED_LABELS=()
 install_skills() {
     local label="$1"; shift
-    npx skills add "$@" -y -g -a claude-code -a opencode -a cursor -a codex -a gemini-cli 2>/dev/null \
-      && echo "✓ $label skills installed" \
-      || echo "⚠ $label skills installation failed (continuing)"
+    if HOME="$STAGING_HOME" npx skills add "$@" -y -g -a claude-code -a opencode -a cursor -a codex -a gemini-cli 2>/dev/null; then
+        echo "✓ $label skills installed"
+    else
+        echo "⚠ $label skills installation failed"
+        FAILED_LABELS+=("$label")
+    fi
 }
 install_skills "own" bmthd/skills
 # the dotfiles skill (pr / apply) targets the dotfiles repository, so it still
@@ -80,6 +113,12 @@ install_skills "security-audit" cloudflare/security-audit-skill -s security-audi
 # that npm package too. The repository also ships a chrome-extensions skill;
 # select by name so only the web guidance is installed.
 install_skills "modern-web-guidance" GoogleChrome/modern-web-guidance -s modern-web-guidance
+# playwright-cli and difit used to install their skills from the postinstall
+# hooks of their npm tools in .mise.toml. A staging rebuild knows nothing
+# about postinstall output, so the swap would delete both on every run; they
+# are ordinary sources here instead, and the hooks are gone.
+install_skills "playwright-cli" microsoft/playwright-cli
+install_skills "difit" yoshiko-pg/difit
 # pstack: Claude Code gets it as a plugin (setup:claude-plugins installs it
 # from the cursor/plugins marketplace, agents included), so the skills CLI
 # installs it for every other agent only — linking it into ~/.claude/skills
@@ -87,25 +126,67 @@ install_skills "modern-web-guidance" GoogleChrome/modern-web-guidance -s modern-
 # /pstack:<name>. Take all of them: poteto-mode is the entry point and its
 # inline Principles index navigates to the 21 principle-* skills by name, so a
 # subset leaves it pointing at skills that are not there.
-npx skills add https://github.com/cursor/plugins/tree/main/pstack/skills -s '*' \
-    -y -g -a opencode -a cursor -a codex -a gemini-cli 2>/dev/null \
-  && echo "✓ pstack skills installed" \
-  || echo "⚠ pstack skills installation failed (continuing)"
+if HOME="$STAGING_HOME" npx skills add https://github.com/cursor/plugins/tree/main/pstack/skills -s '*' \
+    -y -g -a opencode -a cursor -a codex -a gemini-cli 2>/dev/null; then
+    echo "✓ pstack skills installed"
+else
+    echo "⚠ pstack skills installation failed"
+    FAILED_LABELS+=("pstack")
+fi
 # yomiyasu rewrites AI-flavoured Japanese by restoring who-did-what sentence
 # structure rather than swapping banned words:
 # https://zenn.dev/algoartis/articles/0b1c731881b25c
 # The repository carries the same SKILL.md twice, at its root and under
-# skills/yomiyasu/, so select it by name to get one copy.
+# skills/yomiyasu/, so select it by name to get one copy. It replaces the two
+# Japanese style skills that used to be installed here (japanese-tech-writing
+# and cognitive-rhythm-writing), whose SKILL.md conflicts with it; under the
+# staging rebuild there is nothing to remove by hand — they are simply not
+# installed any more, and the next run takes them off the machine.
 install_skills "yomiyasu" nanaism/yomiyasu -s yomiyasu
-# yomiyasu's SKILL.md warns that other Japanese style skills active alongside it
-# make its output erratic, so it replaces the two that used to be installed
-# here, japanese-tech-writing and cognitive-rhythm-writing. Dropping their
-# install lines does not take them off a machine that already has them, so
-# remove them explicitly; on a machine without them this is a no-op.
-npx skills remove japanese-tech-writing cognitive-rhythm-writing -g -y >/dev/null 2>&1 || true
-# mathbullet's html and explain skills used to be installed here and were
-# dropped; remove them from machines that still carry them, for the same reason.
-npx skills remove html explain -g -y >/dev/null 2>&1 || true
+
+if [ "${#FAILED_LABELS[@]}" -gt 0 ]; then
+    echo "✗ Skills installation failed for: ${FAILED_LABELS[*]}"
+    echo "  The previous installation was left unchanged; fix the failure and re-run \`mise run setup:skills\`."
+    exit 1
+fi
+if [ ! -d "$STAGING_HOME/.agents/skills" ]; then
+    echo "✗ Skills installation produced no staging store; the previous installation was left unchanged."
+    exit 1
+fi
+
+# Swap the staging build into place. The canonical store moves as one
+# directory; the agent link directories are merged link by link instead,
+# because they can also hold skills a human placed there by hand — real
+# directories and files survive, and only symlinks into ~/.agents/skills
+# (the ones the skills CLI manages, stale ones included) are replaced.
+mkdir -p "$HOME/.agents" "$HOME/.claude/skills" "$HOME/.config/opencode/skills"
+OLD_SKILLS="$HOME/.agents/skills.replaced.$$"
+if [ -e "$HOME/.agents/skills" ] || [ -L "$HOME/.agents/skills" ]; then
+    mv "$HOME/.agents/skills" "$OLD_SKILLS"
+fi
+mv "$STAGING_HOME/.agents/skills" "$HOME/.agents/skills"
+rm -rf "$OLD_SKILLS"
+if [ -f "$STAGING_HOME/.agents/.skill-lock.json" ]; then
+    mv "$STAGING_HOME/.agents/.skill-lock.json" "$HOME/.agents/.skill-lock.json"
+fi
+for link_dir in "$HOME/.claude/skills" "$HOME/.config/opencode/skills"; do
+    for entry in "$link_dir"/*; do
+        [ -L "$entry" ] || continue
+        case "$(readlink "$entry")" in
+            *.agents/skills|*.agents/skills/*) rm -f "$entry" ;;
+        esac
+    done
+done
+for staging_link_dir in "$STAGING_HOME/.claude/skills" "$STAGING_HOME/.config/opencode/skills"; do
+    [ -d "$staging_link_dir" ] || continue
+    link_dir="$HOME${staging_link_dir#"$STAGING_HOME"}"
+    mkdir -p "$link_dir"
+    for entry in "$staging_link_dir"/*; do
+        [ -L "$entry" ] || [ -e "$entry" ] || continue
+        cp -a "$entry" "$link_dir/"
+    done
+done
+echo "✓ Skills installation replaced with the new build"
 
 # Record which revision of bmthd/skills this machine now carries, so the
 # shell-startup notice can tell when that repository has moved on. `skills add`

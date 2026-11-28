@@ -77,8 +77,12 @@ github-cli = { version = "latest", postinstall = "gh extension install github/gh
 # version rather than relaxing the policy for the package, so a later release
 # that is genuinely unsigned still fails. Drop it once a version with provenance
 # ships and the lockfile has moved past 0.1.19.
-"npm:@playwright/cli" = { version = "latest", depends = ["node"], trust_policy_excludes = ["@playwright/cli@0.1.19"], postinstall = "npx skills add microsoft/playwright-cli -y -g -a claude-code -a opencode -a cursor -a codex -a gemini-cli" }
-"npm:difit" = { version = "latest", depends = ["node"], postinstall = "npx skills add yoshiko-pg/difit -y -g -a claude-code -a opencode -a cursor -a codex -a gemini-cli" }
+"npm:@playwright/cli" = { version = "latest", depends = ["node"], trust_policy_excludes = ["@playwright/cli@0.1.19"] }
+"npm:difit" = { version = "latest", depends = ["node"] }
+# The playwright-cli and difit skills are installed by setup:skills like every
+# other skill, not from postinstall hooks here: setup:skills rebuilds the
+# whole skill store into a staging home and swaps it in, so a skill only a
+# postinstall put there would be deleted again on the next run.
 # rtk init writes into each agent's config dir and fails outright if the dir is
 # missing, so create all three up front. On a fresh machine (and in CI) nothing
 # else has necessarily created ~/.cursor yet.
